@@ -1,0 +1,4 @@
+maturin
+polars
+pytest
+pyright

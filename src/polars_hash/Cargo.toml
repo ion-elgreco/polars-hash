@@ -1,0 +1,18 @@
+[package]
+name = "polars_hash"
+version = "0.1.0"
+edition = "2023"
+
+[lib]
+name = "polars_hash"
+crate-type = ["cdylib"]
+
+[dependencies]
+polars = { version = "*" }
+pyo3 = { version = "*", features = ["extension-module"] }
+pyo3-polars = { version = "*", features = ["derive"] }
+serde = { version = "*", features = ["derive"] }
+sha256 = { version = "*" , features = ["digest"]}
+
+[target.'cfg(target_os = "linux")'.dependencies]
+jemallocator = { version = "0.5", features = ["disable_initial_exec_tls"] }
