@@ -2,3 +2,4 @@ maturin
 polars
 pytest
 pyright
+ruff

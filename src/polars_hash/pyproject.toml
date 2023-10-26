@@ -15,4 +15,4 @@ authors = [
   { name="Ion Koutsours", email="" },
 ]
 description = "Stable hashing functionalitities for Polars across versions"
-readme = "README.md"
+
