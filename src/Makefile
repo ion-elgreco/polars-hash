@@ -15,10 +15,10 @@ install-release: venv
 
 clean:
 	-@rm -r venv
-	-@cd expression_lib && cargo clean
+	-@cd polars_hash && cargo clean
 
-run: install
-	source venv/bin/activate && python run.py
+# run: install
+# 	source venv/bin/activate && python run.py
 
-run-release: install-release
-	source venv/bin/activate && python run.py
+# run-release: install-release
+# 	source venv/bin/activate && python run.py
