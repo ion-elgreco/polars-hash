@@ -16,3 +16,17 @@ class HashingAlgorithms:
             symbol="sha256",
             is_elementwise=True,
         )
+    
+    def xx64(self) -> pl.Expr:  # type: ignore
+        return self._expr._register_plugin(
+            lib=lib,
+            symbol="xx64",
+            is_elementwise=True,
+        )
+        
+    def wyhash(self) -> pl.Expr:  # type: ignore
+        return self._expr._register_plugin(
+            lib=lib,
+            symbol="wyhash",
+            is_elementwise=True,
+        )
