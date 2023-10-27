@@ -12,7 +12,7 @@ classifiers = [
 ]
 version = "0.1.0"
 authors = [
-  { name="Ion Koutsours", email="" },
+  { name="Ion Koutsours", email=""},
 ]
 description = "Stable hashing functionalitities for Polars across versions"
 
