@@ -27,13 +27,13 @@ class NonCryptographicHashingNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
 
-    def xx64(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint hash with xx64."""
-        return self._expr._register_plugin(
-            lib=lib,
-            symbol="xx64",
-            is_elementwise=True,
-        )
+    # def xx64(self) -> pl.Expr:
+    #     """Takes Utf8 as input and returns uint hash with xx64."""
+    #     return self._expr._register_plugin(
+    #         lib=lib,
+    #         symbol="xx64",
+    #         is_elementwise=True,
+    #     )
 
     def wyhash(self) -> pl.Expr:
         """Takes Utf8 as input and returns uint hash with wyhash."""
