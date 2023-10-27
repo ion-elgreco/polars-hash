@@ -37,7 +37,7 @@ jobs:
         working-directory: polars_hash
       - run: venv/bin/python -m pytest tests
         working-directory: polars_hash
-      - run: venv/bin/python -m pyright .
+      - run: venv/bin/python -m mypy .
         working-directory: polars_hash
       - run: venv/bin/python -m ruff .
         working-directory: polars_hash
