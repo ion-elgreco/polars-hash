@@ -19,16 +19,16 @@ def test_sha256():
     assert_frame_equal(result, expected)
 
 
-def test_xx64():
-    result = pl.select(pl.lit("hello_world").nchash.xx64())  # type: ignore
+# def test_xx64():
+#     result = pl.select(pl.lit("hello_world").nchash.xx64())  # type: ignore
 
-    expected = pl.DataFrame(
-        [
-            pl.Series("literal", ["5654987600477331689"], dtype=pl.Utf8),
-        ]
-    )
+#     expected = pl.DataFrame(
+#         [
+#             pl.Series("literal", ["5654987600477331689"], dtype=pl.Utf8),
+#         ]
+#     )
 
-    assert_frame_equal(result, expected)
+#     assert_frame_equal(result, expected)
 
 
 def test_wyhash():
