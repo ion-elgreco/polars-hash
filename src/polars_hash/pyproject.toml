@@ -12,7 +12,8 @@ classifiers = [
 ]
 version = "0.1.0"
 authors = [
-  { name="Ion Koutsours", email=""},
+  { name="Ion Koutsours", email="15728914+ion-elgreco@users.noreply.github.com"},
 ]
-description = "Stable hashing functionalitities for Polars across versions"
+description = "Stable non-cryptographic and cryptographic hashing functions for Polars"
+readme = "README.md"
 
