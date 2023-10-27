@@ -35,16 +35,6 @@ df = pl.DataFrame({
     "foo":["hello_world"]
 })
 
-result = df.select(plh.col('foo').nchash.xx64())
-print(result)
-┌─────────────────────┐
-│ foo                 │
-│ ---                 │
-│ str                 │
-╞═════════════════════╡
-│ 5654987600477331689 │
-└─────────────────────┘
-
 
 result = df.select(plh.col('foo').nchash.wyhash())
 print(result)
