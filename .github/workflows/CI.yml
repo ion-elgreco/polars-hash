@@ -103,7 +103,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter --manifest-path src/polars_hash/Cargo.toml
+          args: --release --out dist --find-interpreter --manifest-path polars_hash/polars_hash/Cargo.toml
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v3
