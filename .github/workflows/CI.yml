@@ -148,7 +148,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux, windows, macos, emscripten, sdist]
+    needs: [linux, windows, emscripten, sdist]
     permissions:
       # Used to upload release artifacts
       contents: write
