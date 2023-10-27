@@ -1,11 +1,11 @@
 import polars as pl
-import polars_hash as plh
+import polars_hash as plh # noqa: F401
 
 from polars.testing import assert_frame_equal
 
 
 def test_sha256():
-    result = pl.select(pl.lit("hello_world").chash.sha256()) 
+    result = pl.select(pl.lit("hello_world").chash.sha256())  # type: ignore
 
     expected = pl.DataFrame(
         [

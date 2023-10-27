@@ -15,5 +15,8 @@ authors = [
   { name="Ion Koutsours", email="15728914+ion-elgreco@users.noreply.github.com"},
 ]
 description = "Stable non-cryptographic and cryptographic hashing functions for Polars"
-readme = "README.md"
+readme = "../../README.md"
 
+[project.urls]
+"Homepage" = "https://github.com/ion-elgreco/polars-hash"
+"Bug Tracker" = "https://github.com/ion-elgreco/polars-hash/issues"
