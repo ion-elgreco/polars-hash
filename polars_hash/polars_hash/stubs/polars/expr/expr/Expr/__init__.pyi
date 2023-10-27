@@ -1,4 +1,0 @@
-from polars_hash import CryptographicHashingNameSpace, NonCryptographicHashingNameSpace
-
-chash: CryptographicHashingNameSpace
-nchash: NonCryptographicHashingNameSpace
