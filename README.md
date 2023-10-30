@@ -2,7 +2,7 @@ Hellooo :)
 
 This plugin is a work in progress. The main goal of this plugin is to provide a stable hashing functionality across different polars versions.
 
-Main drive behind this plugin is, to this to generate surrogate table keys that can be determinstic across multiple polars versions.
+Main drive behind this plugin is, to generate surrogate table keys that can be determinstic across multiple polars versions.
 
 
 ## Examples
