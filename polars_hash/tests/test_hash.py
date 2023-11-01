@@ -1,5 +1,5 @@
 import polars as pl
-import polars_hash as plh # noqa: F401
+import polars_hash as plh  # noqa: F401
 
 from polars.testing import assert_frame_equal
 

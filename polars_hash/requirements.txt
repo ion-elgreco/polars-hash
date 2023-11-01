@@ -3,3 +3,4 @@ polars
 pytest
 mypy
 ruff
+black

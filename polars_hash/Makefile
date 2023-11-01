@@ -5,20 +5,19 @@ venv:  ## Set up virtual environment
 	python3 -m venv venv
 	venv/bin/pip install -r requirements.txt
 
-install: venv
+install: venv ## Install polars-hash in develop mode
 	unset CONDA_PREFIX && \
 	source venv/bin/activate && maturin develop -m polars_hash/Cargo.toml
 
-install-release: venv
+install-release: venv ## Install polars-hash in release mode
 	unset CONDA_PREFIX && \
 	source venv/bin/activate && maturin develop --release -m polars_hash/Cargo.toml
 
-clean:
+clean: ## Clean venv and clean cargo
 	-@rm -r venv
 	-@cd polars_hash && cargo clean
 
-# run: install
-# 	source venv/bin/activate && python run.py
-
-# run-release: install-release
-# 	source venv/bin/activate && python run.py
+.PHONY: help
+help:  ## Display this help screen
+	@echo -e "\033[1mAvailable commands:\033[0m"
+	@grep -E '^[a-z.A-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' | sort
