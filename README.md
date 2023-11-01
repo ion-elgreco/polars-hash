@@ -46,3 +46,13 @@ print(result)
 └──────────────────────┘
 
 ```
+
+## Create hash from multiple columns
+```python
+df = pl.DataFrame({
+    "foo":["hello_world"],
+    "bar": ["today"]
+})
+
+result = df.select(plh.concat_str('foo','bar').chash.sha256())
+```

@@ -2,7 +2,7 @@ Hellooo :)
 
 This plugin is a work in progress. The main goal of this plugin is to provide a stable hashing functionality across different polars versions.
 
-Main drive behind this plugin is, to this to generate surrogate table keys that can be determinstic across multiple polars versions.
+Main drive behind this plugin is, to generate surrogate table keys that can be determinstic across multiple polars versions.
 
 
 ## Examples
@@ -35,7 +35,6 @@ df = pl.DataFrame({
     "foo":["hello_world"]
 })
 
-
 result = df.select(plh.col('foo').nchash.wyhash())
 print(result)
 ┌──────────────────────┐
@@ -46,4 +45,14 @@ print(result)
 │ 16737367591072095403 │
 └──────────────────────┘
 
+```
+
+## Create hash from multiple columns
+```python
+df = pl.DataFrame({
+    "foo":["hello_world"],
+    "bar": ["today"]
+})
+
+result = df.select(plh.concat_str('foo','bar').chash.sha256())
 ```
