@@ -18,6 +18,7 @@ def test_sha256():
     )
     assert_frame_equal(result, expected)
 
+
 def test_wyhash():
     result = pl.select(pl.lit("hello_world").nchash.wyhash())  # type: ignore
 
