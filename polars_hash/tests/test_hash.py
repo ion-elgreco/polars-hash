@@ -24,7 +24,7 @@ def test_wyhash():
 
     expected = pl.DataFrame(
         [
-            pl.Series("literal", ["16737367591072095403"], dtype=pl.Utf8),
+            pl.Series("literal", [16737367591072095403], dtype=pl.UInt64),
         ]
     )
 

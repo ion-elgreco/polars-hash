@@ -5,7 +5,7 @@ from polars.type_aliases import PolarsDataType, IntoExpr
 
 lib = _get_shared_lib_location(__file__)
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 
 @pl.api.register_expr_namespace("chash")
@@ -28,7 +28,7 @@ class NonCryptographicHashingNameSpace:
         self._expr = expr
 
     def wyhash(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint hash with wyhash."""
+        """Takes Utf8 as input and returns uint64 hash with wyhash."""
         return self._expr.register_plugin(
             lib=lib,
             symbol="wyhash",
