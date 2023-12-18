@@ -29,3 +29,27 @@ def test_wyhash():
     )
 
     assert_frame_equal(result, expected)
+
+
+def test_geohash():
+    df = pl.DataFrame(
+        {"coord": [{"longitude": -120.6623, "latitude": 35.3003}]},
+        schema={
+            "coord": pl.Struct(
+                [pl.Field("longitude", pl.Float64), pl.Field("latitude", pl.Float64)]
+            ),
+        },
+    )
+
+    result = df.select(pl.col("coord").geohash.from_coords(5))  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("coord", ["9q60y"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+    assert_frame_equal(
+        df.select(pl.col("coord").geohash.from_coords(12).geohash.to_coords()),
+        df,  # type: ignore
+    )

@@ -1,11 +1,13 @@
 import polars as pl
 from polars.utils.udfs import _get_shared_lib_location
+from polars.utils._parse_expr_input import parse_as_expression
+from polars.utils._wrap import wrap_expr
 from typing import Protocol, Iterable, cast
 from polars.type_aliases import PolarsDataType, IntoExpr
 
 lib = _get_shared_lib_location(__file__)
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 @pl.api.register_expr_namespace("chash")
@@ -36,6 +38,30 @@ class NonCryptographicHashingNameSpace:
         )
 
 
+@pl.api.register_expr_namespace("geohash")
+class GeoHashingNameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+
+    def to_coords(self) -> pl.Expr:
+        """Takes Utf8 as input and returns a struct of the coordinates."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="ghash_decode",
+            is_elementwise=True,
+        )
+
+    def from_coords(self, len: int | str | pl.Expr = 10) -> pl.Expr:
+        """Takes Struct with lat, long as input and returns utf8 hash using geohash."""
+        len_expr = wrap_expr(parse_as_expression(len))
+        return self._expr.register_plugin(
+            lib=lib,
+            args=[len_expr],
+            symbol="ghash_encode",
+            is_elementwise=True,
+        )
+
+
 class HExpr(pl.Expr):
     @property
     def chash(self) -> CryptographicHashingNameSpace:
@@ -44,6 +70,10 @@ class HExpr(pl.Expr):
     @property
     def nchash(self) -> NonCryptographicHashingNameSpace:
         return NonCryptographicHashingNameSpace(self)
+
+    @property
+    def geohash(self) -> GeoHashingNameSpace:
+        return GeoHashingNameSpace(self)
 
 
 class HashColumn(Protocol):
@@ -63,6 +93,10 @@ class HashColumn(Protocol):
 
     @property
     def nchash(self) -> NonCryptographicHashingNameSpace:
+        ...
+
+    @property
+    def geohash(self) -> GeoHashingNameSpace:
         ...
 
 

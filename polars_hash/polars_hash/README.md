@@ -1,8 +1,5 @@
 This plugin provides stable hashing functionality across different polars versions.
 
-Main drive behind this plugin is, to generate surrogate table keys that can be determinstic across multiple polars versions.
-
-
 ## Examples
 ### Cryptographic Hashers
 
@@ -44,6 +41,42 @@ print(result)
 └──────────────────────┘
 
 ```
+
+### Geo Hashers
+```python
+df = pl.DataFrame(
+    {"coord": [{"longitude": -120.6623, "latitude": 35.3003}]},
+    schema={
+        "coord": pl.Struct(
+            [pl.Field("longitude", pl.Float64), pl.Field("latitude", pl.Float64)]
+        ),
+    },
+)
+
+df.with_columns(
+    plh.col('coord').geohash.from_coords().alias('geohash')
+)
+shape: (1, 2)
+┌─────────────────────┬────────────┐
+│ coord               ┆ geohash    │
+│ ---                 ┆ ---        │
+│ struct[2]           ┆ str        │
+╞═════════════════════╪════════════╡
+│ {-120.6623,35.3003} ┆ 9q60y60rhs │
+└─────────────────────┴────────────┘
+
+
+pl.select(pl.lit('9q60y60rhs').geohash.to_coords().alias('coordinates'))
+shape: (1, 1)
+┌───────────────────────┐
+│ coordinates           │
+│ ---                   │
+│ struct[2]             │
+╞═══════════════════════╡
+│ {-120.6623,35.300298} │
+└───────────────────────┘
+```
+
 
 ## Create hash from multiple columns
 ```python
