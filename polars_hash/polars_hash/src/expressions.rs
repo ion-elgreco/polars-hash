@@ -114,8 +114,6 @@ fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
                 let (cords, _, _) =
                     decode(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
                 let (x_value, y_value) = cords.x_y();
-                dbg!(x_value);
-                dbg!(y_value);
                 x_vec.push(Some(x_value));
                 y_vec.push(Some(y_value));
             }
