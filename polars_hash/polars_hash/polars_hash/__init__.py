@@ -44,7 +44,7 @@ class GeoHashingNameSpace:
         self._expr = expr
 
     def to_coords(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with wyhash."""
+        """Takes Utf8 as input and returns a struct of the coordinates."""
         return self._expr.register_plugin(
             lib=lib,
             symbol="ghash_decode",
@@ -71,6 +71,10 @@ class HExpr(pl.Expr):
     def nchash(self) -> NonCryptographicHashingNameSpace:
         return NonCryptographicHashingNameSpace(self)
 
+    @property
+    def geohash(self) -> GeoHashingNameSpace:
+        return GeoHashingNameSpace(self)
+
 
 class HashColumn(Protocol):
     def __call__(
@@ -89,6 +93,10 @@ class HashColumn(Protocol):
 
     @property
     def nchash(self) -> NonCryptographicHashingNameSpace:
+        ...
+
+    @property
+    def geohash(self) -> GeoHashingNameSpace:
         ...
 
 

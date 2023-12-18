@@ -1,12 +1,10 @@
 use geohash::{decode, encode, Coord};
-use polars::{
-    chunked_array::ops::arity::{
-        binary_elementwise, try_binary_elementwise_values, try_ternary_elementwise,
-    },
-    prelude::*,
+use polars::{chunked_array::ops::arity::try_ternary_elementwise, prelude::*};
+use polars_core::datatypes::{
+    DataType::{Float64, Struct},
+    Field,
 };
 use pyo3_polars::derive::polars_expr;
-use serde::Deserialize;
 use sha256::digest;
 use std::fmt::Write;
 use wyhash::wyhash as real_wyhash;
@@ -23,25 +21,29 @@ fn wyhash_hash(value: Option<&str>) -> Option<u64> {
     }
 }
 
-// fn geohash_decoder(value: &str) {}
-
 fn geohash_encoder(
     lat: Option<f64>,
     long: Option<f64>,
     len: Option<i64>,
 ) -> PolarsResult<Option<String>> {
-    let coord = match (lat, long) {
-        (Some(lat), Some(long)) => Some(Coord { x: long, y: lat }),
-        _ => None,
-    };
-    // Handle errors here
-    match (coord, len) {
-        (Some(coord), Some(len)) => {
-            Ok(Some(encode(coord, len as usize).map_err(|e| {
-                PolarsError::ComputeError(e.to_string().into())
-            })?))
-        }
-        _ => Ok(None),
+    match (lat, long) {
+        (Some(lat), Some(long)) => match len {
+            Some(len) => Ok(Some(
+                encode(Coord { x: long, y: lat }, len as usize)
+                    .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
+            )),
+            _ => Err(PolarsError::ComputeError(
+                "Length may not be null".to_string().into(),
+            )),
+        },
+        _ => Err(PolarsError::ComputeError(
+            format!(
+                "Coordinates cannot be null. 
+        Provided latitude: {:?}, longitude: {:?}",
+                lat, long
+            )
+            .into(),
+        )),
     }
 }
 
@@ -58,11 +60,6 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-// #[derive(Deserialize)]
-// struct GhashEncodeKwargs {
-//     len: usize,
-// }
-
 #[polars_expr(output_type=Utf8)]
 fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].struct_()?;
@@ -71,7 +68,7 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
         &DataType::Int32 => inputs[1].cast(&DataType::Int64)?,
         &DataType::Int16 => inputs[1].cast(&DataType::Int64)?,
         &DataType::Int8 => inputs[1].cast(&DataType::Int64)?,
-        _ => polars_bail!(InvalidOperation:"Length input needs to be integer")
+        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
     };
     let len = len.i64()?;
 
@@ -80,18 +77,53 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let lat = match lat.dtype() {
         &DataType::Float32 => lat.cast(&DataType::Float64)?,
         &DataType::Float64 => lat,
-        _ => polars_bail!(InvalidOperation:"Length input needs to be integer")
+        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
     };
 
     let long = match long.dtype() {
         &DataType::Float32 => long.cast(&DataType::Float64)?,
         &DataType::Float64 => long,
-        _ => polars_bail!(InvalidOperation:"Length input needs to be integer")
+        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
     };
-    
+
     let ca_lat = lat.f64()?;
     let ca_long = long.f64()?;
-    
 
-    try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder).map(|ca: Utf8Chunked|ca.into_series())
+    try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder)
+        .map(|ca: Utf8Chunked| ca.into_series())
+}
+
+pub fn geohash_output(_: &[Field]) -> PolarsResult<Field> {
+    let v: Vec<Field> = vec![Field::new("latitude", Float64), Field::new("longitude", Float64)];
+    Ok(Field::new("coordinates", Struct(v)))
+}
+
+#[polars_expr(output_type_func=geohash_output)]
+fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+
+    let mut x_vec: Vec<Option<f64>> = Vec::new(); //latitude
+    let mut y_vec: Vec<Option<f64>> = Vec::new(); //longitude
+
+    for value in ca.into_iter() {
+        match value {
+            Some(value) => {
+                let (cords, _, _) =
+                    decode(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
+                let (x_value, y_value) = cords.x_y();
+                x_vec.push(Some(x_value));
+                y_vec.push(Some(y_value));
+            }
+            _ => {
+                x_vec.push(None);
+                y_vec.push(None);
+            }
+        }
+    }
+
+    let ca_lat = Series::new("latitude", x_vec);
+    let ca_long = Series::new("longitude", y_vec);
+    let out = StructChunked::new("coordinates", &[ca_lat, ca_long])?;
+
+    Ok(out.into_series())
 }
