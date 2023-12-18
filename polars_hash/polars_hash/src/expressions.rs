@@ -72,8 +72,8 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     };
     let len = len.i64()?;
 
-    let lat = ca.field_by_name("lat")?;
-    let long = ca.field_by_name("long")?;
+    let lat = ca.field_by_name("latitude")?;
+    let long = ca.field_by_name("longitude")?;
     let lat = match lat.dtype() {
         &DataType::Float32 => lat.cast(&DataType::Float64)?,
         &DataType::Float64 => lat,
@@ -94,7 +94,10 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 pub fn geohash_output(_: &[Field]) -> PolarsResult<Field> {
-    let v: Vec<Field> = vec![Field::new("latitude", Float64), Field::new("longitude", Float64)];
+    let v: Vec<Field> = vec![
+        Field::new("longitude", Float64),
+        Field::new("latitude", Float64),
+    ];
     Ok(Field::new("coordinates", Struct(v)))
 }
 
@@ -102,8 +105,8 @@ pub fn geohash_output(_: &[Field]) -> PolarsResult<Field> {
 fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].utf8()?;
 
-    let mut x_vec: Vec<Option<f64>> = Vec::new(); //latitude
-    let mut y_vec: Vec<Option<f64>> = Vec::new(); //longitude
+    let mut x_vec: Vec<Option<f64>> = Vec::new(); //longitude
+    let mut y_vec: Vec<Option<f64>> = Vec::new(); //latitude
 
     for value in ca.into_iter() {
         match value {
@@ -111,6 +114,8 @@ fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
                 let (cords, _, _) =
                     decode(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
                 let (x_value, y_value) = cords.x_y();
+                dbg!(x_value);
+                dbg!(y_value);
                 x_vec.push(Some(x_value));
                 y_vec.push(Some(y_value));
             }
@@ -121,9 +126,9 @@ fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
         }
     }
 
-    let ca_lat = Series::new("latitude", x_vec);
-    let ca_long = Series::new("longitude", y_vec);
-    let out = StructChunked::new("coordinates", &[ca_lat, ca_long])?;
+    let ca_long = Series::new("longitude", x_vec);
+    let ca_lat = Series::new("latitude", y_vec);
+    let out = StructChunked::new("coordinates", &[ca_long, ca_lat])?;
 
     Ok(out.into_series())
 }
