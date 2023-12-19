@@ -47,6 +47,32 @@ fn geohash_encoder(
     }
 }
 
+fn geohash_decoder(ca: &ChunkedArray<Utf8Type>) -> PolarsResult<StructChunked> {
+    let mut longitude: PrimitiveChunkedBuilder<Float64Type> =
+        PrimitiveChunkedBuilder::new("longitude", ca.len());
+    let mut latitude: PrimitiveChunkedBuilder<Float64Type> =
+        PrimitiveChunkedBuilder::new("latitude", ca.len());
+
+    for value in ca.into_iter() {
+        match value {
+            Some(value) => {
+                let (cords, _, _) =
+                    decode(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
+                let (x_value, y_value) = cords.x_y();
+                longitude.append_option(Some(x_value));
+                latitude.append_option(Some(y_value));
+            }
+            _ => {
+                longitude.append_option(None);
+                latitude.append_option(None);
+            }
+        }
+    }
+    let ser_long = longitude.finish().into_series();
+    let ser_lat = latitude.finish().into_series();
+    Ok(StructChunked::new("coordinates", &[ser_long, ser_lat])?)
+}
+
 #[polars_expr(output_type=Utf8)]
 fn sha256(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].utf8()?;
@@ -103,30 +129,7 @@ pub fn geohash_output(_: &[Field]) -> PolarsResult<Field> {
 
 #[polars_expr(output_type_func=geohash_output)]
 fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
+    let ca: &ChunkedArray<Utf8Type> = inputs[0].utf8()?;
 
-    let mut x_vec: Vec<Option<f64>> = Vec::new(); //longitude
-    let mut y_vec: Vec<Option<f64>> = Vec::new(); //latitude
-
-    for value in ca.into_iter() {
-        match value {
-            Some(value) => {
-                let (cords, _, _) =
-                    decode(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
-                let (x_value, y_value) = cords.x_y();
-                x_vec.push(Some(x_value));
-                y_vec.push(Some(y_value));
-            }
-            _ => {
-                x_vec.push(None);
-                y_vec.push(None);
-            }
-        }
-    }
-
-    let ca_long = Series::new("longitude", x_vec);
-    let ca_lat = Series::new("latitude", y_vec);
-    let out = StructChunked::new("coordinates", &[ca_long, ca_lat])?;
-
-    Ok(out.into_series())
+    Ok(geohash_decoder(ca)?.into_series())
 }
