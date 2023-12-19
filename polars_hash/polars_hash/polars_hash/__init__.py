@@ -7,7 +7,7 @@ from polars.type_aliases import PolarsDataType, IntoExpr
 
 lib = _get_shared_lib_location(__file__)
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 
 @pl.api.register_expr_namespace("chash")
