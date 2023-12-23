@@ -7,7 +7,7 @@ from polars.type_aliases import PolarsDataType, IntoExpr
 
 lib = _get_shared_lib_location(__file__)
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
 
 @pl.api.register_expr_namespace("chash")
@@ -51,13 +51,21 @@ class GeoHashingNameSpace:
             is_elementwise=True,
         )
 
-    def from_coords(self, len: int | str | pl.Expr = 10) -> pl.Expr:
-        """Takes Struct with lat, long as input and returns utf8 hash using geohash."""
+    def from_coords(self, len: int | str | pl.Expr = 12) -> pl.Expr:
+        """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
         len_expr = wrap_expr(parse_as_expression(len))
         return self._expr.register_plugin(
             lib=lib,
             args=[len_expr],
             symbol="ghash_encode",
+            is_elementwise=True,
+        )
+
+    def neighbors(self) -> pl.Expr:
+        """Takes Utf8 hash as input and returns a struct of the neighbors."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="ghash_neighbors",
             is_elementwise=True,
         )
 

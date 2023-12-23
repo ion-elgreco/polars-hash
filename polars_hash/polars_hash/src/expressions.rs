@@ -1,7 +1,7 @@
-use geohash::{decode, encode, Coord};
+use geohash::{decode, encode, neighbors, Coord};
 use polars::{chunked_array::ops::arity::try_ternary_elementwise, prelude::*};
 use polars_core::datatypes::{
-    DataType::{Float64, Struct},
+    DataType::{Float64, Struct, Utf8},
     Field,
 };
 use pyo3_polars::derive::polars_expr;
@@ -59,18 +59,78 @@ fn geohash_decoder(ca: &ChunkedArray<Utf8Type>) -> PolarsResult<StructChunked> {
                 let (cords, _, _) =
                     decode(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
                 let (x_value, y_value) = cords.x_y();
-                longitude.append_option(Some(x_value));
-                latitude.append_option(Some(y_value));
+                longitude.append_value(x_value);
+                latitude.append_value(y_value);
             }
             _ => {
-                longitude.append_option(None);
-                latitude.append_option(None);
+                longitude.append_null();
+                latitude.append_null();
             }
         }
     }
     let ser_long = longitude.finish().into_series();
     let ser_lat = latitude.finish().into_series();
     Ok(StructChunked::new("coordinates", &[ser_long, ser_lat])?)
+}
+
+fn geohash_neighbors(ca: &Utf8Chunked) -> PolarsResult<StructChunked> {
+    let mut n_ca = Utf8ChunkedBuilder::new("n", ca.len(), ca.get_values_size());
+    let mut ne_ca = Utf8ChunkedBuilder::new("ne", ca.len(), ca.get_values_size());
+    let mut e_ca = Utf8ChunkedBuilder::new("e", ca.len(), ca.get_values_size());
+    let mut se_ca = Utf8ChunkedBuilder::new("se", ca.len(), ca.get_values_size());
+    let mut s_ca = Utf8ChunkedBuilder::new("s", ca.len(), ca.get_values_size());
+    let mut sw_ca = Utf8ChunkedBuilder::new("sw", ca.len(), ca.get_values_size());
+    let mut w_ca = Utf8ChunkedBuilder::new("w", ca.len(), ca.get_values_size());
+    let mut nw_ca = Utf8ChunkedBuilder::new("nw", ca.len(), ca.get_values_size());
+
+    for value in ca.into_iter() {
+        match value {
+            Some(value) => {
+                let neighbors_result = neighbors(value)
+                    .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
+                n_ca.append_value(neighbors_result.n);
+                ne_ca.append_value(neighbors_result.ne);
+                e_ca.append_value(neighbors_result.e);
+                se_ca.append_value(neighbors_result.se);
+                s_ca.append_value(neighbors_result.s);
+                sw_ca.append_value(neighbors_result.sw);
+                w_ca.append_value(neighbors_result.w);
+                nw_ca.append_value(neighbors_result.nw);
+            }
+            _ => {
+                n_ca.append_null();
+                ne_ca.append_null();
+                e_ca.append_null();
+                se_ca.append_null();
+                s_ca.append_null();
+                sw_ca.append_null();
+                w_ca.append_null();
+                nw_ca.append_null();
+            }
+        }
+    }
+    let ser_north = n_ca.finish().into_series();
+    let ser_north_east = ne_ca.finish().into_series();
+    let ser_east = e_ca.finish().into_series();
+    let ser_south_east = se_ca.finish().into_series();
+    let ser_south = s_ca.finish().into_series();
+    let ser_south_west = sw_ca.finish().into_series();
+    let ser_west = w_ca.finish().into_series();
+    let ser_north_west = nw_ca.finish().into_series();
+
+    Ok(StructChunked::new(
+        "neighbors",
+        &[
+            ser_north,
+            ser_north_east,
+            ser_east,
+            ser_south_east,
+            ser_south,
+            ser_south_west,
+            ser_west,
+            ser_north_west,
+        ],
+    )?)
 }
 
 #[polars_expr(output_type=Utf8)]
@@ -119,7 +179,7 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
         .map(|ca: Utf8Chunked| ca.into_series())
 }
 
-pub fn geohash_output(_: &[Field]) -> PolarsResult<Field> {
+pub fn geohash_decode_output(_: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
         Field::new("longitude", Float64),
         Field::new("latitude", Float64),
@@ -127,9 +187,30 @@ pub fn geohash_output(_: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new("coordinates", Struct(v)))
 }
 
-#[polars_expr(output_type_func=geohash_output)]
+#[polars_expr(output_type_func=geohash_decode_output)]
 fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca: &ChunkedArray<Utf8Type> = inputs[0].utf8()?;
 
     Ok(geohash_decoder(ca)?.into_series())
+}
+
+pub fn geohash_neighbors_output(_: &[Field]) -> PolarsResult<Field> {
+    let v: Vec<Field> = vec![
+        Field::new("n", Utf8),
+        Field::new("ne", Utf8),
+        Field::new("e", Utf8),
+        Field::new("se", Utf8),
+        Field::new("s", Utf8),
+        Field::new("sw", Utf8),
+        Field::new("w", Utf8),
+        Field::new("nw", Utf8),
+    ];
+    Ok(Field::new("neighbors", Struct(v)))
+}
+
+#[polars_expr(output_type_func=geohash_neighbors_output)]
+fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca: &Utf8Chunked = inputs[0].utf8()?;
+
+    Ok(geohash_neighbors(ca)?.into_series())
 }
