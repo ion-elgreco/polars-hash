@@ -8,7 +8,7 @@ use polars_core::datatypes::{
 use pyo3_polars::derive::polars_expr;
 
 use blake3;
-use gxhash::gxhash64;
+// use gxhash::gxhash64;
 use std::fmt::Write;
 use std::str;
 use wyhash::wyhash as real_wyhash;
@@ -22,9 +22,9 @@ fn wyhash_hash(value: Option<&str>) -> Option<u64> {
     value.map(|v| real_wyhash(v.as_bytes(), 0))
 }
 
-fn gxhash64_hash(value: Option<&str>) -> Option<u64> {
-    value.map(|v| gxhash64(v.as_bytes(), 0))
-}
+// fn gxhash64_hash(value: Option<&str>) -> Option<u64> {
+//     value.map(|v| gxhash64(v.as_bytes(), 0))
+// }
 
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
@@ -33,12 +33,12 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=UInt64)]
-fn gxhash64(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: ChunkedArray<UInt64Type> = ca.apply_generic(gxhash64_hash);
-    Ok(out.into_series())
-}
+// #[polars_expr(output_type=UInt64)]
+// fn gxhash64(inputs: &[Series]) -> PolarsResult<Series> {
+//     let ca = inputs[0].utf8()?;
+//     let out: ChunkedArray<UInt64Type> = ca.apply_generic(gxhash64_hash);
+//     Ok(out.into_series())
+// }
 
 #[polars_expr(output_type=Utf8)]
 fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
