@@ -7,7 +7,7 @@ from polars.type_aliases import PolarsDataType, IntoExpr
 
 lib = _get_shared_lib_location(__file__)
 
-__version__ = "0.2.4"
+__version__ = "0.3.0"
 
 
 @pl.api.register_expr_namespace("chash")
@@ -20,6 +20,30 @@ class CryptographicHashingNameSpace:
         return self._expr.register_plugin(
             lib=lib,
             symbol="sha256",
+            is_elementwise=True,
+        )
+
+    def sha512(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha512."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha512",
+            is_elementwise=True,
+        )
+
+    def sha384(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha384."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha384",
+            is_elementwise=True,
+        )
+
+    def sha224(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha224."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha224",
             is_elementwise=True,
         )
 

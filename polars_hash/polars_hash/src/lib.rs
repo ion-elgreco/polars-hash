@@ -1,4 +1,5 @@
 mod expressions;
+mod geohashers;
 
 #[cfg(target_os = "linux")]
 use jemallocator::Jemalloc;
