@@ -1,71 +1,105 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
+use crate::sha_hashers::*;
 use polars::{chunked_array::ops::arity::try_ternary_elementwise, prelude::*};
 use polars_core::datatypes::{
     DataType::{Float64, Struct, Utf8},
     Field,
 };
 use pyo3_polars::derive::polars_expr;
-use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
+
+use blake3;
+use gxhash::gxhash64;
 use std::fmt::Write;
 use std::str;
 use wyhash::wyhash as real_wyhash;
 
-fn sha256_hash(value: &str, output: &mut String) {
-    let hash = Sha256::digest(value);
-    write!(output, "{:x}", hash).unwrap()
-}
-
-fn sha512_hash(value: &str, output: &mut String) {
-    let hash = Sha512::digest(value);
-    write!(output, "{:x}", hash).unwrap()
-}
-
-fn sha384_hash(value: &str, output: &mut String) {
-    let hash = Sha384::digest(value);
-    write!(output, "{:x}", hash).unwrap()
-}
-
-fn sha224_hash(value: &str, output: &mut String) {
-    let hash = Sha224::digest(value);
-    write!(output, "{:x}", hash).unwrap()
+pub fn blake3_hash(value: &str, output: &mut String) {
+    let hash = blake3::hash(value.as_bytes());
+    write!(output, "{}", hash).unwrap()
 }
 
 fn wyhash_hash(value: Option<&str>) -> Option<u64> {
     value.map(|v| real_wyhash(v.as_bytes(), 0))
 }
 
-#[polars_expr(output_type=Utf8)]
-fn sha256(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha256_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=Utf8)]
-fn sha512(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha512_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=Utf8)]
-fn sha384(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha384_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=Utf8)]
-fn sha224(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha224_hash);
-    Ok(out.into_series())
+fn gxhash64_hash(value: Option<&str>) -> Option<u64> {
+    value.map(|v| gxhash64(v.as_bytes(), 0))
 }
 
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].utf8()?;
     let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=UInt64)]
+fn gxhash64(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: ChunkedArray<UInt64Type> = ca.apply_generic(gxhash64_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(blake3_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha2_256(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha2_256_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha2_512(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha2_512_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha2_384(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha2_384_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha2_224(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha2_224_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha3_256(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha3_256_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha3_512(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha3_512_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha3_384(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha3_384_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Utf8)]
+fn sha3_224(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].utf8()?;
+    let out: Utf8Chunked = ca.apply_to_buffer(sha3_224_hash);
     Ok(out.into_series())
 }
 

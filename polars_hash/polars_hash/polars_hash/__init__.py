@@ -1,4 +1,5 @@
 import polars as pl
+import warnings
 from polars.utils.udfs import _get_shared_lib_location
 from polars.utils._parse_expr_input import parse_as_expression
 from polars.utils._wrap import wrap_expr
@@ -16,34 +17,87 @@ class CryptographicHashingNameSpace:
         self._expr = expr
 
     def sha256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256."""
+        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
+        warnings.warn(
+            "Call to deprecated method chash.sha256. Use chash.sha2_256() instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         return self._expr.register_plugin(
             lib=lib,
-            symbol="sha256",
+            symbol="sha2_256",
             is_elementwise=True,
         )
 
-    def sha512(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha512."""
+    def sha2_256(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
         return self._expr.register_plugin(
             lib=lib,
-            symbol="sha512",
+            symbol="sha2_256",
             is_elementwise=True,
         )
 
-    def sha384(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha384."""
+    def sha2_512(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-2 family."""
         return self._expr.register_plugin(
             lib=lib,
-            symbol="sha384",
+            symbol="sha2_512",
             is_elementwise=True,
         )
 
-    def sha224(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha224."""
+    def sha2_384(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-2 family."""
         return self._expr.register_plugin(
             lib=lib,
-            symbol="sha224",
+            symbol="sha2_384",
+            is_elementwise=True,
+        )
+
+    def sha2_224(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-2 family."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha2_224",
+            is_elementwise=True,
+        )
+
+    def sha3_256(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-3 family."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha3_256",
+            is_elementwise=True,
+        )
+
+    def sha3_512(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-3 family."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha3_512",
+            is_elementwise=True,
+        )
+
+    def sha3_384(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-3 family."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha3_384",
+            is_elementwise=True,
+        )
+
+    def sha3_224(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-3 family."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha3_224",
+            is_elementwise=True,
+        )
+
+    def blake3(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with blake3."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="blake3",
             is_elementwise=True,
         )
 
@@ -58,6 +112,14 @@ class NonCryptographicHashingNameSpace:
         return self._expr.register_plugin(
             lib=lib,
             symbol="wyhash",
+            is_elementwise=True,
+        )
+
+    def gxhash(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint64 hash with wyhash."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="gxhash64",
             is_elementwise=True,
         )
 
