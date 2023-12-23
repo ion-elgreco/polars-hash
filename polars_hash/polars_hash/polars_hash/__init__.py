@@ -115,14 +115,6 @@ class NonCryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
-    def gxhash(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with wyhash."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="gxhash64",
-            is_elementwise=True,
-        )
-
 
 @pl.api.register_expr_namespace("geohash")
 class GeoHashingNameSpace:
