@@ -62,7 +62,7 @@ class GeoHashingNameSpace:
         )
 
     def neighbors(self) -> pl.Expr:
-        """Takes Utf8 as input and returns a struct of the neighbors."""
+        """Takes Utf8 hash as input and returns a struct of the neighbors."""
         return self._expr.register_plugin(
             lib=lib,
             symbol="ghash_neighbors",
