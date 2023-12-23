@@ -51,7 +51,7 @@ class GeoHashingNameSpace:
             is_elementwise=True,
         )
 
-    def from_coords(self, len: int | str | pl.Expr = 10) -> pl.Expr:
+    def from_coords(self, len: int | str | pl.Expr = 12) -> pl.Expr:
         """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
         len_expr = wrap_expr(parse_as_expression(len))
         return self._expr.register_plugin(
