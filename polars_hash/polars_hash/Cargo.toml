@@ -1,6 +1,6 @@
 [package]
 name = "polars_hash"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 
 [lib]
@@ -8,9 +8,10 @@ name = "polars_hash"
 crate-type = ["cdylib"]
 
 [dependencies]
-polars = { version = "*", features = ["dtype-struct"]}
+polars = { version = "0.36.2", features = ["dtype-struct"]}
+polars-arrow = { version = "0.36.2"}
 pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-polars = { version = "0.9", features = ["derive"] }
+pyo3-polars = { version = "0.10.0", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 wyhash = {version = "0.5.0"}
 geohash = {version = "0.13.0"}

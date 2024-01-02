@@ -2,17 +2,15 @@ use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::sha_hashers::*;
 use polars::{chunked_array::ops::arity::try_ternary_elementwise, prelude::*};
 use polars_core::datatypes::{
-    DataType::{Float64, Struct, Utf8},
+    DataType::{Float64, String, Struct},
     Field,
 };
 use pyo3_polars::derive::polars_expr;
-
-use blake3;
 use std::fmt::Write;
-use std::str;
+use std::{str, string};
 use wyhash::wyhash as real_wyhash;
 
-pub fn blake3_hash(value: &str, output: &mut String) {
+pub fn blake3_hash(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
     write!(output, "{}", hash).unwrap()
 }
@@ -23,75 +21,75 @@ fn wyhash_hash(value: Option<&str>) -> Option<u64> {
 
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
+    let ca = inputs[0].str()?;
     let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(blake3_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(blake3_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha2_256(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha2_256_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha2_256_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha2_512(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha2_512_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha2_512_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha2_384(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha2_384_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha2_384_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha2_224(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha2_224_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha2_224_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha3_256(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha3_256_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha3_256_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha3_512(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha3_512_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha3_512_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha3_384(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha3_384_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha3_384_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn sha3_224(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].utf8()?;
-    let out: Utf8Chunked = ca.apply_to_buffer(sha3_224_hash);
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha3_224_hash);
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Utf8)]
+#[polars_expr(output_type=String)]
 fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].struct_()?;
     let len = match inputs[1].dtype() {
@@ -121,7 +119,7 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca_long = long.f64()?;
 
     try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder)
-        .map(|ca: Utf8Chunked| ca.into_series())
+        .map(|ca: StringChunked| ca.into_series())
 }
 
 pub fn geohash_decode_output(_: &[Field]) -> PolarsResult<Field> {
@@ -134,28 +132,28 @@ pub fn geohash_decode_output(_: &[Field]) -> PolarsResult<Field> {
 
 #[polars_expr(output_type_func=geohash_decode_output)]
 fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca: &ChunkedArray<Utf8Type> = inputs[0].utf8()?;
+    let ca = inputs[0].str()?;
 
     Ok(geohash_decoder(ca)?.into_series())
 }
 
 pub fn geohash_neighbors_output(_: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
-        Field::new("n", Utf8),
-        Field::new("ne", Utf8),
-        Field::new("e", Utf8),
-        Field::new("se", Utf8),
-        Field::new("s", Utf8),
-        Field::new("sw", Utf8),
-        Field::new("w", Utf8),
-        Field::new("nw", Utf8),
+        Field::new("n", String),
+        Field::new("ne", String),
+        Field::new("e", String),
+        Field::new("se", String),
+        Field::new("s", String),
+        Field::new("sw", String),
+        Field::new("w", String),
+        Field::new("nw", String),
     ];
     Ok(Field::new("neighbors", Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_neighbors_output)]
 fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca: &Utf8Chunked = inputs[0].utf8()?;
+    let ca = inputs[0].str()?;
 
     Ok(geohash_neighbors(ca)?.into_series())
 }

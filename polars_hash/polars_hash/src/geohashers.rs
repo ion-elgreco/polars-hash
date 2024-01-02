@@ -1,5 +1,6 @@
 use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
+use polars_arrow::array::ValueSize;
 
 pub fn geohash_encoder(
     lat: Option<f64>,
@@ -27,7 +28,7 @@ pub fn geohash_encoder(
     }
 }
 
-pub fn geohash_decoder(ca: &ChunkedArray<Utf8Type>) -> PolarsResult<StructChunked> {
+pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let mut longitude: PrimitiveChunkedBuilder<Float64Type> =
         PrimitiveChunkedBuilder::new("longitude", ca.len());
     let mut latitude: PrimitiveChunkedBuilder<Float64Type> =
@@ -53,15 +54,15 @@ pub fn geohash_decoder(ca: &ChunkedArray<Utf8Type>) -> PolarsResult<StructChunke
     StructChunked::new("coordinates", &[ser_long, ser_lat])
 }
 
-pub fn geohash_neighbors(ca: &Utf8Chunked) -> PolarsResult<StructChunked> {
-    let mut n_ca = Utf8ChunkedBuilder::new("n", ca.len(), ca.get_values_size());
-    let mut ne_ca = Utf8ChunkedBuilder::new("ne", ca.len(), ca.get_values_size());
-    let mut e_ca = Utf8ChunkedBuilder::new("e", ca.len(), ca.get_values_size());
-    let mut se_ca = Utf8ChunkedBuilder::new("se", ca.len(), ca.get_values_size());
-    let mut s_ca = Utf8ChunkedBuilder::new("s", ca.len(), ca.get_values_size());
-    let mut sw_ca = Utf8ChunkedBuilder::new("sw", ca.len(), ca.get_values_size());
-    let mut w_ca = Utf8ChunkedBuilder::new("w", ca.len(), ca.get_values_size());
-    let mut nw_ca = Utf8ChunkedBuilder::new("nw", ca.len(), ca.get_values_size());
+pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
+    let mut n_ca = StringChunkedBuilder::new("n", ca.len(), ca.get_values_size());
+    let mut ne_ca = StringChunkedBuilder::new("ne", ca.len(), ca.get_values_size());
+    let mut e_ca = StringChunkedBuilder::new("e", ca.len(), ca.get_values_size());
+    let mut se_ca = StringChunkedBuilder::new("se", ca.len(), ca.get_values_size());
+    let mut s_ca = StringChunkedBuilder::new("s", ca.len(), ca.get_values_size());
+    let mut sw_ca = StringChunkedBuilder::new("sw", ca.len(), ca.get_values_size());
+    let mut w_ca = StringChunkedBuilder::new("w", ca.len(), ca.get_values_size());
+    let mut nw_ca = StringChunkedBuilder::new("nw", ca.len(), ca.get_values_size());
 
     for value in ca.into_iter() {
         match value {
