@@ -13,7 +13,6 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-version = "0.3.0"
 authors = [
   { name="Ion Koutsours", email="15728914+ion-elgreco@users.noreply.github.com"},
 ]
@@ -23,3 +22,6 @@ readme = "README.md"
 [project.urls]
 "Homepage" = "https://github.com/ion-elgreco/polars-hash"
 "Bug Tracker" = "https://github.com/ion-elgreco/polars-hash/issues"
+
+[tool.maturin]
+module-name = "polars_hash._internal"
