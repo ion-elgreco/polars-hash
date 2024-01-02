@@ -11,7 +11,6 @@ lib = _get_shared_lib_location(__file__)
 from ._internal import __version__ as __version__
 
 
-
 @pl.api.register_expr_namespace("chash")
 class CryptographicHashingNameSpace:
     def __init__(self, expr: pl.Expr):
