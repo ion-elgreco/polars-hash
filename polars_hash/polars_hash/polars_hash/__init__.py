@@ -5,10 +5,9 @@ from polars.utils._parse_expr_input import parse_as_expression
 from polars.utils._wrap import wrap_expr
 from typing import Protocol, Iterable, cast
 from polars.type_aliases import PolarsDataType, IntoExpr
+from ._internal import __version__ as __version__
 
 lib = _get_shared_lib_location(__file__)
-
-from ._internal import __version__ as __version__
 
 
 @pl.api.register_expr_namespace("chash")
