@@ -51,7 +51,7 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     }
     let ser_long = longitude.finish().into_series();
     let ser_lat = latitude.finish().into_series();
-    StructChunked::new("coordinates", &[ser_long, ser_lat])
+    StructChunked::new(ca.name(), &[ser_long, ser_lat])
 }
 
 pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
@@ -100,7 +100,7 @@ pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let ser_north_west = nw_ca.finish().into_series();
 
     StructChunked::new(
-        "neighbors",
+        ca.name(),
         &[
             ser_north,
             ser_north_east,

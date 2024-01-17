@@ -122,12 +122,12 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
         .map(|ca: StringChunked| ca.into_series())
 }
 
-pub fn geohash_decode_output(_: &[Field]) -> PolarsResult<Field> {
+pub fn geohash_decode_output(field: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
         Field::new("longitude", Float64),
         Field::new("latitude", Float64),
     ];
-    Ok(Field::new("coordinates", Struct(v)))
+    Ok(Field::new(field[0].name(), Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_decode_output)]
@@ -137,7 +137,7 @@ fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(geohash_decoder(ca)?.into_series())
 }
 
-pub fn geohash_neighbors_output(_: &[Field]) -> PolarsResult<Field> {
+pub fn geohash_neighbors_output(field: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
         Field::new("n", String),
         Field::new("ne", String),
@@ -148,7 +148,7 @@ pub fn geohash_neighbors_output(_: &[Field]) -> PolarsResult<Field> {
         Field::new("w", String),
         Field::new("nw", String),
     ];
-    Ok(Field::new("neighbors", Struct(v)))
+    Ok(Field::new(field[0].name(), Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_neighbors_output)]
