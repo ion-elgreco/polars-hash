@@ -56,23 +56,25 @@ def test_geohash():
 
 
 def test_lazy_name():
-    result = (pl.from_dicts({'h1':'sp1xk2m6194y'})
+    result = (
+        pl.from_dicts({"h1": "sp1xk2m6194y"})
         .lazy()
-        .with_columns(pl.col('h1').geohash.neighbors())
-        .unnest('h1')
-        .collect())
-    
+        .with_columns(pl.col("h1").geohash.neighbors())
+        .unnest("h1")
+        .collect()
+    )
+
     expected = pl.DataFrame(
         [
-            pl.Series("n", ['sp1xk2m6194z'], dtype=pl.Utf8),
-            pl.Series("ne", ['sp1xk2m6195p'], dtype=pl.Utf8),
-            pl.Series("e", ['sp1xk2m6195n'], dtype=pl.Utf8),
-            pl.Series("se", ['sp1xk2m6195j'], dtype=pl.Utf8),
-            pl.Series("s", ['sp1xk2m6194v'], dtype=pl.Utf8),
-            pl.Series("sw", ['sp1xk2m6194t'], dtype=pl.Utf8),
-            pl.Series("w", ['sp1xk2m6194w'], dtype=pl.Utf8),
-            pl.Series("nw", ['sp1xk2m6194x'], dtype=pl.Utf8),
+            pl.Series("n", ["sp1xk2m6194z"], dtype=pl.Utf8),
+            pl.Series("ne", ["sp1xk2m6195p"], dtype=pl.Utf8),
+            pl.Series("e", ["sp1xk2m6195n"], dtype=pl.Utf8),
+            pl.Series("se", ["sp1xk2m6195j"], dtype=pl.Utf8),
+            pl.Series("s", ["sp1xk2m6194v"], dtype=pl.Utf8),
+            pl.Series("sw", ["sp1xk2m6194t"], dtype=pl.Utf8),
+            pl.Series("w", ["sp1xk2m6194w"], dtype=pl.Utf8),
+            pl.Series("nw", ["sp1xk2m6194x"], dtype=pl.Utf8),
         ]
     )
-    
+
     assert_frame_equal(result, expected)
