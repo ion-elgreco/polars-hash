@@ -1,3 +1,4 @@
+from __future__ import annotations
 import polars as pl
 import warnings
 from polars.utils.udfs import _get_shared_lib_location
