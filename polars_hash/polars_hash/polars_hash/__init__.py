@@ -6,6 +6,7 @@ from polars.utils._wrap import wrap_expr
 from typing import Protocol, Iterable, cast
 from polars.type_aliases import PolarsDataType, IntoExpr
 from ._internal import __version__ as __version__
+from future import annotations
 
 lib = _get_shared_lib_location(__file__)
 
