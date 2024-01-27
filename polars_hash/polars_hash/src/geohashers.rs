@@ -1,6 +1,5 @@
 use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
-use polars_arrow::array::ValueSize;
 
 pub fn geohash_encoder(
     lat: Option<f64>,
@@ -55,14 +54,14 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
 }
 
 pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
-    let mut n_ca = StringChunkedBuilder::new("n", ca.len(), ca.get_values_size());
-    let mut ne_ca = StringChunkedBuilder::new("ne", ca.len(), ca.get_values_size());
-    let mut e_ca = StringChunkedBuilder::new("e", ca.len(), ca.get_values_size());
-    let mut se_ca = StringChunkedBuilder::new("se", ca.len(), ca.get_values_size());
-    let mut s_ca = StringChunkedBuilder::new("s", ca.len(), ca.get_values_size());
-    let mut sw_ca = StringChunkedBuilder::new("sw", ca.len(), ca.get_values_size());
-    let mut w_ca = StringChunkedBuilder::new("w", ca.len(), ca.get_values_size());
-    let mut nw_ca = StringChunkedBuilder::new("nw", ca.len(), ca.get_values_size());
+    let mut n_ca = StringChunkedBuilder::new("n", ca.len());
+    let mut ne_ca = StringChunkedBuilder::new("ne", ca.len());
+    let mut e_ca = StringChunkedBuilder::new("e", ca.len());
+    let mut se_ca = StringChunkedBuilder::new("se", ca.len());
+    let mut s_ca = StringChunkedBuilder::new("s", ca.len());
+    let mut sw_ca = StringChunkedBuilder::new("sw", ca.len());
+    let mut w_ca = StringChunkedBuilder::new("w", ca.len());
+    let mut nw_ca = StringChunkedBuilder::new("nw", ca.len());
 
     for value in ca.into_iter() {
         match value {
