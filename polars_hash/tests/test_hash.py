@@ -78,3 +78,22 @@ def test_lazy_name():
     )
 
     assert_frame_equal(result, expected)
+
+
+def test_geohash_13():
+    result = (
+        pl.from_dict(
+            {"longitude": [90.6623, -120.6623], "latitude": [40.3003, 35.3003]}
+        )
+        .with_columns(geohash=pl.struct(["latitude", "longitude"]))
+        .with_columns(plh.col("geohash").geohash.from_coords())  # type: ignore
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("longitude", [90.6623, -120.6623], dtype=pl.Float64),
+            pl.Series("latitude", [40.3003, 35.3003], dtype=pl.Float64),
+            pl.Series("geohash", ["wp0mr06q28qt", "9q60y60rhsgg"], dtype=pl.String),
+        ]
+    )
+    assert_frame_equal(result, expected)
