@@ -1,6 +1,9 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::sha_hashers::*;
-use polars::{chunked_array::ops::arity::try_ternary_elementwise, prelude::*};
+use polars::{
+    chunked_array::ops::arity::{try_binary_elementwise, try_ternary_elementwise},
+    prelude::*,
+};
 use polars_core::datatypes::{
     DataType::{Float64, String, Struct},
     Field,
@@ -118,8 +121,18 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca_lat = lat.f64()?;
     let ca_long = long.f64()?;
 
-    try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder)
-        .map(|ca: StringChunked| ca.into_series())
+    let out: StringChunked = match len.len() {
+        1 => match unsafe { len.get_unchecked(0) } {
+            Some(len) => try_binary_elementwise(ca_lat, ca_long, |ca_lat_opt, ca_long_opt| {
+                geohash_encoder(ca_lat_opt, ca_long_opt, Some(len))
+            }),
+            _ => Err(PolarsError::ComputeError(
+                "Length may not be null".to_string().into(),
+            )),
+        },
+        _ => try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder),
+    }?;
+    Ok(out.into_series())
 }
 
 pub fn geohash_decode_output(field: &[Field]) -> PolarsResult<Field> {
