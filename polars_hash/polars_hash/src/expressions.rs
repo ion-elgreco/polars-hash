@@ -18,6 +18,11 @@ pub fn blake3_hash(value: &str, output: &mut string::String) {
     write!(output, "{}", hash).unwrap()
 }
 
+pub fn md5_hash(value: &str, output: &mut string::String) {
+    let hash = md5::compute(value);
+    write!(output, "{:x}", hash).unwrap()
+}
+
 fn wyhash_hash(value: Option<&str>) -> Option<u64> {
     value.map(|v| real_wyhash(v.as_bytes(), 0))
 }
@@ -40,6 +45,13 @@ fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
 fn sha1(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let out: StringChunked = ca.apply_to_buffer(sha1_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn md5(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(md5_hash);
     Ok(out.into_series())
 }
 

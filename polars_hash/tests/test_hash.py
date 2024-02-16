@@ -1,7 +1,7 @@
 import polars as pl
-import polars_hash as plh  # noqa: F401
-
 from polars.testing import assert_frame_equal
+
+import polars_hash as plh  # noqa: F401
 
 
 def test_sha1():
@@ -40,6 +40,18 @@ def test_wyhash():
     expected = pl.DataFrame(
         [
             pl.Series("literal", [16737367591072095403], dtype=pl.UInt64),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_md5():
+    result = pl.select(pl.lit("hello_world").nchash.md5())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("literal", ["99b1ff8f11781541f7f89f9bd41c4a17"], dtype=pl.Utf8),
         ]
     )
 

@@ -126,6 +126,14 @@ class NonCryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
+    def md5(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with md5."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="md5",
+            is_elementwise=True,
+        )
+
 
 @pl.api.register_expr_namespace("geohash")
 class GeoHashingNameSpace:
