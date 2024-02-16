@@ -42,6 +42,13 @@ fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 #[polars_expr(output_type=String)]
+fn sha1(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_to_buffer(sha1_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
 fn md5(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let out: StringChunked = ca.apply_to_buffer(md5_hash);

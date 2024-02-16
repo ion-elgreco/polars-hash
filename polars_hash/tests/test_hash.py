@@ -4,6 +4,21 @@ from polars.testing import assert_frame_equal
 import polars_hash as plh  # noqa: F401
 
 
+def test_sha1():
+    result = pl.select(pl.lit("hello_world").nchash.sha1())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                ["e4ecd6fc11898565af24977e992cea0c9c7b7025"],
+                dtype=pl.Utf8,
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
 def test_sha256():
     result = pl.select(pl.lit("hello_world").chash.sha2_256())  # type: ignore
 

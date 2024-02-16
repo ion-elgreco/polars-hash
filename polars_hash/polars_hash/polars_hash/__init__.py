@@ -118,6 +118,14 @@ class NonCryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
+    def sha1(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha1."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha1",
+            is_elementwise=True,
+        )
+
     def md5(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with md5."""
         return self._expr.register_plugin(
