@@ -1,11 +1,14 @@
 from __future__ import annotations
-import polars as pl
+
 import warnings
-from polars.utils.udfs import _get_shared_lib_location
+from typing import Iterable, Protocol, cast
+
+import polars as pl
+from polars.type_aliases import IntoExpr, PolarsDataType
 from polars.utils._parse_expr_input import parse_as_expression
 from polars.utils._wrap import wrap_expr
-from typing import Protocol, Iterable, cast
-from polars.type_aliases import PolarsDataType, IntoExpr
+from polars.utils.udfs import _get_shared_lib_location
+
 from ._internal import __version__ as __version__
 
 lib = _get_shared_lib_location(__file__)
@@ -112,6 +115,14 @@ class NonCryptographicHashingNameSpace:
         return self._expr.register_plugin(
             lib=lib,
             symbol="wyhash",
+            is_elementwise=True,
+        )
+
+    def sha1(self) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with sha1."""
+        return self._expr.register_plugin(
+            lib=lib,
+            symbol="sha1",
             is_elementwise=True,
         )
 
