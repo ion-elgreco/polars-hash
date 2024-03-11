@@ -21,14 +21,6 @@ format: venv ## Run formatters
 	unset CONDA_PREFIX && \
 	source venv/bin/activate && ruff format . && cargo fmt
 
-lint: venv ## Run linter
-	unset CONDA_PREFIX && \
-	source venv/bin/activate && ruff check --fix .
-
-format: venv ## Run formatter
-	unset CONDA_PREFIX && \
-	source venv/bin/activate && ruff format .
-
 clean: ## Clean venv and clean cargo
 	-@rm -r venv
 	-@cd polars_hash && cargo clean
