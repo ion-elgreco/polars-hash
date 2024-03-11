@@ -119,7 +119,7 @@ class NonCryptographicHashingNameSpace:
         self._expr = expr
 
     def wyhash(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with wyhash."""
+        """Takes Bytes or Utf8 as input and returns uint64 hash with wyhash."""
         return self._expr.register_plugin(
             lib=lib,
             symbol="wyhash",

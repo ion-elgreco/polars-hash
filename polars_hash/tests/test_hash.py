@@ -34,12 +34,24 @@ def test_sha256():
     assert_frame_equal(result, expected)
 
 
-def test_wyhash():
+def test_wyhash_str():
     result = pl.select(pl.lit("hello_world").nchash.wyhash())  # type: ignore
 
     expected = pl.DataFrame(
         [
             pl.Series("literal", [16737367591072095403], dtype=pl.UInt64),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_wyhash_bytes():
+    result = pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("literal", [5112362246832359110], dtype=pl.UInt64),
         ]
     )
 

@@ -23,15 +23,33 @@ pub fn md5_hash(value: &str, output: &mut string::String) {
     write!(output, "{:x}", hash).unwrap()
 }
 
-fn wyhash_hash(value: Option<&str>) -> Option<u64> {
+fn wyhash_hash_str(value: Option<&str>) -> Option<u64> {
     value.map(|v| real_wyhash(v.as_bytes(), 0))
+}
+
+fn wyhash_hash_bytes(value: Option<&[u8]>) -> Option<u64> {
+    value.map(|v| real_wyhash(v, 0))
 }
 
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash);
-    Ok(out.into_series())
+    let s = inputs.get(0).expect("no series received");
+
+    match s.dtype() {
+        DataType::String => {
+            let ca = s.str()?;
+            let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash_str);
+            Ok(out.into_series())
+        }
+        DataType::Binary => {
+            let ca = s.binary()?;
+            let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash_bytes);
+            Ok(out.into_series())
+        }
+        _ => Err(PolarsError::InvalidOperation(
+            "wyhash only works on strings or binary data".into(),
+        )),
+    }
 }
 
 #[polars_expr(output_type=String)]
