@@ -13,14 +13,26 @@ use std::fmt::Write;
 use std::{str, string};
 use wyhash::wyhash as real_wyhash;
 
-pub fn blake3_hash(value: &str, output: &mut string::String) {
+pub fn blake3_hash_str(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
     write!(output, "{}", hash).unwrap()
 }
 
-pub fn md5_hash(value: &str, output: &mut string::String) {
+pub fn blake3_hash_bytes(value: Option<&[u8]>) -> Option<string::String> {
+    let hash = blake3::hash(value.unwrap());
+    let res = format!("{}", hash);
+    Some(res)
+}
+
+pub fn md5_hash_str(value: &str, output: &mut string::String) {
     let hash = md5::compute(value);
     write!(output, "{:x}", hash).unwrap()
+}
+
+pub fn md5_hash_bytes(value: Option<&[u8]>) -> Option<string::String> {
+    let hash = md5::compute(value.unwrap());
+    let res = format!("{:x}", hash);
+    Some(res)
 }
 
 fn wyhash_hash_str(value: Option<&str>) -> Option<u64> {
@@ -54,22 +66,50 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
 
 #[polars_expr(output_type=String)]
 fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(blake3_hash);
-    Ok(out.into_series())
+    let s = inputs.get(0).expect("no series received");
+
+    match s.dtype() {
+        DataType::String => {
+            let ca = s.str()?;
+            let out: StringChunked = ca.apply_to_buffer(blake3_hash_str);
+            Ok(out.into_series())
+        }
+        DataType::Binary => {
+            let ca = s.binary()?;
+            let out: StringChunked = ca.apply_generic(blake3_hash_bytes);
+            Ok(out.into_series())
+        }
+        _ => Err(PolarsError::InvalidOperation(
+            "blake3 only works on strings or binary data".into(),
+        )),
+    }
+}
+
+#[polars_expr(output_type=String)]
+fn md5(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = inputs.get(0).expect("no series received");
+
+    match s.dtype() {
+        DataType::String => {
+            let ca = s.str()?;
+            let out: StringChunked = ca.apply_to_buffer(md5_hash_str);
+            Ok(out.into_series())
+        }
+        DataType::Binary => {
+            let ca = s.binary()?;
+            let out: StringChunked = ca.apply_generic(md5_hash_bytes);
+            Ok(out.into_series())
+        }
+        _ => Err(PolarsError::InvalidOperation(
+            "md5 only works on strings or binary data".into(),
+        )),
+    }
 }
 
 #[polars_expr(output_type=String)]
 fn sha1(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let out: StringChunked = ca.apply_to_buffer(sha1_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=String)]
-fn md5(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(md5_hash);
     Ok(out.into_series())
 }
 
