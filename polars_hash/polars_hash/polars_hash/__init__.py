@@ -1,13 +1,22 @@
 from __future__ import annotations
 
 import warnings
+from packaging.version import Version
 from typing import Iterable, Protocol, cast
 
 import polars as pl
 from polars.type_aliases import IntoExpr, PolarsDataType
-from polars.utils._parse_expr_input import parse_as_expression
-from polars.utils._wrap import wrap_expr
+
 from polars.utils.udfs import _get_shared_lib_location
+
+if Version(pl.__version__) >= Version("0.20.14"):
+    from polars._utils.parse_expr_input import parse_as_expression
+    from polars._utils.wrap import wrap_expr
+else:
+    # old locations prior to https://github.com/pola-rs/polars/commit/b8d7a0f5492b662787d790c35712f0daabd01429
+    from polars.utils._parse_expr_input import parse_as_expression  # type: ignore
+    from polars.utils._wrap import wrap_expr  # type: ignore
+
 
 from ._internal import __version__ as __version__
 
