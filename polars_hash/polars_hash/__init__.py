@@ -18,6 +18,7 @@ else:
     from polars.utils._parse_expr_input import parse_as_expression  # type: ignore
     from polars.utils._wrap import wrap_expr  # type: ignore
 
+
 lib = _get_shared_lib_location(__file__)
 
 
