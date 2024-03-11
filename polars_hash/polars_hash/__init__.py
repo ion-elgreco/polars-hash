@@ -17,8 +17,6 @@ else:
     from polars.utils._wrap import wrap_expr  # type: ignore
 
 
-from polars_hash._internal import __version__ as __version__
-
 lib = _get_shared_lib_location(__file__)
 
 

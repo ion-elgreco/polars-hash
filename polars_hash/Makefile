@@ -7,11 +7,11 @@ venv:  ## Set up virtual environment
 
 install: venv ## Install polars-hash in develop mode
 	unset CONDA_PREFIX && \
-	source venv/bin/activate && maturin develop -m polars_hash/Cargo.toml
+	source venv/bin/activate && maturin develop
 
 install-release: venv ## Install polars-hash in release mode
 	unset CONDA_PREFIX && \
-	source venv/bin/activate && maturin develop --release -m polars_hash/Cargo.toml
+	source venv/bin/activate && maturin develop --release
 
 lint: venv ## Run linter
 	unset CONDA_PREFIX && \
