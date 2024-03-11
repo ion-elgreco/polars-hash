@@ -13,6 +13,14 @@ install-release: venv ## Install polars-hash in release mode
 	unset CONDA_PREFIX && \
 	source venv/bin/activate && maturin develop --release -m polars_hash/Cargo.toml
 
+lint: venv ## Run linter
+	unset CONDA_PREFIX && \
+	source venv/bin/activate && ruff check --fix .
+
+format: venv ## Run formatter
+	unset CONDA_PREFIX && \
+	source venv/bin/activate && ruff format .
+
 clean: ## Clean venv and clean cargo
 	-@rm -r venv
 	-@cd polars_hash && cargo clean

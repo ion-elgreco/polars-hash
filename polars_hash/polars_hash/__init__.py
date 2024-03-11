@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import warnings
-from packaging.version import Version
 from typing import Iterable, Protocol, cast
 
 import polars as pl
+from packaging.version import Version
 from polars.type_aliases import IntoExpr, PolarsDataType
-
 from polars.utils.udfs import _get_shared_lib_location
 
 if Version(pl.__version__) >= Version("0.20.14"):
@@ -18,7 +17,7 @@ else:
     from polars.utils._wrap import wrap_expr  # type: ignore
 
 
-from ._internal import __version__ as __version__
+from polars_hash._internal import __version__ as __version__
 
 lib = _get_shared_lib_location(__file__)
 
