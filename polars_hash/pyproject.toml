@@ -25,3 +25,12 @@ readme = "README.md"
 
 [tool.maturin]
 module-name = "polars_hash._internal"
+
+[tool.ruff]
+src = ["polars_hash", "tests"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["polars_hash"]
