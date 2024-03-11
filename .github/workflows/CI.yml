@@ -38,13 +38,11 @@ jobs:
         working-directory: polars_hash
       - run: venv/bin/python -m pytest tests
         working-directory: polars_hash
-      - run: venv/bin/python -m black --check .
-        working-directory: polars_hash
       - run: venv/bin/python -m mypy polars_hash
         working-directory: polars_hash
       - run: venv/bin/python -m ruff check --diff .
         working-directory: polars_hash
-      - run: venv/bin/python -m ruff format --diff
+      - run: venv/bin/python -m ruff format --check --diff
         working-directory: polars_hash
 
 
