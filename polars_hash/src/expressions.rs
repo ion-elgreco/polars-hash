@@ -18,7 +18,7 @@ pub fn blake3_hash(value: &str, output: &mut string::String) {
     write!(output, "{}", hash).unwrap()
 }
 
-pub fn md5_hash<T: AsRef<[u8]>>(value: T, output: &mut string::String) {
+pub fn md5_hash(value: &str, output: &mut string::String) {
     let hash = md5::compute(value);
     write!(output, "{:x}", hash).unwrap()
 }
