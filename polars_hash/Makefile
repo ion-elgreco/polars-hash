@@ -15,11 +15,11 @@ install-release: venv ## Install polars-hash in release mode
 
 lint: venv ## Run linter
 	unset CONDA_PREFIX && \
-	source venv/bin/activate && ruff check --fix .
+	source venv/bin/activate && ruff check --fix . && cargo check
 
-format: venv ## Run formatter
+format: venv ## Run formatters
 	unset CONDA_PREFIX && \
-	source venv/bin/activate && ruff format .
+	source venv/bin/activate && ruff format . && cargo fmt
 
 clean: ## Clean venv and clean cargo
 	-@rm -r venv

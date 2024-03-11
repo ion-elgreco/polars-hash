@@ -34,7 +34,7 @@ def test_sha256():
     assert_frame_equal(result, expected)
 
 
-def test_wyhash():
+def test_wyhash_str():
     result = pl.select(pl.lit("hello_world").nchash.wyhash())  # type: ignore
 
     expected = pl.DataFrame(
@@ -46,12 +46,68 @@ def test_wyhash():
     assert_frame_equal(result, expected)
 
 
-def test_md5():
+def test_wyhash_bytes():
+    result = pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("literal", [5112362246832359110], dtype=pl.UInt64),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_md5_str():
     result = pl.select(pl.lit("hello_world").nchash.md5())  # type: ignore
 
     expected = pl.DataFrame(
         [
             pl.Series("literal", ["99b1ff8f11781541f7f89f9bd41c4a17"], dtype=pl.Utf8),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_md5_bytes():
+    result = pl.select(pl.lit(b"my_bytes").nchash.md5())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("literal", ["4445d78d11baa258c5f4ac1b8d33b8ba"], dtype=pl.Utf8),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_blake3_str():
+    result = pl.select(pl.lit("hello_world").chash.blake3())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                ["9833e5324eb2400de814730f4e92810905351bc0451e10b75847210c1d7c37ed"],
+                dtype=pl.Utf8,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_blake3_bytes():
+    result = pl.select(pl.lit(b"my_bytes").chash.blake3())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                ["4656d42e3468733c9316ef5d4e4488682fc41ad441644ca63cde6aced8378605"],
+                dtype=pl.Utf8,
+            ),
         ]
     )
 
