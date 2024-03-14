@@ -4,20 +4,10 @@ import warnings
 from typing import Iterable, Protocol, cast
 
 import polars as pl
-from packaging.version import Version
 from polars.type_aliases import IntoExpr, PolarsDataType
 from polars.utils.udfs import _get_shared_lib_location
 
 from polars_hash._internal import __version__ as __version__
-
-if Version(pl.__version__) >= Version("0.20.14"):
-    from polars._utils.parse_expr_input import parse_as_expression
-    from polars._utils.wrap import wrap_expr
-else:
-    # old locations prior to https://github.com/pola-rs/polars/commit/b8d7a0f5492b662787d790c35712f0daabd01429
-    from polars.utils._parse_expr_input import parse_as_expression  # type: ignore
-    from polars.utils._wrap import wrap_expr  # type: ignore
-
 
 lib = _get_shared_lib_location(__file__)
 
@@ -158,10 +148,9 @@ class GeoHashingNameSpace:
 
     def from_coords(self, len: int | str | pl.Expr = 12) -> pl.Expr:
         """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
-        len_expr = wrap_expr(parse_as_expression(len))
         return self._expr.register_plugin(
             lib=lib,
-            args=[len_expr],
+            args=[len],
             symbol="ghash_encode",
             is_elementwise=True,
         )
