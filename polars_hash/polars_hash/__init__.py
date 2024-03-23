@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import warnings
+from pathlib import Path
 from typing import Iterable, Protocol, cast
 
 import polars as pl
+from polars.plugins import register_plugin_function
 from polars.type_aliases import IntoExpr, PolarsDataType
-from polars.utils.udfs import _get_shared_lib_location
 
 from polars_hash._internal import __version__ as __version__
-
-lib = _get_shared_lib_location(__file__)
 
 
 @pl.api.register_expr_namespace("chash")
@@ -24,81 +23,91 @@ class CryptographicHashingNameSpace:
             category=DeprecationWarning,
             stacklevel=2,
         )
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha2_256",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha2_256",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha2_256(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha2_256",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha2_256",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha2_512(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-2 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha2_512",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha2_512",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha2_384(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-2 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha2_384",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha2_384",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha2_224(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-2 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha2_224",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha2_224",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha3_256(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-3 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha3_256",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha3_256",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha3_512(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-3 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha3_512",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha3_512",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha3_384(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-3 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha3_384",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha3_384",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha3_224(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-3 family."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha3_224",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha3_224",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def blake3(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with blake3."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="blake3",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="blake3",
+            args=self._expr,
             is_elementwise=True,
         )
 
@@ -110,25 +119,28 @@ class NonCryptographicHashingNameSpace:
 
     def wyhash(self) -> pl.Expr:
         """Takes Bytes or Utf8 as input and returns uint64 hash with wyhash."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="wyhash",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="wyhash",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def sha1(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha1."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="sha1",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha1",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def md5(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with md5."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="md5",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="md5",
+            args=self._expr,
             is_elementwise=True,
         )
 
@@ -140,26 +152,28 @@ class GeoHashingNameSpace:
 
     def to_coords(self) -> pl.Expr:
         """Takes Utf8 as input and returns a struct of the coordinates."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="ghash_decode",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="ghash_decode",
+            args=self._expr,
             is_elementwise=True,
         )
 
     def from_coords(self, len: int | str | pl.Expr = 12) -> pl.Expr:
         """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
-        return self._expr.register_plugin(
-            lib=lib,
-            args=[len],
-            symbol="ghash_encode",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            args=[self._expr, len],
+            function_name="ghash_encode",
             is_elementwise=True,
         )
 
     def neighbors(self) -> pl.Expr:
         """Takes Utf8 hash as input and returns a struct of the neighbors."""
-        return self._expr.register_plugin(
-            lib=lib,
-            symbol="ghash_neighbors",
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="ghash_neighbors",
+            args=self._expr,
             is_elementwise=True,
         )
 
