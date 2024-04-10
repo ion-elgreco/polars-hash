@@ -77,6 +77,30 @@ shape: (1, 1)
 └───────────────────────┘
 ```
 
+### H3 Spatial Index
+```python
+df = pl.DataFrame(
+    {"coord": [{"longitude": -120.6623, "latitude": 35.3003}]},
+    schema={
+        "coord": pl.Struct(
+            [pl.Field("longitude", pl.Float64), pl.Field("latitude", pl.Float64)]
+        ),
+    },
+)
+
+df.with_columns(
+    plh.col('coord').h3.from_coords().alias('h3')
+)
+shape: (1, 2)
+┌─────────────────────┬─────────────────┐
+│ coord               ┆ h3              │
+│ ---                 ┆ ---             │
+│ struct[2]           ┆ str             │
+╞═════════════════════╪═════════════════╡
+│ {-120.6623,35.3003} ┆ 8c29adc423821ff │
+└─────────────────────┴─────────────────┘
+```
+
 
 ## Create hash from multiple columns
 ```python

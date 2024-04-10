@@ -1,5 +1,6 @@
 mod expressions;
 mod geohashers;
+mod h3;
 mod sha_hashers;
 use pyo3::types::PyModule;
 use pyo3::{pymodule, PyResult, Python};

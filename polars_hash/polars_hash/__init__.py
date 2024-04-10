@@ -178,6 +178,21 @@ class GeoHashingNameSpace:
         )
 
 
+@pl.api.register_expr_namespace("h3")
+class H3NameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+
+    def from_coords(self, len: int = 12) -> pl.Expr:
+        """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            args=[self._expr, len],
+            function_name="h3_encode",
+            is_elementwise=True,
+        )
+
+
 class HExpr(pl.Expr):
     @property
     def chash(self) -> CryptographicHashingNameSpace:
@@ -189,6 +204,10 @@ class HExpr(pl.Expr):
 
     @property
     def geohash(self) -> GeoHashingNameSpace:
+        return GeoHashingNameSpace(self)
+
+    @property
+    def h3(self) -> GeoHashingNameSpace:
         return GeoHashingNameSpace(self)
 
 

@@ -138,6 +138,26 @@ def test_geohash():
     )
 
 
+def test_h3():
+    df = pl.DataFrame(
+        {"coord": [{"longitude": -120.6623, "latitude": 35.3003}]},
+        schema={
+            "coord": pl.Struct(
+                [pl.Field("longitude", pl.Float64), pl.Field("latitude", pl.Float64)]
+            ),
+        },
+    )
+
+    result = df.select(pl.col("coord").h3.from_coords(5))  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("coord", ["8529adc7fffffff"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
 def test_lazy_name():
     result = (
         pl.from_dicts({"h1": "sp1xk2m6194y"})

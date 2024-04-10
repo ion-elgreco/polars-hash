@@ -1,4 +1,5 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
+use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
 use polars::{
     chunked_array::ops::arity::{try_binary_elementwise, try_ternary_elementwise},
@@ -208,6 +209,49 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
             )),
         },
         _ => try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder),
+    }?;
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn h3_encode(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].struct_()?;
+    let len = match inputs[1].dtype() {
+        DataType::Int64 => inputs[1].clone(),
+        DataType::Int32 => inputs[1].cast(&DataType::Int64)?,
+        DataType::Int16 => inputs[1].cast(&DataType::Int64)?,
+        DataType::Int8 => inputs[1].cast(&DataType::Int64)?,
+        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
+    };
+    let len = len.i64()?;
+
+    let lat = ca.field_by_name("latitude")?;
+    let long = ca.field_by_name("longitude")?;
+    let lat = match lat.dtype() {
+        DataType::Float32 => lat.cast(&DataType::Float64)?,
+        DataType::Float64 => lat,
+        _ => polars_bail!(InvalidOperation:"Latitude input needs to be float"),
+    };
+
+    let long = match long.dtype() {
+        DataType::Float32 => long.cast(&DataType::Float64)?,
+        DataType::Float64 => long,
+        _ => polars_bail!(InvalidOperation:"Longitude input needs to be float"),
+    };
+
+    let ca_lat = lat.f64()?;
+    let ca_long = long.f64()?;
+
+    let out: StringChunked = match len.len() {
+        1 => match unsafe { len.get_unchecked(0) } {
+            Some(len) => try_binary_elementwise(ca_lat, ca_long, |ca_lat_opt, ca_long_opt| {
+                h3_encoder(ca_lat_opt, ca_long_opt, Some(len))
+            }),
+            _ => Err(PolarsError::ComputeError(
+                "Length may not be null".to_string().into(),
+            )),
+        },
+        _ => try_ternary_elementwise(ca_lat, ca_long, len, h3_encoder),
     }?;
     Ok(out.into_series())
 }
