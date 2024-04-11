@@ -207,8 +207,8 @@ class HExpr(pl.Expr):
         return GeoHashingNameSpace(self)
 
     @property
-    def h3(self) -> GeoHashingNameSpace:
-        return GeoHashingNameSpace(self)
+    def h3(self) -> H3NameSpace:
+        return H3NameSpace(self)
 
 
 class HashColumn(Protocol):
