@@ -184,7 +184,7 @@ class H3NameSpace:
         self._expr = expr
 
     def from_coords(self, len: int = 12) -> pl.Expr:
-        """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
+        """Takes Struct with latitude, longitude as input and returns utf8 H3 spatial index."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             args=[self._expr, len],
