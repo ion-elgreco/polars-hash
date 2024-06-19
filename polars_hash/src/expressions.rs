@@ -189,9 +189,8 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
             DataType::UInt8 => base_series.u8()?,
             _ => polars_bail!(InvalidOperation:"Base input needs to be uint8"),
         },
-        None => Series::new("base", &[16u8]), // Default to base 16 if not provided
+        None => UInt8Chunked::full("base", 16, ca.len()), // Default to base 16 if not provided
     };
-    let base = base.u8()?;
 
     let lat = ca.field_by_name("latitude")?;
     let long = ca.field_by_name("longitude")?;
@@ -212,19 +211,20 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
 
     let out: StringChunked = match len.len() {
         1 => match unsafe { len.get_unchecked(0) } {
-            Some(len) => try_quaternary_elementwise(ca_lat, ca_long, base, |ca_lat_opt, ca_long_opt, base| {
-                geohash_encoder(ca_lat_opt, ca_long_opt, Some(len), Some(base))
+            Some(len) => try_ternary_elementwise(ca_lat, ca_long, base, |ca_lat_opt, ca_long_opt, base_opt| {
+                geohash_encoder(ca_lat_opt, ca_long_opt, Some(len))
             }),
             _ => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
             )),
         },
-        _ => try_quaternary_elementwise(ca_lat, ca_long, len, base, |ca_lat_opt, ca_long_opt, len, base| {
-            geohash_encoder(ca_lat_opt, ca_long_opt, Some(len), Some(base))
+        _ => try_ternary_elementwise(ca_lat, ca_long, len, |ca_lat_opt, ca_long_opt, len_opt| {
+            geohash_encoder(ca_lat_opt, ca_long_opt, len_opt)
         }),
     }?;
     Ok(out.into_series())
 }
+
 
 
 
