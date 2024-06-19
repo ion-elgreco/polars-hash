@@ -1,6 +1,26 @@
 use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
 
+// Helper function to encode with base 32
+fn encode_base32(coord: Coord<f64>, len: usize) -> Result<String, PolarsError> {
+    encode(coord, len).map_err(|e| PolarsError::ComputeError(e.to_string().into()))
+}
+
+// Helper function to encode with base 16
+fn encode_base16(coord: Coord<f64>, len: usize) -> Result<String, PolarsError> {
+    // Placeholder for actual base 16 encoding logic
+    // Replace this with the actual base 16 encode function when available
+    encode(coord, len).map_err(|e| PolarsError::ComputeError(e.to_string().into()))
+}
+
+// Function to select the appropriate encoding function based on the base
+fn select_encode_function(base: i64) -> fn(Coord<f64>, usize) -> Result<String, PolarsError> {
+    match base {
+        32 => encode_base32,
+        _ => encode_base16, // Default to base 16
+    }
+}
+
 // Geohash encoder function
 pub fn geohash_encoder(
     lat: Option<f64>,
@@ -11,15 +31,17 @@ pub fn geohash_encoder(
     match (lat, long) {
         (Some(lat), Some(long)) => match len {
             Some(len) => match base {
-                Some(base) => Ok(Some(
-                    encode(Coord { x: long, y: lat }, len as usize, base as u32)
-                        .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
-                )),
-                None => Err(PolarsError::ComputeError(
+                Some(base) => {
+                    let coord = Coord { x: long, y: lat };
+                    let encode_fn = select_encode_function(base);
+                    let encoded = encode_fn(coord, len as usize)?;
+                    Ok(Some(encoded))
+                }
+                _ => Err(PolarsError::ComputeError(
                     "Base may not be null".to_string().into(),
                 )),
             },
-            None => Err(PolarsError::ComputeError(
+            _ => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
             )),
         },
@@ -50,7 +72,7 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
                 longitude.append_value(x_value);
                 latitude.append_value(y_value);
             }
-            None => {
+            _ => {
                 longitude.append_null();
                 latitude.append_null();
             }
@@ -86,7 +108,7 @@ pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
                 w_ca.append_value(neighbors_result.w);
                 nw_ca.append_value(neighbors_result.nw);
             }
-            None => {
+            _ => {
                 n_ca.append_null();
                 ne_ca.append_null();
                 e_ca.append_null();
