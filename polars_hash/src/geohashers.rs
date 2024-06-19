@@ -12,7 +12,7 @@ pub fn geohash_encoder(
             Some(len) => {
                 let base = match base {
                     Some(base) => base, // Use the provided base
-                    None => 32, // Default to base 32
+                    None => 16, // Default to base 16
                 };
                 Ok(Some(
                     encode(Coord { x: long, y: lat }, len as usize, base)

@@ -12,7 +12,9 @@ use polars_core::datatypes::{
 use pyo3_polars::derive::polars_expr;
 use std::fmt::Write;
 use std::{str, string};
+use std::option::Option;
 use wyhash::wyhash as real_wyhash;
+
 
 pub fn blake3_hash_str(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
