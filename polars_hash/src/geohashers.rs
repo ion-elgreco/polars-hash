@@ -26,21 +26,16 @@ pub fn geohash_encoder(
     lat: Option<f64>,
     long: Option<f64>,
     len: Option<i64>,
-    base: Option<i64>,
 ) -> PolarsResult<Option<String>> {
+    let base = 16; // Set default base to 16
     match (lat, long) {
         (Some(lat), Some(long)) => match len {
-            Some(len) => match base {
-                Some(base) => {
-                    let coord = Coord { x: long, y: lat };
-                    let encode_fn = select_encode_function(base);
-                    let encoded = encode_fn(coord, len as usize)?;
-                    Ok(Some(encoded))
-                }
-                _ => Err(PolarsError::ComputeError(
-                    "Base may not be null".to_string().into(),
-                )),
-            },
+            Some(len) => {
+                let coord = Coord { x: long, y: lat };
+                let encode_fn = select_encode_function(base);
+                let encoded = encode_fn(coord, len as usize)?;
+                Ok(Some(encoded))
+            }
             _ => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
             )),
