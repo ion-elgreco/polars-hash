@@ -5,13 +5,19 @@ pub fn geohash_encoder(
     lat: Option<f64>,
     long: Option<f64>,
     len: Option<i64>,
+    base: Option<i64>,
 ) -> PolarsResult<Option<String>> {
     match (lat, long) {
         (Some(lat), Some(long)) => match len {
-            Some(len) => Ok(Some(
-                encode(Coord { x: long, y: lat }, len as usize)
-                    .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
-            )),
+            Some(len) => match base {
+                Some(base) => Ok(Some(
+                    encode(Coord { x: long, y: lat }, len as usize, base as u32)
+                        .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
+                )),
+                _ => Err(PolarsError::ComputeError(
+                    "Base may not be null".to_string().into(),
+                )),
+            },
             _ => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
             )),
