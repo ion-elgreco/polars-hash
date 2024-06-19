@@ -1,4 +1,5 @@
 use std::option::Option; // Import Option and its methods
+
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
@@ -215,6 +216,7 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     }?;
     Ok(out.into_series())
 }
+
 
 #[polars_expr(output_type=String)]
 fn h3_encode(inputs: &[Series]) -> PolarsResult<Series> {
