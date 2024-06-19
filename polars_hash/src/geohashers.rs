@@ -1,21 +1,18 @@
-use geohash::{decode, encode, neighbors, Coord};
+use geohash::{decode, encode_with_base, neighbors, Coord};
 use polars::prelude::*;
 
 pub fn geohash_encoder(
     lat: Option<f64>,
     long: Option<f64>,
     len: Option<i64>,
-    base: Option<u8>, // New parameter for base
+    base: Option<u8>,
 ) -> PolarsResult<Option<String>> {
     match (lat, long) {
         (Some(lat), Some(long)) => match len {
             Some(len) => {
-                let base = match base {
-                    Some(base) => base, // Use the provided base
-                    None => 16, // Default to base 16
-                };
+                let base = base.unwrap_or(16); // Default to base 16 if not provided
                 Ok(Some(
-                    encode(Coord { x: long, y: lat }, len as usize, base)
+                    encode_with_base(Coord { x: long, y: lat }, len as usize, base)
                         .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
                 ))
             }
