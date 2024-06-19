@@ -1,3 +1,4 @@
+use std::option::Option; // Import Option and its methods
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
@@ -12,9 +13,7 @@ use polars_core::datatypes::{
 use pyo3_polars::derive::polars_expr;
 use std::fmt::Write;
 use std::{str, string};
-use std::option::Option;
 use wyhash::wyhash as real_wyhash;
-
 
 pub fn blake3_hash_str(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
