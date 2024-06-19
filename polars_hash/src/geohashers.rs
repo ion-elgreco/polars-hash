@@ -1,6 +1,7 @@
 use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
 
+// Geohash encoder function
 pub fn geohash_encoder(
     lat: Option<f64>,
     long: Option<f64>,
@@ -14,11 +15,11 @@ pub fn geohash_encoder(
                     encode(Coord { x: long, y: lat }, len as usize, base as u32)
                         .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
                 )),
-                _ => Err(PolarsError::ComputeError(
+                None => Err(PolarsError::ComputeError(
                     "Base may not be null".to_string().into(),
                 )),
             },
-            _ => Err(PolarsError::ComputeError(
+            None => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
             )),
         },
@@ -33,6 +34,7 @@ pub fn geohash_encoder(
     }
 }
 
+// Geohash decoder function
 pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let mut longitude: PrimitiveChunkedBuilder<Float64Type> =
         PrimitiveChunkedBuilder::new("longitude", ca.len());
@@ -48,7 +50,7 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
                 longitude.append_value(x_value);
                 latitude.append_value(y_value);
             }
-            _ => {
+            None => {
                 longitude.append_null();
                 latitude.append_null();
             }
@@ -59,6 +61,7 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     StructChunked::new(ca.name(), &[ser_long, ser_lat])
 }
 
+// Geohash neighbors function
 pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let mut n_ca = StringChunkedBuilder::new("n", ca.len());
     let mut ne_ca = StringChunkedBuilder::new("ne", ca.len());
@@ -83,7 +86,7 @@ pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
                 w_ca.append_value(neighbors_result.w);
                 nw_ca.append_value(neighbors_result.nw);
             }
-            _ => {
+            None => {
                 n_ca.append_null();
                 ne_ca.append_null();
                 e_ca.append_null();
