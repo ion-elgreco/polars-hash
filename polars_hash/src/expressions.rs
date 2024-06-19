@@ -202,14 +202,14 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let out: StringChunked = match len.len() {
         1 => match unsafe { len.get_unchecked(0) } {
             Some(len) => try_binary_elementwise(ca_lat, ca_long, |ca_lat_opt, ca_long_opt| {
-                geohash_encoder(ca_lat_opt, ca_long_opt, Some(len), None) // Pass None for base
+                geohash_encoder(ca_lat_opt, ca_long_opt, Some(len.expect("Length may not be null")), None) // Pass None for base
             }),
             _ => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
             )),
         },
         _ => try_ternary_elementwise(ca_lat, ca_long, len, |ca_lat_opt, ca_long_opt, len| {
-            geohash_encoder(ca_lat_opt, ca_long_opt, Some(len), None) // Pass None for base
+            geohash_encoder(ca_lat_opt, ca_long_opt, Some(len.expect("Length may not be null")), None) // Pass None for base
         }),
     }?;
     Ok(out.into_series())
