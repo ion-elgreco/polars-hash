@@ -1,40 +1,23 @@
 use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
 
-// Helper function to encode with base 32
-fn encode_base32(coord: Coord<f64>, len: usize) -> Result<String, PolarsError> {
-    encode(coord, len).map_err(|e| PolarsError::ComputeError(e.to_string().into()))
-}
-
-// Helper function to encode with base 16
-fn encode_base16(coord: Coord<f64>, len: usize) -> Result<String, PolarsError> {
-    // Placeholder for actual base 16 encoding logic
-    // Replace this with the actual base 16 encode function when available
-    encode(coord, len).map_err(|e| PolarsError::ComputeError(e.to_string().into()))
-}
-
-// Function to select the appropriate encoding function based on the base
-fn select_encode_function(base: i64) -> fn(Coord<f64>, usize) -> Result<String, PolarsError> {
-    match base {
-        32 => encode_base32,
-        _ => encode_base16, // Default to base 16
-    }
-}
-
-// Geohash encoder function
 pub fn geohash_encoder(
     lat: Option<f64>,
     long: Option<f64>,
     len: Option<i64>,
+    base: Option<u8>, // New parameter for base
 ) -> PolarsResult<Option<String>> {
-    let base = 16; // Set default base to 16
     match (lat, long) {
         (Some(lat), Some(long)) => match len {
             Some(len) => {
-                let coord = Coord { x: long, y: lat };
-                let encode_fn = select_encode_function(base);
-                let encoded = encode_fn(coord, len as usize)?;
-                Ok(Some(encoded))
+                let base = match base {
+                    Some(base) => base, // Use the provided base
+                    None => 32, // Default to base 32
+                };
+                Ok(Some(
+                    encode(Coord { x: long, y: lat }, len as usize, base)
+                        .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?,
+                ))
             }
             _ => Err(PolarsError::ComputeError(
                 "Length may not be null".to_string().into(),
@@ -51,7 +34,6 @@ pub fn geohash_encoder(
     }
 }
 
-// Geohash decoder function
 pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let mut longitude: PrimitiveChunkedBuilder<Float64Type> =
         PrimitiveChunkedBuilder::new("longitude", ca.len());
@@ -78,7 +60,6 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     StructChunked::new(ca.name(), &[ser_long, ser_lat])
 }
 
-// Geohash neighbors function
 pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let mut n_ca = StringChunkedBuilder::new("n", ca.len());
     let mut ne_ca = StringChunkedBuilder::new("ne", ca.len());
