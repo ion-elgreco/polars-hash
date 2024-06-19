@@ -1,4 +1,4 @@
-use crate::geohash::{decode, encode, neighbors, Coord};
+use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
 
 pub fn geohash_encoder(
