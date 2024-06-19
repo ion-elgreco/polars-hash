@@ -1,18 +1,5 @@
-use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
-use crate::h3::h3_encoder;
-use crate::sha_hashers::*;
-use polars::{
-    chunked_array::ops::arity::{try_binary_elementwise, try_ternary_elementwise},
-    prelude::*,
-};
-use polars_core::datatypes::{
-    DataType::{Float64, String, Struct},
-    Field,
-};
-use pyo3_polars::derive::polars_expr;
-use std::fmt::Write;
-use std::{str, string};
-use wyhash::wyhash as real_wyhash;
+use crate::geohash::{decode, encode, neighbors, Coord};
+use polars::prelude::*;
 
 pub fn geohash_encoder(
     lat: Option<f64>,
