@@ -14,7 +14,7 @@ pyo3 = { version = "0.20.3", features = ["extension-module", "abi3-py38"] }
 pyo3-polars = { version = "0.12.0", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 wyhash = { version = "0.5.0" }
-geohash = { version = "0.13.0" }
+geohash = { version = "0.13.1" }
 sha1 = { version = "0.10.6" }
 sha2 = { version = "0.10.8" }
 sha3 = { version = "0.10.8" }
