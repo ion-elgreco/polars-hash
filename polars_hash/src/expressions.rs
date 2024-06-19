@@ -180,16 +180,16 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
         DataType::Int32 => inputs[1].cast(&DataType::Int64)?,
         DataType::Int16 => inputs[1].cast(&DataType::Int64)?,
         DataType::Int8 => inputs[1].cast(&DataType::Int64)?,
-        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
+        _ => polars_bail!(InvalidOperation: "Length input needs to be integer"),
     };
     let len = len.i64()?;
 
     let base = match inputs.get(2) {
         Some(base_series) => match base_series.dtype() {
             DataType::UInt8 => base_series.u8()?,
-            _ => polars_bail!(InvalidOperation:"Base input needs to be uint8"),
+            _ => polars_bail!(InvalidOperation: "Base input needs to be uint8"),
         },
-        None => UInt8Chunked::full("base", 16, ca.len()), // Default to base 16 if not provided
+        None => &UInt8Chunked::full("base", 16, ca.len()), // Borrow the default base 16 chunked array
     };
 
     let lat = ca.field_by_name("latitude")?;
@@ -197,13 +197,13 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let lat = match lat.dtype() {
         DataType::Float32 => lat.cast(&DataType::Float64)?,
         DataType::Float64 => lat,
-        _ => polars_bail!(InvalidOperation:"Latitude input needs to be float"),
+        _ => polars_bail!(InvalidOperation: "Latitude input needs to be float"),
     };
 
     let long = match long.dtype() {
         DataType::Float32 => long.cast(&DataType::Float64)?,
         DataType::Float64 => long,
-        _ => polars_bail!(InvalidOperation:"Longitude input needs to be float"),
+        _ => polars_bail!(InvalidOperation: "Longitude input needs to be float"),
     };
 
     let ca_lat = lat.f64()?;
@@ -224,6 +224,7 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     }?;
     Ok(out.into_series())
 }
+
 
 
 
