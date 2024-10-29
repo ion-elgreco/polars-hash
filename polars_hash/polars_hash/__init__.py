@@ -10,7 +10,7 @@ from polars.plugins import register_plugin_function
 try:
     from polars._typing import IntoExpr, PolarsDataType
 except ImportError:
-    from polars.type_aliases import IntoExpr, PolarsDataType
+    from polars.type_aliases import IntoExpr, PolarsDataType  # type: ignore[no-redef]
 
 from polars_hash._internal import __version__ as __version__
 
