@@ -3,10 +3,16 @@ from __future__ import annotations
 import warnings
 from pathlib import Path
 from typing import Iterable, Protocol, cast
+from packaging.version import Version
 
 import polars as pl
 from polars.plugins import register_plugin_function
-from polars.type_aliases import IntoExpr, PolarsDataType
+
+if Version(pl.__version__) >= Version("1.0"):
+    from polars._typing import IntoExpr, PolarsDataType
+
+else:
+    from polars.type_aliases import IntoExpr, PolarsDataType
 
 from polars_hash._internal import __version__ as __version__
 
