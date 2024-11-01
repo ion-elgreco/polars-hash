@@ -2,9 +2,12 @@ use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
 use polars::{
-    chunked_array::ops::arity::{try_binary_elementwise, try_ternary_elementwise},
+    chunked_array::ops::arity::{
+        try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
+    },
     prelude::*,
 };
+
 use polars_core::datatypes::{
     DataType::{Float64, String, Struct},
     Field,
@@ -51,12 +54,12 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     match s.dtype() {
         DataType::String => {
             let ca = s.str()?;
-            let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash_str);
+            let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, wyhash_hash_str);
             Ok(out.into_series())
         }
         DataType::Binary => {
             let ca = s.binary()?;
-            let out: ChunkedArray<UInt64Type> = ca.apply_generic(wyhash_hash_bytes);
+            let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, wyhash_hash_bytes);
             Ok(out.into_series())
         }
         _ => Err(PolarsError::InvalidOperation(
@@ -72,12 +75,12 @@ fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
     match s.dtype() {
         DataType::String => {
             let ca = s.str()?;
-            let out: StringChunked = ca.apply_to_buffer(blake3_hash_str);
+            let out: StringChunked = ca.apply_into_string_amortized(blake3_hash_str);
             Ok(out.into_series())
         }
         DataType::Binary => {
             let ca = s.binary()?;
-            let out: StringChunked = ca.apply_generic(blake3_hash_bytes);
+            let out: StringChunked = unary_elementwise(ca, blake3_hash_bytes);
             Ok(out.into_series())
         }
         _ => Err(PolarsError::InvalidOperation(
@@ -93,12 +96,12 @@ fn md5(inputs: &[Series]) -> PolarsResult<Series> {
     match s.dtype() {
         DataType::String => {
             let ca = s.str()?;
-            let out: StringChunked = ca.apply_to_buffer(md5_hash_str);
+            let out: StringChunked = ca.apply_into_string_amortized(md5_hash_str);
             Ok(out.into_series())
         }
         DataType::Binary => {
             let ca = s.binary()?;
-            let out: StringChunked = ca.apply_generic(md5_hash_bytes);
+            let out: StringChunked = unary_elementwise(ca, md5_hash_bytes);
             Ok(out.into_series())
         }
         _ => Err(PolarsError::InvalidOperation(
@@ -110,63 +113,63 @@ fn md5(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type=String)]
 fn sha1(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha1_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha1_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_256(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha2_256_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha2_256_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_512(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha2_512_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha2_512_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_384(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha2_384_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha2_384_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_224(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha2_224_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha2_224_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_256(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha3_256_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha3_256_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_512(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha3_512_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha3_512_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_384(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha3_384_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha3_384_hash);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_224(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_to_buffer(sha3_224_hash);
+    let out: StringChunked = ca.apply_into_string_amortized(sha3_224_hash);
     Ok(out.into_series())
 }
 
@@ -258,10 +261,10 @@ fn h3_encode(inputs: &[Series]) -> PolarsResult<Series> {
 
 pub fn geohash_decode_output(field: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
-        Field::new("longitude", Float64),
-        Field::new("latitude", Float64),
+        Field::new("longitude".into(), Float64),
+        Field::new("latitude".into(), Float64),
     ];
-    Ok(Field::new(field[0].name(), Struct(v)))
+    Ok(Field::new(field[0].name().clone(), Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_decode_output)]
@@ -273,16 +276,16 @@ fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
 
 pub fn geohash_neighbors_output(field: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
-        Field::new("n", String),
-        Field::new("ne", String),
-        Field::new("e", String),
-        Field::new("se", String),
-        Field::new("s", String),
-        Field::new("sw", String),
-        Field::new("w", String),
-        Field::new("nw", String),
+        Field::new("n".into(), String),
+        Field::new("ne".into(), String),
+        Field::new("e".into(), String),
+        Field::new("se".into(), String),
+        Field::new("s".into(), String),
+        Field::new("sw".into(), String),
+        Field::new("w".into(), String),
+        Field::new("nw".into(), String),
     ];
-    Ok(Field::new(field[0].name(), Struct(v)))
+    Ok(Field::new(field[0].name().clone(), Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_neighbors_output)]
