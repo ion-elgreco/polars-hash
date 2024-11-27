@@ -371,3 +371,87 @@ def test_forced_missing_seed_errors(hash_fn_expr):
 
     with pytest.raises(ComputeError, match="expected u32"):
         df.select(hash_fn_expr)
+
+
+def test_xxh3_64():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.xxh3_64())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    7060460777671424209,
+                    None,
+                    3244421341483603138,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxh3_64_seeded():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.xxh3_64(seed=42))
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    827481053383045869,
+                    None,
+                    12693748630217917650,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxh3_128():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.xxh3_128())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    b'\x03o\xfe!^\x18\xfbg"\xc6=\xaf^\x1c\xd3\xbe',
+                    None,
+                    b"\x7fI\x8dF$\xc3\x01`\xd8\x98G\x01\xd3\x06\xaa\x99",
+                ],
+                dtype=pl.Binary,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxh3_128_seeded():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.xxh3_128(seed=42))
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    b"BM\xd8\x9d\x8dX]|k\xd9\xb9\xc0|\xea\xc7\xec",
+                    None,
+                    b"d\x91$\xfe\xe9\t\x1d</\xaf\xf73\xcd\n\xc2\x16",
+                ],
+                dtype=pl.Binary,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)

@@ -343,3 +343,21 @@ fn xxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> 
     let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, seeded_hash_function);
     Ok(out.into_series())
 }
+
+#[polars_expr(output_type=UInt64)]
+fn xxh3_64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let seeded_hash_function = |v| xxhash3_64(v, kwargs.seed);
+
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, seeded_hash_function);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Binary)]
+fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let seeded_hash_function = |v| xxhash3_128(v, kwargs.seed);
+
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<BinaryType> = unary_elementwise(ca, seeded_hash_function);
+    Ok(out.into_series())
+}
