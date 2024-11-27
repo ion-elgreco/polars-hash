@@ -1,8 +1,7 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
-// use crate::murmur_hashers::*;
-use fasthash::{murmur3, xx};
+use crate::fasthash_hashers::*;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
@@ -298,46 +297,33 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 
-fn mmh32(value: Option<&str>) -> Option<u32> {
-    value.map(|v| murmur3::hash32(v.as_bytes()))
-}
-
 #[polars_expr(output_type=UInt32)]
 fn murmur32(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, mmh32);
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, murmurhash3_32);
     Ok(out.into_series())
 }
 
-fn mmh128(value: Option<&str>) -> Option<Vec<u8>> {
-    value.map(|v| murmur3::hash128(v.as_bytes()).to_le_bytes().to_vec())
-}
 
 #[polars_expr(output_type=Binary)]
 fn murmur128(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<BinaryType>= unary_elementwise(ca, mmh128);
+    let out: ChunkedArray<BinaryType>= unary_elementwise(ca, murmurhash3_128);
     Ok(out.into_series())
 }
 
-fn xxh32(value: Option<&str>) -> Option<u32> {
-    value.map(|v| xx::hash32(v.as_bytes()))
-}
 
 #[polars_expr(output_type=UInt32)]
 fn xxhash32(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, xxh32);
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, xxhash_32);
     Ok(out.into_series())
 }
 
-fn xxh64(value: Option<&str>) -> Option<u64> {
-    value.map(|v| xx::hash64(v.as_bytes()))
-}
 
 #[polars_expr(output_type=UInt64)]
 fn xxhash64(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, xxh64);
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, xxhash_64);
     Ok(out.into_series())
 }
