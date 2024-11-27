@@ -14,9 +14,20 @@ use polars_core::datatypes::{
     Field,
 };
 use pyo3_polars::derive::polars_expr;
+use serde::Deserialize;
 use std::fmt::Write;
 use std::{str, string};
 use wyhash::wyhash as real_wyhash;
+
+#[derive(Deserialize)]
+struct SeedKwargs32bit {
+    seed: u32,
+}
+
+#[derive(Deserialize)]
+struct SeedKwargs64bit {
+    seed: u64,
+}
 
 pub fn blake3_hash_str(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
@@ -297,29 +308,37 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 #[polars_expr(output_type=UInt32)]
-fn murmur32(inputs: &[Series]) -> PolarsResult<Series> {
+fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
+    let seeded_hash_function = |v| murmurhash3_32(v, kwargs.seed);
+
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, murmurhash3_32);
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, seeded_hash_function);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=Binary)]
-fn murmur128(inputs: &[Series]) -> PolarsResult<Series> {
+fn murmur128(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
+    let seeded_hash_function = |v| murmurhash3_128(v, kwargs.seed);
+
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<BinaryType> = unary_elementwise(ca, murmurhash3_128);
+    let out: ChunkedArray<BinaryType> = unary_elementwise(ca, seeded_hash_function);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt32)]
-fn xxhash32(inputs: &[Series]) -> PolarsResult<Series> {
+fn xxhash32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
+    let seeded_hash_function = |v| xxhash_32(v, kwargs.seed);
+
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, xxhash_32);
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, seeded_hash_function);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
-fn xxhash64(inputs: &[Series]) -> PolarsResult<Series> {
+fn xxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let seeded_hash_function = |v| xxhash_64(v, kwargs.seed);
+
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, xxhash_64);
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, seeded_hash_function);
     Ok(out.into_series())
 }

@@ -148,40 +148,44 @@ class NonCryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
-    def murmur32(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns uint32 hash with murmur32."""
+    def murmur32(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with murmur32."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="murmur32",
             args=self._expr,
             is_elementwise=True,
+            kwargs={"seed": seed},
         )
 
-    def murmur128(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns binary hash with murmur128."""
+    def murmur128(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns binary hash with murmur128."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="murmur128",
             args=self._expr,
             is_elementwise=True,
+            kwargs={"seed": seed},
         )
 
-    def xxhash32(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns uint32 hash with xxhash32."""
+    def xxhash32(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with xxhash32."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="xxhash32",
             args=self._expr,
             is_elementwise=True,
+            kwargs={"seed": seed},
         )
 
-    def xxhash64(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns uint64 hash with xxhash64."""
+    def xxhash64(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint64 hash with xxhash64."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="xxhash64",
             args=self._expr,
             is_elementwise=True,
+            kwargs={"seed": seed},
         )
 
 
