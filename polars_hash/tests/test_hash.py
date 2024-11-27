@@ -371,8 +371,3 @@ def test_forced_missing_seed_errors(hash_fn_expr):
 
     with pytest.raises(ComputeError, match="expected u32"):
         df.select(hash_fn_expr)
-
-
-def testme():
-    df = pl.DataFrame({"a": [b"hello", b"world"]})
-    df.select(plh.col("a").nchash.xxhash64())
