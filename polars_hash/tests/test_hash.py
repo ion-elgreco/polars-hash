@@ -232,12 +232,11 @@ def test_murmurhash128():
             pl.Series(
                 "literal",
                 [
-                    # note: depends on system endianness
-                    "658d6c071697071b5da51a1c9ef32c98",
+                    b"\x98,\xf3\x9e\x1c\x1a\xa5]\x1b\x07\x97\x16\x07l\x8de",
                     None,
-                    "00000000000000000000000000000000",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
                 ],
-                dtype=pl.String,
+                dtype=pl.Binary,
             ),
         ]
     )

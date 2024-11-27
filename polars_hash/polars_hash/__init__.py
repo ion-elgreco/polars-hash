@@ -158,7 +158,7 @@ class NonCryptographicHashingNameSpace:
         )
 
     def murmur128(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns uint128 hash with murmur128."""
+        """Takes Bytes or Utf8 as input and returns binary hash with murmur128."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="murmur128",

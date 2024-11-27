@@ -309,15 +309,14 @@ fn murmur32(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-fn mmh128(value: &str, output: &mut string::String){
-    let hash = murmur3::hash128(value.as_bytes());
-    write!(output, "{:032x}", hash).unwrap();
+fn mmh128(value: Option<&str>) -> Option<Vec<u8>> {
+    value.map(|v| murmur3::hash128(v.as_bytes()).to_le_bytes().to_vec())
 }
 
-#[polars_expr(output_type=String)]
+#[polars_expr(output_type=Binary)]
 fn murmur128(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(mmh128);
+    let out: ChunkedArray<BinaryType>= unary_elementwise(ca, mmh128);
     Ok(out.into_series())
 }
 
