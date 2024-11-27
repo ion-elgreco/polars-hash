@@ -21,6 +21,10 @@ format: venv ## Run formatters
 	unset CONDA_PREFIX && \
 	source venv/bin/activate && ruff format . && cargo fmt
 
+test: venv install ## Run pytests
+	unset CONDA_PREFIX && \
+	source venv/bin/activate && pytest tests/
+
 clean: ## Clean venv and clean cargo
 	-@rm -r venv
 	-@cd polars_hash && cargo clean

@@ -1,6 +1,8 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
+// use crate::murmur_hashers::*;
+use fasthash::{murmur3, xx};
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
@@ -293,4 +295,50 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
 
     Ok(geohash_neighbors(ca)?.into_series())
+}
+
+
+fn mmh32(value: Option<&str>) -> Option<u32> {
+    value.map(|v| murmur3::hash32(v.as_bytes()))
+}
+
+#[polars_expr(output_type=UInt32)]
+fn murmur32(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, mmh32);
+    Ok(out.into_series())
+}
+
+fn mmh128(value: &str, output: &mut string::String){
+    let hash = murmur3::hash128(value.as_bytes());
+    write!(output, "{:032x}", hash).unwrap();
+}
+
+#[polars_expr(output_type=String)]
+fn murmur128(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_into_string_amortized(mmh128);
+    Ok(out.into_series())
+}
+
+fn xxh32(value: Option<&str>) -> Option<u32> {
+    value.map(|v| xx::hash32(v.as_bytes()))
+}
+
+#[polars_expr(output_type=UInt32)]
+fn xxhash32(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, xxh32);
+    Ok(out.into_series())
+}
+
+fn xxh64(value: Option<&str>) -> Option<u64> {
+    value.map(|v| xx::hash64(v.as_bytes()))
+}
+
+#[polars_expr(output_type=UInt64)]
+fn xxhash64(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, xxh64);
+    Ok(out.into_series())
 }

@@ -2,6 +2,7 @@ mod expressions;
 mod geohashers;
 mod h3;
 mod sha_hashers;
+mod murmur_hashers;
 use pyo3::types::PyModule;
 use pyo3::{pymodule, Bound, PyResult, Python};
 use pyo3_polars::PolarsAllocator;

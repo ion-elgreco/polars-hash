@@ -200,3 +200,88 @@ def test_geohash_13():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+def test_murmurhash32():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.murmur32())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    3531928679,
+                    None,
+                    0,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_murmurhash128():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.murmur128())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    # note: depends on system endianness
+                    "658d6c071697071b5da51a1c9ef32c98",
+                    None,
+                    "00000000000000000000000000000000",
+                ],
+                dtype=pl.String,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxhash32():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.xxhash32())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    1605956417,
+                    None,
+                    46947589,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxhash64():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.xxhash64())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    5654987600477331689,
+                    None,
+                    17241709254077376921,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)

@@ -148,6 +148,42 @@ class NonCryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
+    def murmur32(self) -> pl.Expr:
+        """Takes Bytes or Utf8 as input and returns uint32 hash with murmur32."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="murmur32",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def murmur128(self) -> pl.Expr:
+        """Takes Bytes or Utf8 as input and returns uint128 hash with murmur128."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="murmur128",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def xxhash32(self) -> pl.Expr:
+        """Takes Bytes or Utf8 as input and returns uint32 hash with xxhash32."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="xxhash32",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def xxhash64(self) -> pl.Expr:
+        """Takes Bytes or Utf8 as input and returns uint64 hash with xxhash64."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="xxhash64",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
 
 @pl.api.register_expr_namespace("geohash")
 class GeoHashingNameSpace:
