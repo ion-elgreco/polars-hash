@@ -1,7 +1,8 @@
-use crate::fasthash_hashers::*;
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
+use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
+use crate::xxhash_hashers::*;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,

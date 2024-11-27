@@ -1,8 +1,9 @@
 mod expressions;
-mod fasthash_hashers;
 mod geohashers;
 mod h3;
+mod murmurhash_hashers;
 mod sha_hashers;
+mod xxhash_hashers;
 
 use pyo3::types::PyModule;
 use pyo3::{pymodule, Bound, PyResult, Python};
