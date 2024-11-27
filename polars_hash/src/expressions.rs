@@ -1,7 +1,7 @@
+use crate::fasthash_hashers::*;
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::sha_hashers::*;
-use crate::fasthash_hashers::*;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
@@ -296,7 +296,6 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(geohash_neighbors(ca)?.into_series())
 }
 
-
 #[polars_expr(output_type=UInt32)]
 fn murmur32(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
@@ -304,14 +303,12 @@ fn murmur32(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-
 #[polars_expr(output_type=Binary)]
 fn murmur128(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<BinaryType>= unary_elementwise(ca, murmurhash3_128);
+    let out: ChunkedArray<BinaryType> = unary_elementwise(ca, murmurhash3_128);
     Ok(out.into_series())
 }
-
 
 #[polars_expr(output_type=UInt32)]
 fn xxhash32(inputs: &[Series]) -> PolarsResult<Series> {
@@ -319,7 +316,6 @@ fn xxhash32(inputs: &[Series]) -> PolarsResult<Series> {
     let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, xxhash_32);
     Ok(out.into_series())
 }
-
 
 #[polars_expr(output_type=UInt64)]
 fn xxhash64(inputs: &[Series]) -> PolarsResult<Series> {
