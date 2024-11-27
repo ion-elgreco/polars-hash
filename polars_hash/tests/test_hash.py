@@ -1,4 +1,6 @@
 import polars as pl
+import pytest
+from polars.exceptions import ComputeError
 from polars.testing import assert_frame_equal
 
 import polars_hash as plh  # noqa: F401
@@ -200,3 +202,172 @@ def test_geohash_13():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+def test_murmurhash32():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.murmur32())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    3531928679,
+                    None,
+                    0,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_murmurhash32_seeded():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.murmur32(seed=42))
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    259561949,
+                    None,
+                    142593372,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_murmurhash128():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.murmur128())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    b"\x98,\xf3\x9e\x1c\x1a\xa5]\x1b\x07\x97\x16\x07l\x8de",
+                    None,
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                ],
+                dtype=pl.Binary,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxhash32():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.xxhash32())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    1605956417,
+                    None,
+                    46947589,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxhash64():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.xxhash64())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    5654987600477331689,
+                    None,
+                    17241709254077376921,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_big():
+    df = (
+        pl.DataFrame({"a": ["asdfasdf" * 1_000_000]})
+        .with_columns(pl.col("a").str.split(""))
+        .explode("a")
+    )
+    print(df.select(plh.col("a").nchash.xxhash64()))
+
+
+def test_xxhash32_seeded():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.xxhash32(seed=42))  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    1544934469,
+                    None,
+                    3586027192,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_xxhash64_seeded():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").nchash.xxhash64(seed=42))  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    17477110538672341566,
+                    None,
+                    11002672306508523268,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("hash_fn_expr"),
+    [
+        plh.col("literal").nchash.xxhash32(seed=None),  # type: ignore
+    ],
+)
+def test_forced_missing_seed_errors(hash_fn_expr):
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+
+    with pytest.raises(ComputeError, match="expected u32"):
+        df.select(hash_fn_expr)
