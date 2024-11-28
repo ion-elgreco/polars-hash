@@ -188,6 +188,26 @@ class NonCryptographicHashingNameSpace:
             kwargs={"seed": seed},
         )
 
+    def xxh3_64(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with XXH3 64bit."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="xxh3_64",
+            args=self._expr,
+            is_elementwise=True,
+            kwargs={"seed": seed},
+        )
+
+    def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns binary hash with XXH3 128bit."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="xxh3_128",
+            args=self._expr,
+            is_elementwise=True,
+            kwargs={"seed": seed},
+        )
+
 
 @pl.api.register_expr_namespace("geohash")
 class GeoHashingNameSpace:
