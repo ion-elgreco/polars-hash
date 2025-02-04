@@ -299,7 +299,7 @@ class HashConcatStr(Protocol):
         self,
         exprs: IntoExpr | Iterable[IntoExpr],
         *more_exprs: IntoExpr,
-        seperator: str = "",
+        separator: str = "",
     ) -> HExpr: ...
 
     def __getattr__(self, name: str) -> pl.Expr: ...
