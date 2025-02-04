@@ -300,6 +300,7 @@ class HashConcatStr(Protocol):
         exprs: IntoExpr | Iterable[IntoExpr],
         *more_exprs: IntoExpr,
         separator: str = "",
+        ignore_nulls: bool = False,
     ) -> HExpr: ...
 
     def __getattr__(self, name: str) -> pl.Expr: ...
