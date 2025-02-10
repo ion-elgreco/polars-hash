@@ -134,7 +134,7 @@ jobs:
     needs: [linux_tests, linux, macos, windows, sdist]
     steps:
       - name: Merge wheels
-        uses: actions/upload-artifacts/merge@v4
+        uses: actions/upload-artifact/merge@v4
         with:
           name: wheels
           pattern: wheels-*
