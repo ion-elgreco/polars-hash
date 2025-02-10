@@ -66,7 +66,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-linux-${{ matrix.target }}
           path: dist
 
   windows:
@@ -89,7 +89,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-windows-${{ matrix.target }}
           path: dist
 
   macos:
@@ -111,7 +111,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-macos-${{ matrix.target }}
           path: dist
 
   sdist:
@@ -126,14 +126,24 @@ jobs:
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-sdist
           path: dist
+
+  merge_wheels:
+    runs-on: ubuntu-latest
+    needs: [linux_tests, linux, macos, windows, sdist]
+    steps:
+      - name: Merge wheels
+        uses: actions/upload-artifacts/merge@v4
+        with:
+          name: wheels
+          pattern: wheels-*
 
   release:
     name: Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux_tests, linux, macos, windows, sdist]
+    needs: [linux_tests, linux, macos, windows, sdist, merge_wheels]
     steps:
       - uses: actions/download-artifact@v4
         with:
