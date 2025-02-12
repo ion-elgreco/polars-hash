@@ -30,6 +30,11 @@ struct SeedKwargs64bit {
     seed: u64,
 }
 
+#[derive(Deserialize)]
+struct LengthKwargs {
+    length: usize,
+}
+
 pub fn blake3_hash_str(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
     write!(output, "{}", hash).unwrap()
@@ -183,6 +188,17 @@ fn sha3_384(inputs: &[Series]) -> PolarsResult<Series> {
 fn sha3_224(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let out: StringChunked = ca.apply_into_string_amortized(sha3_224_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn sha3_shake128(inputs: &[Series], kwargs: LengthKwargs) -> PolarsResult<Series> {
+
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
+        sha3_shake128_hash(value, output, kwargs.length)
+    });
+
     Ok(out.into_series())
 }
 
