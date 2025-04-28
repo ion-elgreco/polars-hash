@@ -106,6 +106,16 @@ class CryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
+    def sha3_shake128(self, *, length: int) -> pl.Expr:
+        """Takes Utf8 as input and returns utf8 hash with shake128 from SHA-3 family."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="sha3_shake128",
+            args=self._expr,
+            is_elementwise=True,
+            kwargs={"length": length},
+        )
+
     def blake3(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with blake3."""
         return register_plugin_function(

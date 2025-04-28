@@ -36,6 +36,21 @@ def test_sha256():
     assert_frame_equal(result, expected)
 
 
+def test_sha3_shake128():
+    result = pl.select(pl.lit("hello_world").chash.sha3_shake128(length=10))  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                ["6b57b385e070e3534257"],
+                dtype=pl.Utf8,
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
 def test_wyhash_str():
     result = pl.select(pl.lit("hello_world").nchash.wyhash())  # type: ignore
 
