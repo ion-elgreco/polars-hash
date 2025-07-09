@@ -4,7 +4,7 @@ This plugin provides stable hashing functionality across different polars versio
 ### Cryptographic Hashers
 
 ```python
-import polars
+import polars as pl
 import polars_hash as plh
 
 df = pl.DataFrame({
