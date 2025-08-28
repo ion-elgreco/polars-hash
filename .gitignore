@@ -1,3 +1,4 @@
+polars_hash/target
 /pyo3-polars/target
 rust-toolchain.toml
 *.pyc
