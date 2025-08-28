@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "polars-hash"
 requires-python = ">=3.8"
 dependencies = [
-  'polars >= 0.20.6'
+  'polars >= 1.0.0'
 ]
 classifiers = [
   "Programming Language :: Rust",
@@ -18,6 +18,7 @@ authors = [
 ]
 description = "Stable non-cryptographic and cryptographic hashing functions for Polars"
 readme = "README.md"
+dynamic = ["version"]
 
 [project.urls]
 "Homepage" = "https://github.com/ion-elgreco/polars-hash"

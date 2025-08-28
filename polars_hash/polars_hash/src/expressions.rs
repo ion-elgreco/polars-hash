@@ -4,10 +4,8 @@ use polars::{
     chunked_array::ops::arity::{try_binary_elementwise, try_ternary_elementwise},
     prelude::*,
 };
-use polars_core::datatypes::{
-    DataType::{Float64, String, Struct},
-    Field,
-};
+use polars::datatypes::DataType;
+use polars::datatypes::Field;
 use pyo3_polars::derive::polars_expr;
 use std::fmt::Write;
 use std::{str, string};
@@ -156,10 +154,10 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
 
 pub fn geohash_decode_output(field: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
-        Field::new("longitude", Float64),
-        Field::new("latitude", Float64),
+        Field::new("longitude", DataType::Float64),
+        Field::new("latitude", DataType::Float64),
     ];
-    Ok(Field::new(field[0].name(), Struct(v)))
+    Ok(Field::new(field[0].name(), DataType::Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_decode_output)]
@@ -171,16 +169,16 @@ fn ghash_decode(inputs: &[Series]) -> PolarsResult<Series> {
 
 pub fn geohash_neighbors_output(field: &[Field]) -> PolarsResult<Field> {
     let v: Vec<Field> = vec![
-        Field::new("n", String),
-        Field::new("ne", String),
-        Field::new("e", String),
-        Field::new("se", String),
-        Field::new("s", String),
-        Field::new("sw", String),
-        Field::new("w", String),
-        Field::new("nw", String),
+        Field::new("n", DataType::String),
+        Field::new("ne", DataType::String),
+        Field::new("e", DataType::String),
+        Field::new("se", DataType::String),
+        Field::new("s", DataType::String),
+        Field::new("sw", DataType::String),
+        Field::new("w", DataType::String),
+        Field::new("nw", DataType::String),
     ];
-    Ok(Field::new(field[0].name(), Struct(v)))
+    Ok(Field::new(field[0].name(), DataType::Struct(v)))
 }
 
 #[polars_expr(output_type_func=geohash_neighbors_output)]

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
 import warnings
 from typing import Iterable, Protocol, cast
 
 import polars as pl
 from polars.type_aliases import IntoExpr, PolarsDataType
-from polars.utils._parse_expr_input import parse_as_expression
-from polars.utils._wrap import wrap_expr
-from polars.utils.udfs import _get_shared_lib_location
+from polars._utils.parse.expr import parse_into_expression
+from polars._utils.wrap import wrap_expr
+
 
 from ._internal import __version__ as __version__
 
-lib = _get_shared_lib_location(__file__)
+lib = Path(__file__).parent
 
 
 @pl.api.register_expr_namespace("chash")
@@ -150,7 +151,7 @@ class GeoHashingNameSpace:
 
     def from_coords(self, len: int | str | pl.Expr = 12) -> pl.Expr:
         """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
-        len_expr = wrap_expr(parse_as_expression(len))
+        len_expr = wrap_expr(parse_into_expression(len))
         return self._expr.register_plugin(
             lib=lib,
             args=[len_expr],
