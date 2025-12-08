@@ -2,6 +2,7 @@ use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
+use crate::uuid_hashers::{uuid5_dns_hash, uuid5_oid_hash, uuid5_url_hash, uuid5_x500_hash};
 use crate::xxhash_hashers::*;
 use polars::{
     chunked_array::ops::arity::{
@@ -375,5 +376,102 @@ fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> 
 
     let ca = inputs[0].str()?;
     let out: ChunkedArray<BinaryType> = unary_elementwise(ca, seeded_hash_function);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_dns(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_into_string_amortized(uuid5_dns_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_url(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_into_string_amortized(uuid5_url_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_oid(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_into_string_amortized(uuid5_oid_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_x500(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: StringChunked = ca.apply_into_string_amortized(uuid5_x500_hash);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let names = inputs[0].str()?;
+    let namespace_str = inputs[1].str()?;
+    let namespace_uuid = namespace_str
+        .get(0)
+        .ok_or_else(|| PolarsError::ComputeError("Namespace must be provided".into()))?;
+    
+    let namespace = uuid::Uuid::parse_str(namespace_uuid)
+        .map_err(|e| PolarsError::ComputeError(format!("Invalid namespace UUID: {}", e).into()))?;
+    
+    let out: StringChunked = names.apply_into_string_amortized(|value, output| {
+        output.push_str(&uuid::Uuid::new_v5(&namespace, value.as_bytes()).hyphenated().to_string())
+    });
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_concat(inputs: &[Series]) -> PolarsResult<Series> {
+    let col1 = inputs[0].str()?;
+    let col2 = inputs[1].str()?;
+    
+    let out: StringChunked = col1
+        .into_iter()
+        .zip(col2.into_iter())
+        .map(|(a_opt, b_opt)| {
+            a_opt.map(|a| {
+                let mut input = string::String::with_capacity(a.len() + b_opt.map_or(0, |b| b.len()));
+                input.push_str(a);
+                if let Some(b) = b_opt {
+                    input.push_str(b);
+                }
+                uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, input.as_bytes())
+                    .hyphenated()
+                    .to_string()
+            })
+        })
+        .collect();
+    
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn uuid5_concat_default(inputs: &[Series]) -> PolarsResult<Series> {
+    let col1 = inputs[0].str()?;
+    let col2_casted = inputs[1].cast(&DataType::String)?;
+    let col2 = col2_casted.str()?;
+    let default = inputs[2].str()?;
+    let default_val = default.get(0).unwrap_or("a");
+    
+    let out: StringChunked = col1
+        .into_iter()
+        .zip(col2.into_iter())
+        .map(|(a_opt, b_opt)| {
+            a_opt.map(|a| {
+                let b = b_opt.unwrap_or(default_val);
+                let mut input = string::String::with_capacity(a.len() + b.len());
+                input.push_str(a);
+                input.push_str(b);
+                uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, input.as_bytes())
+                    .hyphenated()
+                    .to_string()
+            })
+        })
+        .collect();
+    
     Ok(out.into_series())
 }

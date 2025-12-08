@@ -470,3 +470,43 @@ def test_xxh3_128_seeded():
     )
 
     assert_frame_equal(result, expected)
+
+def test_uuid5_url():
+    result = pl.select(pl.lit("https://example.com").uuidhash.uuid5_url())
+    expected = pl.DataFrame([
+        pl.Series("literal", ["4fd35a71-71ef-5a55-a9d9-aa75c889a6d0"], dtype=pl.Utf8),
+    ])
+    assert_frame_equal(result, expected)
+
+
+def test_uuid5_dns_null():
+    df = pl.DataFrame({"literal": ["hello", None, "world"]})
+    result = df.select(pl.col("literal").uuidhash.uuid5_dns())
+    expected = pl.DataFrame([
+        pl.Series("literal", [
+            "9342d47a-1bab-5709-9869-c840b2eac501",
+            None,
+            "b3a4c24e-f57a-5448-b81b-a643f6768036",
+        ], dtype=pl.Utf8),
+    ])
+    assert_frame_equal(result, expected)
+
+
+def test_uuid5_concat():
+    df = pl.DataFrame({"id": ["abc-123"], "side": ["a"]})
+    result = df.select(pl.col("id").uuidhash.uuid5_concat(pl.col("side")))
+    expected = pl.DataFrame([
+        pl.Series("id", ["e89d330c-f123-519c-a7a1-e48e46f30ccf"], dtype=pl.Utf8),
+    ])
+    assert_frame_equal(result, expected)
+
+
+def test_uuid5_concat_with_default():
+    df = pl.DataFrame({"id": ["abc-123"], "side": pl.Series([None], dtype=pl.Utf8)})
+    result = df.select(
+        pl.col("id").uuidhash.uuid5_concat(pl.col("side"), default="a")
+    )
+    expected = pl.DataFrame([
+        pl.Series("id", ["e89d330c-f123-519c-a7a1-e48e46f30ccf"], dtype=pl.Utf8),
+    ])
+    assert_frame_equal(result, expected)
