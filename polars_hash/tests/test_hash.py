@@ -472,7 +472,7 @@ def test_xxh3_128_seeded():
     assert_frame_equal(result, expected)
 
 def test_uuid5_url():
-    result = pl.select(pl.lit("https://example.com").uuidhash.uuid5_url())
+    result = pl.select(pl.lit("https://example.com").uuidhash.uuid5("url"))
     expected = pl.DataFrame([
         pl.Series("literal", ["4fd35a71-71ef-5a55-a9d9-aa75c889a6d0"], dtype=pl.Utf8),
     ])
@@ -481,7 +481,7 @@ def test_uuid5_url():
 
 def test_uuid5_dns_null():
     df = pl.DataFrame({"literal": ["hello", None, "world"]})
-    result = df.select(pl.col("literal").uuidhash.uuid5_dns())
+    result = df.select(pl.col("literal").uuidhash.uuid5())
     expected = pl.DataFrame([
         pl.Series("literal", [
             "9342d47a-1bab-5709-9869-c840b2eac501",

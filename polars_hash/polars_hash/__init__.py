@@ -272,38 +272,33 @@ class UUIDHashNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
 
-    def uuid5_dns(self) -> pl.Expr:
-        """Takes Utf8 as input and returns UUID5 using DNS namespace."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            args=[self._expr],
-            function_name="uuid5_dns",
-            is_elementwise=True,
-        )
+    def uuid5(self, namespace: str = "dns") -> pl.Expr:
+        """Generate UUID5 from string input using specified namespace.
 
-    def uuid5_url(self) -> pl.Expr:
-        """Takes Utf8 as input and returns UUID5 using URL namespace."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            args=[self._expr],
-            function_name="uuid5_url",
-            is_elementwise=True,
-        )
+        Args:
+            namespace: One of 'dns', 'url', 'oid', 'x500', or a custom UUID string.
+                      Defaults to 'dns'.
 
-    def uuid5(self, namespace: str | None = None) -> pl.Expr:
-        """Takes Utf8 as input and returns UUID5 using custom or DNS namespace."""
-        if namespace is None:
-            return self.uuid5_dns()
-
+        Returns:
+            Expression producing UUID5 strings.
+        """
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             args=[self._expr, pl.lit(namespace)],
-            function_name="uuid5_custom",
+            function_name="uuid5",
             is_elementwise=True,
         )
 
     def uuid5_concat(self, other: pl.Expr, default: str | None = None) -> pl.Expr:
-        """Concatenates two columns and returns UUID5 using DNS namespace."""
+        """Concatenate two columns and generate UUID5 using DNS namespace.
+
+        Args:
+            other: Second column to concatenate.
+            default: Value to use when other is null. If None, null is treated as empty string.
+
+        Returns:
+            Expression producing UUID5 strings.
+        """
         if default is not None:
             return register_plugin_function(
                 plugin_path=Path(__file__).parent,

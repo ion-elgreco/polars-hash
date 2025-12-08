@@ -2,7 +2,6 @@ use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
-use crate::uuid_hashers::{uuid5_dns_hash, uuid5_oid_hash, uuid5_url_hash, uuid5_x500_hash};
 use crate::xxhash_hashers::*;
 use polars::{
     chunked_array::ops::arity::{
@@ -380,45 +379,23 @@ fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> 
 }
 
 #[polars_expr(output_type=String)]
-fn uuid5_dns(inputs: &[Series]) -> PolarsResult<Series> {
+fn uuid5(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(uuid5_dns_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=String)]
-fn uuid5_url(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(uuid5_url_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=String)]
-fn uuid5_oid(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(uuid5_oid_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=String)]
-fn uuid5_x500(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(uuid5_x500_hash);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=String)]
-fn uuid5_custom(inputs: &[Series]) -> PolarsResult<Series> {
-    let names = inputs[0].str()?;
     let namespace_str = inputs[1].str()?;
-    let namespace_uuid = namespace_str
+    let ns_value = namespace_str
         .get(0)
         .ok_or_else(|| PolarsError::ComputeError("Namespace must be provided".into()))?;
-    
-    let namespace = uuid::Uuid::parse_str(namespace_uuid)
-        .map_err(|e| PolarsError::ComputeError(format!("Invalid namespace UUID: {}", e).into()))?;
-    
-    let out: StringChunked = names.apply_into_string_amortized(|value, output| {
+
+    let namespace = match ns_value.to_lowercase().as_str() {
+        "dns" => uuid::Uuid::NAMESPACE_DNS,
+        "url" => uuid::Uuid::NAMESPACE_URL,
+        "oid" => uuid::Uuid::NAMESPACE_OID,
+        "x500" => uuid::Uuid::NAMESPACE_X500,
+        _ => uuid::Uuid::parse_str(ns_value)
+            .map_err(|e| PolarsError::ComputeError(format!("Invalid namespace '{}': {}", ns_value, e).into()))?,
+    };
+
+    let out: StringChunked = ca.apply_into_string_amortized(|value, output| {
         output.push_str(&uuid::Uuid::new_v5(&namespace, value.as_bytes()).hyphenated().to_string())
     });
     Ok(out.into_series())

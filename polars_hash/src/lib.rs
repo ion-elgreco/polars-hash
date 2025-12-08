@@ -4,7 +4,6 @@ mod h3;
 mod murmurhash_hashers;
 mod sha_hashers;
 mod xxhash_hashers;
-mod uuid_hashers;
 
 use pyo3::types::{PyModule, PyModuleMethods};
 use pyo3::{pymodule, Bound, PyResult, Python};
