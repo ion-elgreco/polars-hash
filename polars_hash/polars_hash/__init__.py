@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from enum import Enum
 from pathlib import Path
 from typing import Iterable, Protocol, cast
 
@@ -267,17 +268,23 @@ class H3NameSpace:
         )
 
 
+class UUIDNamespace(str, Enum):
+    """Standard namespace for UUID(v5) generation"""
+    DNS = "dns"
+    URL = "url"
+    OID = "oid"
+    X500 = "x500"
+    
 @pl.api.register_expr_namespace("uuidhash")
 class UUIDHashNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
-
-    def uuid5(self, namespace: str = "dns") -> pl.Expr:
+    
+    def uuid5(self, namespace: UUIDNamespace|str = UUIDNamespace.DNS) -> pl.Expr:
         """Generate UUID5 from string input using specified namespace.
 
-        Args:
-            namespace: One of 'dns', 'url', 'oid', 'x500', or a custom UUID string.
-                      Defaults to 'dns'.
+        Args: namespace:
+        UUIDNamespace.{DNS | URL | OID | X500} or a custom UUID string.
 
         Returns:
             Expression producing UUID5 strings.
@@ -382,4 +389,4 @@ col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
-__all__ = ["col", "concat_str", "__version__"]
+__all__ = ["col", "concat_str", "UUIDNamespace", "__version__"]
