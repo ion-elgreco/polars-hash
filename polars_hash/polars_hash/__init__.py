@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from enum import Enum
 from pathlib import Path
 from typing import Iterable, Protocol, cast
 
@@ -267,6 +268,59 @@ class H3NameSpace:
         )
 
 
+class UUIDNamespace(str, Enum):
+    """Standard namespace for UUID(v5) generation"""
+    DNS = "dns"
+    URL = "url"
+    OID = "oid"
+    X500 = "x500"
+    
+@pl.api.register_expr_namespace("uuidhash")
+class UUIDHashNameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+    
+    def uuid5(self, namespace: UUIDNamespace|str = UUIDNamespace.DNS) -> pl.Expr:
+        """Generate UUID5 from string input using specified namespace.
+
+        Args: namespace:
+        UUIDNamespace.{DNS | URL | OID | X500} or a custom UUID string.
+
+        Returns:
+            Expression producing UUID5 strings.
+        """
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            args=[self._expr, pl.lit(namespace)],
+            function_name="uuid5",
+            is_elementwise=True,
+        )
+
+    def uuid5_concat(self, other: pl.Expr, default: str | None = None) -> pl.Expr:
+        """Concatenate two columns and generate UUID5 using DNS namespace.
+
+        Args:
+            other: Second column to concatenate.
+            default: Value to use when other is null. If None, null is treated as empty string.
+
+        Returns:
+            Expression producing UUID5 strings.
+        """
+        if default is not None:
+            return register_plugin_function(
+                plugin_path=Path(__file__).parent,
+                function_name="uuid5_concat_default",
+                args=[self._expr, other, pl.lit(default)],
+                is_elementwise=True,
+            )
+
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="uuid5_concat",
+            args=[self._expr, other],
+            is_elementwise=True,
+        )
+
 class HExpr(pl.Expr):
     @property
     def chash(self) -> CryptographicHashingNameSpace:
@@ -283,6 +337,10 @@ class HExpr(pl.Expr):
     @property
     def h3(self) -> H3NameSpace:
         return H3NameSpace(self)
+    
+    @property
+    def uuidhash(self) -> UUIDHashNameSpace:
+        return UUIDHashNameSpace(self)
 
 
 class HashColumn(Protocol):
@@ -302,6 +360,9 @@ class HashColumn(Protocol):
 
     @property
     def geohash(self) -> GeoHashingNameSpace: ...
+    
+    @property
+    def uuidhash(self) -> UUIDHashNameSpace: ...
 
 
 class HashConcatStr(Protocol):
@@ -321,9 +382,11 @@ class HashConcatStr(Protocol):
     @property
     def nchash(self) -> NonCryptographicHashingNameSpace: ...
 
+    @property
+    def uuidhash(self) -> UUIDHashNameSpace: ...
 
 col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
-__all__ = ["col", "concat_str", "__version__"]
+__all__ = ["col", "concat_str", "UUIDNamespace", "__version__"]

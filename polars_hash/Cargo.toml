@@ -24,6 +24,7 @@ h3o = { version = "0.6.4" }
 xxhash-rust = { version = "0.8.12", features = ["xxh32", "xxh64"] }
 mur3 = { version = "0.1.0" }
 hex = {version = "0.4"}
+uuid = { version = "1.19.0", features = ["v5"] }
 
 
 [target.'cfg(target_os = "linux")'.dependencies]
