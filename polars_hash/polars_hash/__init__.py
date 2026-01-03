@@ -270,17 +270,19 @@ class H3NameSpace:
 
 class UUIDNamespace(str, Enum):
     """Standard namespace for UUID(v5) generation"""
+
     DNS = "dns"
     URL = "url"
     OID = "oid"
     X500 = "x500"
-    
+
+
 @pl.api.register_expr_namespace("uuidhash")
 class UUIDHashNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
-    
-    def uuid5(self, namespace: UUIDNamespace|str = UUIDNamespace.DNS) -> pl.Expr:
+
+    def uuid5(self, namespace: UUIDNamespace | str = UUIDNamespace.DNS) -> pl.Expr:
         """Generate UUID5 from string input using specified namespace.
 
         Args: namespace:
@@ -321,6 +323,7 @@ class UUIDHashNameSpace:
             is_elementwise=True,
         )
 
+
 class HExpr(pl.Expr):
     @property
     def chash(self) -> CryptographicHashingNameSpace:
@@ -337,7 +340,7 @@ class HExpr(pl.Expr):
     @property
     def h3(self) -> H3NameSpace:
         return H3NameSpace(self)
-    
+
     @property
     def uuidhash(self) -> UUIDHashNameSpace:
         return UUIDHashNameSpace(self)
@@ -360,7 +363,7 @@ class HashColumn(Protocol):
 
     @property
     def geohash(self) -> GeoHashingNameSpace: ...
-    
+
     @property
     def uuidhash(self) -> UUIDHashNameSpace: ...
 
@@ -384,6 +387,7 @@ class HashConcatStr(Protocol):
 
     @property
     def uuidhash(self) -> UUIDHashNameSpace: ...
+
 
 col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
