@@ -219,6 +219,24 @@ class NonCryptographicHashingNameSpace:
             kwargs={"seed": seed},
         )
 
+    def farmhash32(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with FarmHash fingerprint32."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="farmhash32",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def farmhash64(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint64 hash with FarmHash fingerprint64."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="farmhash64",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
 
 @pl.api.register_expr_namespace("geohash")
 class GeoHashingNameSpace:
