@@ -60,7 +60,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter --manifest-path polars_hash/Cargo.toml
+          args: --release --out dist -i python3.8 --manifest-path polars_hash/Cargo.toml
           sccache: 'true'
           manylinux: auto
       - name: Upload wheels
