@@ -131,6 +131,30 @@ def test_blake3_bytes():
     assert_frame_equal(result, expected)
 
 
+def test_farmhash32():
+    result = pl.select(pl.lit("hello world").nchash.farmhash32())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("literal", [430397466], dtype=pl.UInt32),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_farmhash64():
+    result = pl.select(pl.lit("hello world").nchash.farmhash64())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("literal", [6381520714923946011], dtype=pl.UInt64),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
 def test_geohash():
     df = pl.DataFrame(
         {"coord": [{"longitude": -120.6623, "latitude": 35.3003}]},

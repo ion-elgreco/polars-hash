@@ -65,6 +65,14 @@ fn wyhash_hash_bytes(value: Option<&[u8]>) -> Option<u64> {
     value.map(|v| real_wyhash(v, 0))
 }
 
+fn farmhash_fingerprint32(value: Option<&str>) -> Option<u32> {
+    value.map(|v| farmhash::fingerprint32(v.as_bytes()))
+}
+
+fn farmhash_fingerprint64(value: Option<&str>) -> Option<u64> {
+    value.map(|v| farmhash::fingerprint64(v.as_bytes()))
+}
+
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     let s = inputs.get(0).expect("no series received");
@@ -84,6 +92,20 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
             "wyhash only works on strings or binary data".into(),
         )),
     }
+}
+
+#[polars_expr(output_type=UInt32)]
+fn farmhash32(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, farmhash_fingerprint32);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=UInt64)]
+fn farmhash64(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, farmhash_fingerprint64);
+    Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
