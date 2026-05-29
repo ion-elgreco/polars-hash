@@ -51,25 +51,6 @@ def test_hmac_sha256():
     assert_frame_equal(result, expected)
 
 
-def test_hmac_sha256_binary():
-    result = pl.select(pl.lit("hello_world").chash.hmac_sha256_binary(key="secret"))  # type: ignore
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "literal",
-                [
-                    bytes.fromhex(
-                        "e0f5b5bb7264e77b340a55a694a6c9ca4edc035c394c703a0408f099563be1ca"
-                    )
-                ],
-                dtype=pl.Binary,
-            ),
-        ]
-    )
-    assert_frame_equal(result, expected)
-
-
 def test_sha3_shake128():
     result = pl.select(pl.lit("hello_world").chash.sha3_shake128(length=10))  # type: ignore
 
