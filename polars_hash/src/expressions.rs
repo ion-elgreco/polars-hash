@@ -236,10 +236,10 @@ fn sha3_shake128(inputs: &[Series], kwargs: LengthKwargs) -> PolarsResult<Series
 #[polars_expr(output_type=String)]
 fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let template = HmacSha256::new_from_slice(kwargs.key.as_bytes())
+    let keyed_mac = HmacSha256::new_from_slice(kwargs.key.as_bytes())
         .map_err(|e| PolarsError::ComputeError(format!("invalid HMAC key: {e}").into()))?;
     let out: StringChunked = ca.apply_into_string_amortized(|msg, buf| {
-        let mut mac = template.clone();
+        let mut mac = keyed_mac.clone();
         mac.update(msg.as_bytes());
         write!(buf, "{:x}", mac.finalize().into_bytes()).unwrap();
     });
@@ -249,11 +249,11 @@ fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
 #[polars_expr(output_type=Binary)]
 fn hmac_sha256_binary(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let template = HmacSha256::new_from_slice(kwargs.key.as_bytes())
+    let keyed_mac = HmacSha256::new_from_slice(kwargs.key.as_bytes())
         .map_err(|e| PolarsError::ComputeError(format!("invalid HMAC key: {e}").into()))?;
     let out: ChunkedArray<BinaryType> = unary_elementwise(ca, |opt_msg| {
         opt_msg.map(|msg| {
-            let mut mac = template.clone();
+            let mut mac = keyed_mac.clone();
             mac.update(msg.as_bytes());
             mac.finalize().into_bytes().to_vec()
         })
