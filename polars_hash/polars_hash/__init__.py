@@ -126,21 +126,11 @@ class CryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
-    def hmac_sha256(self, key: str) -> pl.Expr:
+    def hmac_sha256(self, *, key: str) -> pl.Expr:
         """Takes Utf8 as input and returns hex-encoded HMAC-SHA256 string."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="hmac_sha256",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"key": key},
-        )
-
-    def hmac_sha256_binary(self, key: str) -> pl.Expr:
-        """Takes Utf8 as input and returns 32-byte HMAC-SHA256 as Binary."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="hmac_sha256_binary",
             args=self._expr,
             is_elementwise=True,
             kwargs={"key": key},

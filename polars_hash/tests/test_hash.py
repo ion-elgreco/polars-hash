@@ -51,6 +51,13 @@ def test_hmac_sha256():
     assert_frame_equal(result, expected)
 
 
+def test_hmac_sha256_null():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(pl.col("literal").chash.hmac_sha256(key="secret"))  # type: ignore
+
+    assert result["literal"][1] is None
+
+
 def test_sha3_shake128():
     result = pl.select(pl.lit("hello_world").chash.sha3_shake128(length=10))  # type: ignore
 
