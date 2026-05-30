@@ -237,8 +237,8 @@ fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
     let keyed_mac = HmacSha256::new_from_slice(kwargs.key.as_bytes())
         .map_err(|e| PolarsError::ComputeError(format!("invalid HMAC key: {e}").into()))?;
     let out: StringChunked =
-        ca.apply_into_string_amortized(|msg: &str, buf: &mut string::String| {
-            hmac_sha256_hash(msg, buf, &keyed_mac);
+        ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
+            hmac_sha256_hash(value, output, &keyed_mac);
         });
     Ok(out.into_series())
 }
