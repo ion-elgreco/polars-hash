@@ -1,6 +1,7 @@
 mod expressions;
 mod geohashers;
 mod h3;
+mod hmac_hashers;
 mod murmurhash_hashers;
 mod sha_hashers;
 mod xxhash_hashers;

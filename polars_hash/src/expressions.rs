@@ -1,8 +1,10 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
+use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
 use crate::xxhash_hashers::*;
+use hmac::Mac;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
@@ -33,6 +35,11 @@ struct SeedKwargs64bit {
 #[derive(Deserialize)]
 struct LengthKwargs {
     length: usize,
+}
+
+#[derive(Deserialize)]
+struct HmacKwargs {
+    key: string::String,
 }
 
 pub fn blake3_hash_str(value: &str, output: &mut string::String) {
@@ -215,12 +222,24 @@ fn sha3_224(inputs: &[Series]) -> PolarsResult<Series> {
 
 #[polars_expr(output_type=String)]
 fn sha3_shake128(inputs: &[Series], kwargs: LengthKwargs) -> PolarsResult<Series> {
-
     let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
-        sha3_shake128_hash(value, output, kwargs.length)
-    });
+    let out: StringChunked =
+        ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
+            sha3_shake128_hash(value, output, kwargs.length)
+        });
 
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let keyed_mac = HmacSha256::new_from_slice(kwargs.key.as_bytes())
+        .map_err(|e| PolarsError::ComputeError(format!("invalid HMAC key: {e}").into()))?;
+    let out: StringChunked =
+        ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
+            hmac_sha256_hash(value, output, &keyed_mac);
+        });
     Ok(out.into_series())
 }
 
@@ -413,12 +432,17 @@ fn uuid5(inputs: &[Series]) -> PolarsResult<Series> {
         "url" => uuid::Uuid::NAMESPACE_URL,
         "oid" => uuid::Uuid::NAMESPACE_OID,
         "x500" => uuid::Uuid::NAMESPACE_X500,
-        _ => uuid::Uuid::parse_str(ns_value)
-            .map_err(|e| PolarsError::ComputeError(format!("Invalid namespace '{}': {}", ns_value, e).into()))?,
+        _ => uuid::Uuid::parse_str(ns_value).map_err(|e| {
+            PolarsError::ComputeError(format!("Invalid namespace '{}': {}", ns_value, e).into())
+        })?,
     };
 
     let out: StringChunked = ca.apply_into_string_amortized(|value, output| {
-        output.push_str(&uuid::Uuid::new_v5(&namespace, value.as_bytes()).hyphenated().to_string())
+        output.push_str(
+            &uuid::Uuid::new_v5(&namespace, value.as_bytes())
+                .hyphenated()
+                .to_string(),
+        )
     });
     Ok(out.into_series())
 }
@@ -427,13 +451,14 @@ fn uuid5(inputs: &[Series]) -> PolarsResult<Series> {
 fn uuid5_concat(inputs: &[Series]) -> PolarsResult<Series> {
     let col1 = inputs[0].str()?;
     let col2 = inputs[1].str()?;
-    
+
     let out: StringChunked = col1
         .into_iter()
         .zip(col2.into_iter())
         .map(|(a_opt, b_opt)| {
             a_opt.map(|a| {
-                let mut input = string::String::with_capacity(a.len() + b_opt.map_or(0, |b| b.len()));
+                let mut input =
+                    string::String::with_capacity(a.len() + b_opt.map_or(0, |b| b.len()));
                 input.push_str(a);
                 if let Some(b) = b_opt {
                     input.push_str(b);
@@ -444,7 +469,7 @@ fn uuid5_concat(inputs: &[Series]) -> PolarsResult<Series> {
             })
         })
         .collect();
-    
+
     Ok(out.into_series())
 }
 
@@ -455,7 +480,7 @@ fn uuid5_concat_default(inputs: &[Series]) -> PolarsResult<Series> {
     let col2 = col2_casted.str()?;
     let default = inputs[2].str()?;
     let default_val = default.get(0).unwrap_or("a");
-    
+
     let out: StringChunked = col1
         .into_iter()
         .zip(col2.into_iter())
@@ -471,6 +496,6 @@ fn uuid5_concat_default(inputs: &[Series]) -> PolarsResult<Series> {
             })
         })
         .collect();
-    
+
     Ok(out.into_series())
 }

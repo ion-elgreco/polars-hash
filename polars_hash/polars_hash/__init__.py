@@ -126,6 +126,16 @@ class CryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
+    def hmac_sha256(self, *, key: str) -> pl.Expr:
+        """Takes Utf8 as input and returns hex-encoded HMAC-SHA256 string."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="hmac_sha256",
+            args=self._expr,
+            is_elementwise=True,
+            kwargs={"key": key},
+        )
+
 
 @pl.api.register_expr_namespace("nchash")
 class NonCryptographicHashingNameSpace:
