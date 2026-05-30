@@ -1,12 +1,10 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
+use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
 use crate::xxhash_hashers::*;
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
-
-type HmacSha256 = Hmac<Sha256>;
+use hmac::Mac;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
@@ -240,9 +238,7 @@ fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
         .map_err(|e| PolarsError::ComputeError(format!("invalid HMAC key: {e}").into()))?;
     let out: StringChunked =
         ca.apply_into_string_amortized(|msg: &str, buf: &mut string::String| {
-            let mut mac = keyed_mac.clone();
-            mac.update(msg.as_bytes());
-            write!(buf, "{:x}", mac.finalize().into_bytes()).unwrap();
+            hmac_sha256_hash(msg, buf, &keyed_mac);
         });
     Ok(out.into_series())
 }
