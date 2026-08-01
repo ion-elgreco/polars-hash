@@ -3,7 +3,7 @@ import pytest
 from polars.exceptions import ComputeError
 from polars.testing import assert_frame_equal
 
-import polars_hash as plh  # noqa: F401
+import polars_hash as plh
 
 
 def test_sha1():
@@ -250,6 +250,31 @@ def test_h3():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (91.0, -120.6623),
+        (999.0, -120.6623),
+        (-999.0, -120.6623),
+        (35.3003, 181.0),
+        (float("nan"), -120.6623),
+        (float("inf"), -120.6623),
+    ],
+)
+def test_h3_invalid_coords(latitude, longitude):
+    df = pl.DataFrame(
+        {"coord": [{"longitude": longitude, "latitude": latitude}]},
+        schema={
+            "coord": pl.Struct(
+                [pl.Field("longitude", pl.Float64), pl.Field("latitude", pl.Float64)]
+            ),
+        },
+    )
+
+    with pytest.raises(ComputeError, match="invalid coordinate range"):
+        df.select(pl.col("coord").h3.from_coords(5))  # type: ignore
 
 
 def test_lazy_name():
