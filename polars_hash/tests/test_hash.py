@@ -119,6 +119,19 @@ def test_md5_bytes():
     assert_frame_equal(result, expected)
 
 
+def test_md5_bytes_null():
+    df = pl.DataFrame({"b": pl.Series([b"my_bytes", None], dtype=pl.Binary)})
+    result = df.select(pl.col("b").nchash.md5())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("b", ["4445d78d11baa258c5f4ac1b8d33b8ba", None], dtype=pl.Utf8),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
 def test_blake3_str():
     result = pl.select(pl.lit("hello_world").chash.blake3())  # type: ignore
 
@@ -143,6 +156,26 @@ def test_blake3_bytes():
             pl.Series(
                 "literal",
                 ["4656d42e3468733c9316ef5d4e4488682fc41ad441644ca63cde6aced8378605"],
+                dtype=pl.Utf8,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_blake3_bytes_null():
+    df = pl.DataFrame({"b": pl.Series([b"my_bytes", None], dtype=pl.Binary)})
+    result = df.select(pl.col("b").chash.blake3())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "b",
+                [
+                    "4656d42e3468733c9316ef5d4e4488682fc41ad441644ca63cde6aced8378605",
+                    None,
+                ],
                 dtype=pl.Utf8,
             ),
         ]
