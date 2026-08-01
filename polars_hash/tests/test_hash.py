@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import polars as pl
 import pytest
 from polars.exceptions import ComputeError
+from polars.plugins import register_plugin_function
 from polars.testing import assert_frame_equal
 
 import polars_hash as plh  # noqa: F401
@@ -255,6 +258,20 @@ def test_from_coords_null_coords():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+def test_uuid5_concat_null_default():
+    df = pl.DataFrame({"id": ["abc-123"], "side": pl.Series([None], dtype=pl.Utf8)})
+
+    expr = register_plugin_function(
+        plugin_path=Path(plh.__file__).parent,
+        function_name="uuid5_concat_default",
+        args=[pl.col("id"), pl.col("side"), pl.lit(None, dtype=pl.Utf8)],
+        is_elementwise=True,
+    )
+
+    with pytest.raises(ComputeError, match="Default value may not be null"):
+        df.select(expr)
 
 
 def test_lazy_name():

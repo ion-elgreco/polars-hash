@@ -479,7 +479,9 @@ fn uuid5_concat_default(inputs: &[Series]) -> PolarsResult<Series> {
     let col2_casted = inputs[1].cast(&DataType::String)?;
     let col2 = col2_casted.str()?;
     let default = inputs[2].str()?;
-    let default_val = default.get(0).unwrap_or("a");
+    let default_val = default
+        .get(0)
+        .ok_or_else(|| PolarsError::ComputeError("Default value may not be null".into()))?;
 
     let out: StringChunked = col1
         .into_iter()
