@@ -219,6 +219,22 @@ def test_h3():
     assert_frame_equal(result, expected)
 
 
+@pytest.mark.parametrize(
+    "dtype",
+    [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64],
+)
+def test_from_coords_length_dtypes(dtype):
+    df = pl.DataFrame(
+        {"latitude": [35.3003], "longitude": [-120.6623]},
+    ).with_columns(coord=pl.struct(["latitude", "longitude"]), n=pl.lit(5, dtype=dtype))
+
+    assert df.select(pl.col("coord").geohash.from_coords("n")).to_series()[0] == "9q60y"  # type: ignore
+    assert (
+        df.select(pl.col("coord").h3.from_coords("n")).to_series()[0]  # type: ignore
+        == "8529adc7fffffff"
+    )
+
+
 def test_lazy_name():
     result = (
         pl.from_dicts({"h1": "sp1xk2m6194y"})
