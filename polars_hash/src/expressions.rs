@@ -48,9 +48,7 @@ pub fn blake3_hash_str(value: &str, output: &mut string::String) {
 }
 
 pub fn blake3_hash_bytes(value: Option<&[u8]>) -> Option<string::String> {
-    let hash = blake3::hash(value.unwrap());
-    let res = format!("{}", hash);
-    Some(res)
+    value.map(|v| format!("{}", blake3::hash(v)))
 }
 
 pub fn md5_hash_str(value: &str, output: &mut string::String) {
@@ -59,9 +57,7 @@ pub fn md5_hash_str(value: &str, output: &mut string::String) {
 }
 
 pub fn md5_hash_bytes(value: Option<&[u8]>) -> Option<string::String> {
-    let hash = md5::compute(value.unwrap());
-    let res = format!("{:x}", hash);
-    Some(res)
+    value.map(|v| format!("{:x}", md5::compute(v)))
 }
 
 fn wyhash_hash_str(value: Option<&str>) -> Option<u64> {
