@@ -21,7 +21,7 @@ sha3 = { version = "0.10.8" }
 blake3 = { version = "1.5.4" }
 md5 = { version = "0.7.0" }
 h3o = { version = "0.6.4" }
-xxhash-rust = { version = "0.8.12", features = ["xxh32", "xxh64"] }
+xxhash-rust = { version = "0.8.12", features = ["xxh32", "xxh64", "xxh3"] }
 mur3 = { version = "0.1.0" }
 hex = {version = "0.4"}
 uuid = { version = "1.19.0", features = ["v5"] }
