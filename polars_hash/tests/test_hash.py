@@ -235,6 +235,28 @@ def test_from_coords_length_dtypes(dtype):
     )
 
 
+def test_from_coords_null_coords():
+    df = pl.DataFrame(
+        {
+            "latitude": pl.Series([35.3003, None], dtype=pl.Float64),
+            "longitude": pl.Series([-120.6623, None], dtype=pl.Float64),
+        }
+    ).with_columns(coord=pl.struct(["latitude", "longitude"]))
+
+    result = df.select(
+        geohash=pl.col("coord").geohash.from_coords(5),  # type: ignore
+        h3=pl.col("coord").h3.from_coords(5),  # type: ignore
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("geohash", ["9q60y", None], dtype=pl.Utf8),
+            pl.Series("h3", ["8529adc7fffffff", None], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
 def test_lazy_name():
     result = (
         pl.from_dicts({"h1": "sp1xk2m6194y"})
