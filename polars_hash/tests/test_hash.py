@@ -6,7 +6,7 @@ from polars.exceptions import ComputeError
 from polars.plugins import register_plugin_function
 from polars.testing import assert_frame_equal
 
-import polars_hash as plh  # noqa: F401
+import polars_hash as plh
 
 
 def test_sha1():
@@ -122,6 +122,19 @@ def test_md5_bytes():
     assert_frame_equal(result, expected)
 
 
+def test_md5_bytes_null():
+    df = pl.DataFrame({"b": pl.Series([b"my_bytes", None], dtype=pl.Binary)})
+    result = df.select(pl.col("b").nchash.md5())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("b", ["4445d78d11baa258c5f4ac1b8d33b8ba", None], dtype=pl.Utf8),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
 def test_blake3_str():
     result = pl.select(pl.lit("hello_world").chash.blake3())  # type: ignore
 
@@ -146,6 +159,26 @@ def test_blake3_bytes():
             pl.Series(
                 "literal",
                 ["4656d42e3468733c9316ef5d4e4488682fc41ad441644ca63cde6aced8378605"],
+                dtype=pl.Utf8,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_blake3_bytes_null():
+    df = pl.DataFrame({"b": pl.Series([b"my_bytes", None], dtype=pl.Binary)})
+    result = df.select(pl.col("b").chash.blake3())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "b",
+                [
+                    "4656d42e3468733c9316ef5d4e4488682fc41ad441644ca63cde6aced8378605",
+                    None,
+                ],
                 dtype=pl.Utf8,
             ),
         ]
@@ -220,6 +253,31 @@ def test_h3():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (91.0, -120.6623),
+        (999.0, -120.6623),
+        (-999.0, -120.6623),
+        (35.3003, 181.0),
+        (float("nan"), -120.6623),
+        (float("inf"), -120.6623),
+    ],
+)
+def test_h3_invalid_coords(latitude, longitude):
+    df = pl.DataFrame(
+        {"coord": [{"longitude": longitude, "latitude": latitude}]},
+        schema={
+            "coord": pl.Struct(
+                [pl.Field("longitude", pl.Float64), pl.Field("latitude", pl.Float64)]
+            ),
+        },
+    )
+
+    with pytest.raises(ComputeError, match="invalid coordinate range"):
+        df.select(pl.col("coord").h3.from_coords(5))  # type: ignore
 
 
 @pytest.mark.parametrize(
