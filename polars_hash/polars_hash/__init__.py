@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Protocol, cast
+from typing import Protocol, cast
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -421,4 +422,4 @@ col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
-__all__ = ["col", "concat_str", "UUIDNamespace", "__version__"]
+__all__ = ["UUIDNamespace", "__version__", "col", "concat_str"]

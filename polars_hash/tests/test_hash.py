@@ -3,7 +3,7 @@ import pytest
 from polars.exceptions import ComputeError
 from polars.testing import assert_frame_equal
 
-import polars_hash as plh  # noqa: F401
+import polars_hash as plh
 
 
 def test_sha1():
