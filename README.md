@@ -214,10 +214,8 @@ result = df.select(plh.concat_str("foo", "bar").chash.sha256())
 
 ## Hash a whole row
 
-`concat_str` runs the columns together, so `("ab", "c")` and `("a", "bc")` reach the
-same digest, one null makes the whole row null, and a `List` or a `Struct` has no
-string form at all. `encode_rows` gives each row bytes no other row can produce, and
-any hasher takes them from there.
+`encode_rows` gives each row bytes no other row can produce, whatever its columns
+hold, and any hasher takes them from there.
 
 ```python
 df = pl.DataFrame(
