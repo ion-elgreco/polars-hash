@@ -27,7 +27,7 @@ shows a different type. Full page: [chash](cryptographic.md).
 | [`chash.sha3_384()`](cryptographic.md#sha3_384) | Utf8, Binary | Utf8 | SHA3-384 from the SHA-3 family. |
 | [`chash.sha3_512()`](cryptographic.md#sha3_512) | Utf8, Binary | Utf8 | SHA3-512 from the SHA-3 family. |
 | [`chash.sha3_shake128(length)`](cryptographic.md#sha3_shake128) | Utf8, Binary | Utf8 | SHAKE128 extendable-output function. Gives `length` bytes. |
-| [`chash.blake3()`](cryptographic.md#blake3) | Utf8, Binary | Utf8, Binary | BLAKE3 with 256-bit output. |
+| [`chash.blake3()`](cryptographic.md#blake3) | Utf8, Binary | Utf8 | BLAKE3 with 256-bit output. |
 | [`chash.hmac_sha256(key)`](cryptographic.md#hmac_sha256) | Utf8, Binary | Utf8 | Keyed HMAC-SHA256. |
 | [`chash.sha256()`](cryptographic.md#sha256) | Utf8, Binary | Utf8 | **Deprecated.** Alias of `sha2_256()`. |
 
@@ -52,7 +52,7 @@ Full page: [nchash](non-cryptographic.md).
 | [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8, Binary | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
 | [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8, Binary | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
 | [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 | GxHash with 128-bit output. Needs a CPU with AES instructions. |
-| [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8, Binary | MD5. |
+| [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
 | [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8, Binary | Utf8 | SHA-1. |
 
 ## `geohash` — geohash

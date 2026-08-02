@@ -2098,3 +2098,17 @@ def test_hash_rows_points_the_deprecated_alias_at_its_replacement():
 
     with pytest.raises(ValueError, match="unknown algorithm 'sha256'"):
         plh.hash_rows(df, algorithm="sha256")
+
+
+def test_every_byte_hasher_says_so_in_its_docstring():
+    """`help()` and an IDE hover are the last place the removed Utf8-only rule can
+    survive, and nothing else checks them."""
+    classes = {
+        "chash": plh.CryptographicHashingNameSpace,
+        "nchash": plh.NonCryptographicHashingNameSpace,
+        "uuidhash": plh.UUIDHashNameSpace,
+    }
+
+    for namespace, method, _ in _BYTE_HASHERS:
+        doc = getattr(classes[namespace], method).__doc__ or ""
+        assert "Binary" in doc, f"{namespace}.{method} does not mention Binary"

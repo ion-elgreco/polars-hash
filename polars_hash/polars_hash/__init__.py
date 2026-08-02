@@ -57,7 +57,7 @@ class CryptographicHashingNameSpace:
         self._expr = expr
 
     def sha256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-2 family."""
         warnings.warn(
             "Call to deprecated method chash.sha256. Use chash.sha2_256() instead.",
             category=DeprecationWarning,
@@ -66,47 +66,47 @@ class CryptographicHashingNameSpace:
         return _plugin("sha2_256", self._expr)
 
     def sha2_256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-2 family."""
         return _plugin("sha2_256", self._expr)
 
     def sha2_512(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha512 from SHA-2 family."""
         return _plugin("sha2_512", self._expr)
 
     def sha2_384(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha384 from SHA-2 family."""
         return _plugin("sha2_384", self._expr)
 
     def sha2_224(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha224 from SHA-2 family."""
         return _plugin("sha2_224", self._expr)
 
     def sha3_256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-3 family."""
         return _plugin("sha3_256", self._expr)
 
     def sha3_512(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha512 from SHA-3 family."""
         return _plugin("sha3_512", self._expr)
 
     def sha3_384(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha384 from SHA-3 family."""
         return _plugin("sha3_384", self._expr)
 
     def sha3_224(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha224 from SHA-3 family."""
         return _plugin("sha3_224", self._expr)
 
     def sha3_shake128(self, *, length: int) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with shake128 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with shake128 from SHA-3 family."""
         return _plugin("sha3_shake128", self._expr, length=length)
 
     def blake3(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with blake3."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with blake3."""
         return _plugin("blake3", self._expr)
 
     def hmac_sha256(self, *, key: str) -> pl.Expr:
-        """Takes Utf8 as input and returns hex-encoded HMAC-SHA256 string."""
+        """Takes Utf8 or Binary as input and returns hex-encoded HMAC-SHA256 string."""
         return _plugin("hmac_sha256", self._expr, key=key)
 
 
@@ -116,55 +116,55 @@ class NonCryptographicHashingNameSpace:
         self._expr = expr
 
     def wyhash(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns uint64 hash with wyhash."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with wyhash."""
         return _plugin("wyhash", self._expr)
 
     def sha1(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha1."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha1."""
         return _plugin("sha1", self._expr)
 
     def md5(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with md5."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with md5."""
         return _plugin("md5", self._expr)
 
     def murmur32(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with murmur32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with murmur32."""
         return _plugin("murmur32", self._expr, seed=seed)
 
     def murmur128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with murmur128."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with murmur128."""
         return _plugin("murmur128", self._expr, seed=seed)
 
     def xxhash32(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with xxhash32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with xxhash32."""
         return _plugin("xxhash32", self._expr, seed=seed)
 
     def xxhash64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with xxhash64."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with xxhash64."""
         return _plugin("xxhash64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with XXH3 64bit."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with XXH3 64bit."""
         return _plugin("xxh3_64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with XXH3 128bit."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with XXH3 128bit."""
         return _plugin("xxh3_128", self._expr, seed=_encode_u64_seed(seed))
 
     def farmhash32(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with FarmHash fingerprint32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with FarmHash fingerprint32."""
         return _plugin("farmhash32", self._expr)
 
     def farmhash64(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with FarmHash fingerprint64."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with FarmHash fingerprint64."""
         return _plugin("farmhash64", self._expr)
 
     def cityhash32(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with CityHash32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with CityHash32."""
         return _plugin("cityhash32", self._expr)
 
     def cityhash64(self, *, seed: int | None = None) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with CityHash64.
+        """Takes Utf8 or Binary as input and returns uint64 hash with CityHash64.
 
         Without a seed this is `CityHash64`, with one `CityHash64WithSeed` — a
         different value even for `seed=0`.
@@ -175,19 +175,19 @@ class NonCryptographicHashingNameSpace:
         return _plugin("cityhash64_with_seed", self._expr, seed=_encode_u64_seed(seed))
 
     def cityhash128(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with CityHash128."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with CityHash128."""
         return _plugin("cityhash128", self._expr)
 
     def gxhash32(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with GxHash."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with GxHash."""
         return _plugin("gxhash32", self._expr, seed=_encode_u64_seed(seed))
 
     def gxhash64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with GxHash."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with GxHash."""
         return _plugin("gxhash64", self._expr, seed=_encode_u64_seed(seed))
 
     def gxhash128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with GxHash."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with GxHash."""
         return _plugin("gxhash128", self._expr, seed=_encode_u64_seed(seed))
 
 
@@ -284,7 +284,7 @@ class UUIDHashNameSpace:
         self._expr = expr
 
     def uuid5(self, namespace: UUIDNamespace | str = UUIDNamespace.DNS) -> pl.Expr:
-        """Generate UUID5 from string input using specified namespace.
+        """Generate UUID5 from Utf8 or Binary input using specified namespace.
 
         Args: namespace:
         UUIDNamespace.{DNS | URL | OID | X500} or a custom UUID string.

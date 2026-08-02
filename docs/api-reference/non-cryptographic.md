@@ -16,22 +16,22 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | Expression | Input | Output | Seed |
 |------------|-------|--------|------|
 | [`wyhash()`](#wyhash) | Utf8, Binary | UInt64 | always 0 |
-| [`xxhash32(seed)`](#xxhash32) | Utf8 | UInt32 | `u32` |
-| [`xxhash64(seed)`](#xxhash64) | Utf8 | UInt64 | `u64` |
-| [`xxh3_64(seed)`](#xxh3_64) | Utf8 | UInt64 | `u64` |
-| [`xxh3_128(seed)`](#xxh3_128) | Utf8 | UInt128 | `u64` |
-| [`murmur32(seed)`](#murmur32) | Utf8 | UInt32 | `u32` |
-| [`murmur128(seed)`](#murmur128) | Utf8 | UInt128 | `u32` |
-| [`farmhash32()`](#farmhash32) | Utf8 | UInt32 | — |
-| [`farmhash64()`](#farmhash64) | Utf8 | UInt64 | — |
-| [`cityhash32()`](#cityhash32) | Utf8 | UInt32 | — |
-| [`cityhash64(seed)`](#cityhash64) | Utf8 | UInt64 | `u64`, optional |
-| [`cityhash128()`](#cityhash128) | Utf8 | UInt128 | — |
-| [`gxhash32(seed)`](#gxhash32) | Utf8 | UInt32 | `u64` |
-| [`gxhash64(seed)`](#gxhash64) | Utf8 | UInt64 | `u64` |
-| [`gxhash128(seed)`](#gxhash128) | Utf8 | UInt128 | `u64` |
+| [`xxhash32(seed)`](#xxhash32) | Utf8, Binary | UInt32 | `u32` |
+| [`xxhash64(seed)`](#xxhash64) | Utf8, Binary | UInt64 | `u64` |
+| [`xxh3_64(seed)`](#xxh3_64) | Utf8, Binary | UInt64 | `u64` |
+| [`xxh3_128(seed)`](#xxh3_128) | Utf8, Binary | UInt128 | `u64` |
+| [`murmur32(seed)`](#murmur32) | Utf8, Binary | UInt32 | `u32` |
+| [`murmur128(seed)`](#murmur128) | Utf8, Binary | UInt128 | `u32` |
+| [`farmhash32()`](#farmhash32) | Utf8, Binary | UInt32 | — |
+| [`farmhash64()`](#farmhash64) | Utf8, Binary | UInt64 | — |
+| [`cityhash32()`](#cityhash32) | Utf8, Binary | UInt32 | — |
+| [`cityhash64(seed)`](#cityhash64) | Utf8, Binary | UInt64 | `u64`, optional |
+| [`cityhash128()`](#cityhash128) | Utf8, Binary | UInt128 | — |
+| [`gxhash32(seed)`](#gxhash32) | Utf8, Binary | UInt32 | `u64` |
+| [`gxhash64(seed)`](#gxhash64) | Utf8, Binary | UInt64 | `u64` |
+| [`gxhash128(seed)`](#gxhash128) | Utf8, Binary | UInt128 | `u64` |
 | [`md5()`](#md5) | Utf8, Binary | Utf8 | — |
-| [`sha1()`](#sha1) | Utf8 | Utf8 | — |
+| [`sha1()`](#sha1) | Utf8, Binary | Utf8 | — |
 
 ---
 

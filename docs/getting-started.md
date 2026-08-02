@@ -139,15 +139,18 @@ df.select(plh.col("literal").nchash.xxhash64(seed=42))
 
 ## Binary input
 
-Most expressions accept only Utf8 input. `nchash.wyhash()`, `nchash.md5()`, and
-`chash.blake3()` also accept a `Binary` column and hash the bytes:
+Every hash expression accepts a `Binary` column as well as a Utf8 one, and hashes the
+bytes either way:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
 ```
 
-The other expressions raise an error when the input is not Utf8. The namespace pages
-give the permitted input type for each expression.
+A digest reads bytes, so the dtype holding them never changes it: a Utf8 column hashes
+exactly as a `Binary` column holding its UTF-8 bytes does. Bytes that are not valid
+UTF-8 have no Utf8 column to sit in, which is why the `Binary` path is worth having.
+Anything that is neither raises an error. The `geohash`, `h3` and `timehash`
+expressions are not digests and take the input types their pages give.
 
 ## Geospatial indexes
 
