@@ -500,30 +500,55 @@ fn uuid5(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
+/// A null second value falls back to `default`, which is `""` when the caller gave none.
+fn uuid5_of_pair(a: Option<&str>, b: Option<&str>, default: &str) -> Option<string::String> {
+    a.map(|a| {
+        let b = b.unwrap_or(default);
+        let mut input = string::String::with_capacity(a.len() + b.len());
+        input.push_str(a);
+        input.push_str(b);
+        uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, input.as_bytes())
+            .hyphenated()
+            .to_string()
+    })
+}
+
+/// Zipping the two columns would drop rows, so a length-1 column is broadcast and
+/// any other length mismatch is an error.
+fn uuid5_concat_impl(
+    col1: &StringChunked,
+    col2: &StringChunked,
+    default: &str,
+) -> PolarsResult<StringChunked> {
+    let out: StringChunked = match (col1.len(), col2.len()) {
+        (_, 1) => {
+            let b = col2.get(0);
+            col1.iter().map(|a| uuid5_of_pair(a, b, default)).collect()
+        }
+        (1, _) => {
+            let a = col1.get(0);
+            col2.iter().map(|b| uuid5_of_pair(a, b, default)).collect()
+        }
+        (len1, len2) if len1 == len2 => col1
+            .iter()
+            .zip(col2.iter())
+            .map(|(a, b)| uuid5_of_pair(a, b, default))
+            .collect(),
+        (len1, len2) => polars_bail!(
+            ShapeMismatch:
+            "first column has length {} and second column has length {}, expected equal lengths or a scalar",
+            len1, len2
+        ),
+    };
+    Ok(out.with_name(col1.name().clone()))
+}
+
 #[polars_expr(output_type=String)]
 fn uuid5_concat(inputs: &[Series]) -> PolarsResult<Series> {
     let col1 = inputs[0].str()?;
     let col2 = inputs[1].str()?;
 
-    let out: StringChunked = col1
-        .iter()
-        .zip(col2.iter())
-        .map(|(a_opt, b_opt)| {
-            a_opt.map(|a| {
-                let mut input =
-                    string::String::with_capacity(a.len() + b_opt.map_or(0, |b| b.len()));
-                input.push_str(a);
-                if let Some(b) = b_opt {
-                    input.push_str(b);
-                }
-                uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, input.as_bytes())
-                    .hyphenated()
-                    .to_string()
-            })
-        })
-        .collect();
-
-    Ok(out.into_series())
+    Ok(uuid5_concat_impl(col1, col2, "")?.into_series())
 }
 
 #[polars_expr(output_type=String)]
@@ -536,21 +561,5 @@ fn uuid5_concat_default(inputs: &[Series]) -> PolarsResult<Series> {
         .get(0)
         .ok_or_else(|| PolarsError::ComputeError("Default value may not be null".into()))?;
 
-    let out: StringChunked = col1
-        .iter()
-        .zip(col2.iter())
-        .map(|(a_opt, b_opt)| {
-            a_opt.map(|a| {
-                let b = b_opt.unwrap_or(default_val);
-                let mut input = string::String::with_capacity(a.len() + b.len());
-                input.push_str(a);
-                input.push_str(b);
-                uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, input.as_bytes())
-                    .hyphenated()
-                    .to_string()
-            })
-        })
-        .collect();
-
-    Ok(out.into_series())
+    Ok(uuid5_concat_impl(col1, col2, default_val)?.into_series())
 }

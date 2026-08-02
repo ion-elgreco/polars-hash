@@ -6,7 +6,7 @@ import polars as pl
 import pytest
 from polars.exceptions import ComputeError
 from polars.plugins import register_plugin_function
-from polars.testing import assert_frame_equal
+from polars.testing import assert_frame_equal, assert_series_equal
 
 import polars_hash as plh
 
@@ -1245,3 +1245,58 @@ def test_uuid5_concat_with_default():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+def test_uuid5_concat_broadcasts_a_literal():
+    df = pl.DataFrame({"id": ["x", "y", "z"]})
+    result = df.with_columns(out=plh.col("id").uuidhash.uuid5_concat(pl.lit("S")))
+
+    expected = pl.Series(
+        "out",
+        [
+            "186c8031-a217-596e-8c93-75b07f90af6f",
+            "d0f9d2b4-7e90-5f93-acd1-7f16a3774ed4",
+            "d3245ea2-4b8f-56e3-a9ea-9ba38b053026",
+        ],
+        dtype=pl.Utf8,
+    )
+    assert_series_equal(result["out"], expected)
+
+
+def test_uuid5_concat_default_broadcasts_a_literal():
+    df = pl.DataFrame({"id": ["x", "y", "z"]})
+    result = df.with_columns(
+        out=plh.col("id").uuidhash.uuid5_concat(
+            pl.lit(None, dtype=pl.Utf8), default="D"
+        )
+    )
+
+    expected = pl.Series(
+        "out",
+        [
+            "3d0f0686-fd0b-54bf-b4db-811c1c2d6f7c",
+            "1004bd8f-803b-5908-8c16-c2081cbf113c",
+            "61390897-7d4b-5d1f-9639-8a57caf8216e",
+        ],
+        dtype=pl.Utf8,
+    )
+    assert_series_equal(result["out"], expected)
+
+
+def test_uuid5_concat_broadcasts_the_first_column():
+    df = pl.DataFrame({"side": ["S", "S", "S"]})
+    result = df.with_columns(
+        out=pl.lit("x").uuidhash.uuid5_concat(pl.col("side"))  # type: ignore
+    )
+
+    assert result["out"].to_list() == ["186c8031-a217-596e-8c93-75b07f90af6f"] * 3
+
+
+@pytest.mark.parametrize("default", [None, "D"])
+def test_uuid5_concat_rejects_a_length_mismatch(default):
+    df = pl.DataFrame({"id": ["x", "y", "z"], "side": ["a", "b", "c"]})
+
+    with pytest.raises(ComputeError, match="expected equal lengths or a scalar"):
+        df.select(
+            plh.col("id").uuidhash.uuid5_concat(pl.col("side").head(2), default=default)
+        )
