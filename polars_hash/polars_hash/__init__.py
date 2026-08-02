@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import warnings
 from collections.abc import Iterable
 from enum import Enum
@@ -425,11 +426,25 @@ def encode_rows(
     return cast(HExpr, _plugin("encode_rows", row, version=version))
 
 
-_HASH_NAMESPACES = {
-    "chash": CryptographicHashingNameSpace,
-    "nchash": NonCryptographicHashingNameSpace,
-    "uuidhash": UUIDHashNameSpace,
-}
+_HASH_NAMESPACES = (
+    CryptographicHashingNameSpace,
+    NonCryptographicHashingNameSpace,
+    UUIDHashNameSpace,
+)
+
+# Reaching this one through `hash_rows` would file its DeprecationWarning against this
+# module rather than the caller, where a filter could find it.
+_DEPRECATED_ALGORITHMS = {"sha256": "sha2_256"}
+
+
+def _takes_no_arguments(member: Any) -> bool:
+    parameters = list(inspect.signature(member).parameters.values())[1:]
+    return all(
+        parameter.default is not inspect.Parameter.empty
+        or parameter.kind
+        in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        for parameter in parameters
+    )
 
 
 def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> pl.Expr:
@@ -438,22 +453,32 @@ def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> p
     Listing the algorithms here instead would be a second copy of an API that already
     exists, and one that goes stale the next time a hasher lands.
     """
-    # Built from the classes rather than from `encoded.chash` and its siblings: those
-    # go through the `pl.Expr` registry, where any package that claims one of these
-    # names last would be the one answering.
-    if not algorithm.startswith("_"):
-        for namespace in _HASH_NAMESPACES.values():
+    # Read off the classes rather than off `encoded.chash` and its siblings: those go
+    # through the `pl.Expr` registry, where any package that claims one of these names
+    # last would be the one answering.
+    if not algorithm.startswith("_") and algorithm not in _DEPRECATED_ALGORITHMS:
+        for namespace in _HASH_NAMESPACES:
             method = getattr(namespace(encoded), algorithm, None)
             if callable(method):
                 return method(**kwargs)
 
-    known = sorted(
+    # Only the ones that need nothing else are listed. `hmac_sha256` and its kind still
+    # work when their argument comes too, but naming them here would send a reader to a
+    # `TypeError` raised inside a namespace class they never asked for.
+    unaided = sorted(
         name
-        for namespace in _HASH_NAMESPACES.values()
+        for namespace in _HASH_NAMESPACES
         for name, member in vars(namespace).items()
-        if callable(member) and not name.startswith("_")
+        if callable(member)
+        and not name.startswith("_")
+        and name not in _DEPRECATED_ALGORITHMS
+        and _takes_no_arguments(member)
     )
-    raise ValueError(f"unknown algorithm {algorithm!r}, expected one of {known}")
+    replacement = _DEPRECATED_ALGORITHMS.get(algorithm)
+    instead = f" Use {replacement!r} instead." if replacement else ""
+    raise ValueError(
+        f"unknown algorithm {algorithm!r}, expected one of {unaided}.{instead}"
+    )
 
 
 @overload

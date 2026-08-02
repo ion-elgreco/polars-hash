@@ -2070,3 +2070,31 @@ def test_encode_rows_keeps_the_widest_integers_apart():
     smallest = pl.DataFrame({"x": pl.Series([-(2**127)], dtype=pl.Int128)})
 
     assert _encode(biggest) != _encode(smallest)
+
+
+def test_hash_rows_lists_only_algorithms_it_can_call_unaided():
+    df = pl.DataFrame({"a": [1]})
+
+    with pytest.raises(ValueError, match="unknown algorithm") as raised:
+        plh.hash_rows(df, algorithm="nope")
+
+    message = str(raised.value)
+    assert "sha2_256" in message and "xxh3_64" in message
+    for needs_an_argument in ("uuid5_concat", "hmac_sha256", "sha3_shake128"):
+        assert needs_an_argument not in message
+
+
+def test_hash_rows_still_takes_an_algorithm_that_needs_an_argument():
+    df = pl.DataFrame({"a": [1]})
+
+    result = plh.hash_rows(df, algorithm="hmac_sha256", key="secret")
+
+    assert result["hash"].dtype == pl.Utf8
+
+
+def test_hash_rows_points_the_deprecated_alias_at_its_replacement():
+    """Called from here its warning would name this package's source, not the user's."""
+    df = pl.DataFrame({"a": [1]})
+
+    with pytest.raises(ValueError, match="unknown algorithm 'sha256'"):
+        plh.hash_rows(df, algorithm="sha256")
