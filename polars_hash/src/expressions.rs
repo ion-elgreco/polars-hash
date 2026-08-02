@@ -4,7 +4,7 @@ use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
 use crate::xxhash_hashers::*;
-use hmac::Mac;
+use hmac::KeyInit;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
