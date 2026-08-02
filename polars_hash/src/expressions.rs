@@ -81,12 +81,12 @@ fn wyhash_hash_bytes(value: Option<&[u8]>) -> Option<u64> {
     value.map(|v| real_wyhash(v, 0))
 }
 
-fn farmhash_fingerprint32(value: Option<&str>) -> Option<u32> {
-    value.map(|v| farmhash::fingerprint32(v.as_bytes()))
+fn farmhash_fingerprint32(value: &str) -> u32 {
+    farmhash::fingerprint32(value.as_bytes())
 }
 
-fn farmhash_fingerprint64(value: Option<&str>) -> Option<u64> {
-    value.map(|v| farmhash::fingerprint64(v.as_bytes()))
+fn farmhash_fingerprint64(value: &str) -> u64 {
+    farmhash::fingerprint64(value.as_bytes())
 }
 
 // `cityhasher::hash` picks the algorithm from its return type alone, so the turbofish
@@ -113,6 +113,100 @@ fn cityhash_128(value: &str) -> u128 {
     cityhash_rs::cityhash_110_128(value.as_bytes())
 }
 
+/// Declares a hash expression over a single string column, with or without a seed.
+///
+/// Every one of them has the same body — read the column, map the hasher over its
+/// values, hand the column back — and differs only in the output type and the hasher.
+macro_rules! str_hash_expr {
+    ($name:ident, $dtype:ident, $chunked:ty, $hash:expr) => {
+        #[polars_expr(output_type=$dtype)]
+        fn $name(inputs: &[Series]) -> PolarsResult<Series> {
+            let ca = inputs[0].str()?;
+            let out: ChunkedArray<$chunked> = unary_elementwise_values(ca, $hash);
+            Ok(out.into_series())
+        }
+    };
+    ($name:ident, $dtype:ident, $chunked:ty, $hash:expr, $kwargs:ty, $seed:ty) => {
+        #[polars_expr(output_type=$dtype)]
+        fn $name(inputs: &[Series], kwargs: $kwargs) -> PolarsResult<Series> {
+            let ca = inputs[0].str()?;
+            let seed = kwargs.seed as $seed;
+            let out: ChunkedArray<$chunked> = unary_elementwise_values(ca, |v| $hash(v, seed));
+            Ok(out.into_series())
+        }
+    };
+}
+
+str_hash_expr!(farmhash32, UInt32, UInt32Type, farmhash_fingerprint32);
+str_hash_expr!(farmhash64, UInt64, UInt64Type, farmhash_fingerprint64);
+str_hash_expr!(cityhash32, UInt32, UInt32Type, cityhash_32);
+str_hash_expr!(cityhash64, UInt64, UInt64Type, cityhash_64);
+str_hash_expr!(cityhash128, UInt128, UInt128Type, cityhash_128);
+
+// Seeded CityHash64 is its own expression rather than a seed defaulting to 0, because
+// `CityHash64WithSeed(v, 0)` is a different hash from `CityHash64(v)`.
+str_hash_expr!(
+    cityhash64_with_seed,
+    UInt64,
+    UInt64Type,
+    cityhash_64_with_seed,
+    SeedKwargs64bit,
+    u64
+);
+
+str_hash_expr!(
+    murmur32,
+    UInt32,
+    UInt32Type,
+    murmurhash3_32,
+    SeedKwargs32bit,
+    u32
+);
+str_hash_expr!(
+    xxhash32,
+    UInt32,
+    UInt32Type,
+    xxhash_32,
+    SeedKwargs32bit,
+    u32
+);
+str_hash_expr!(
+    xxhash64,
+    UInt64,
+    UInt64Type,
+    xxhash_64,
+    SeedKwargs64bit,
+    u64
+);
+str_hash_expr!(
+    xxh3_64,
+    UInt64,
+    UInt64Type,
+    xxhash3_64,
+    SeedKwargs64bit,
+    u64
+);
+
+// TODO: return `UInt128` from these two, as `cityhash128` already does. It changes the
+// type of an already released output, so it belongs in its own release with a
+// deprecation cycle — see the "Planned" entry in CHANGELOG.md.
+str_hash_expr!(
+    murmur128,
+    Binary,
+    BinaryType,
+    murmurhash3_128,
+    SeedKwargs32bit,
+    u32
+);
+str_hash_expr!(
+    xxh3_128,
+    Binary,
+    BinaryType,
+    xxhash3_128,
+    SeedKwargs64bit,
+    u64
+);
+
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     let s = inputs.get(0).expect("no series received");
@@ -132,52 +226,6 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
             "wyhash only works on strings or binary data".into(),
         )),
     }
-}
-
-#[polars_expr(output_type=UInt32)]
-fn farmhash32(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, farmhash_fingerprint32);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt64)]
-fn farmhash64(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, farmhash_fingerprint64);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt32)]
-fn cityhash32(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, cityhash_32);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt64)]
-fn cityhash64(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, cityhash_64);
-    Ok(out.into_series())
-}
-
-/// Its own expression rather than a seed defaulting to 0, because
-/// `CityHash64WithSeed(v, 0)` is a different hash from `CityHash64(v)`.
-#[polars_expr(output_type=UInt64)]
-fn cityhash64_with_seed(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let seed = kwargs.seed as u64;
-    let out: ChunkedArray<UInt64Type> =
-        unary_elementwise_values(ca, |v| cityhash_64_with_seed(v, seed));
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt128)]
-fn cityhash128(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, cityhash_128);
-    Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
@@ -442,62 +490,6 @@ fn thash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
     let s = hash_column(&inputs[0])?;
 
     Ok(timehash_neighbors(s.str()?)?.into_series())
-}
-
-#[polars_expr(output_type=UInt32)]
-fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
-    let seeded_hash_function = |v| murmurhash3_32(v, kwargs.seed);
-
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, seeded_hash_function);
-    Ok(out.into_series())
-}
-
-// TODO: return `UInt128` here and in `xxh3_128`, as `cityhash128` now does.
-// Separate PR: it changes the type of an already released output.
-#[polars_expr(output_type=Binary)]
-fn murmur128(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
-    let seeded_hash_function = |v| murmurhash3_128(v, kwargs.seed);
-
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<BinaryType> = unary_elementwise(ca, seeded_hash_function);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt32)]
-fn xxhash32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
-    let seeded_hash_function = |v| xxhash_32(v, kwargs.seed);
-
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, seeded_hash_function);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt64)]
-fn xxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let seeded_hash_function = |v| xxhash_64(v, kwargs.seed as u64);
-
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, seeded_hash_function);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=UInt64)]
-fn xxh3_64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let seeded_hash_function = |v| xxhash3_64(v, kwargs.seed as u64);
-
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, seeded_hash_function);
-    Ok(out.into_series())
-}
-
-#[polars_expr(output_type=Binary)]
-fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let seeded_hash_function = |v| xxhash3_128(v, kwargs.seed as u64);
-
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<BinaryType> = unary_elementwise(ca, seeded_hash_function);
-    Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
