@@ -1894,6 +1894,7 @@ dependencies = [
  "chrono",
  "either",
  "fast-float2",
+ "half",
  "hashbrown 0.16.1",
  "itoa",
  "num-traits",

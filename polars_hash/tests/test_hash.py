@@ -582,6 +582,20 @@ def test_a_hasher_names_both_dtypes_it_accepts():
             pl.Series([[[1.5, 2.5]]], dtype=pl.Array(pl.Array(pl.Float64, 2), 1)),
             id="nested_Array",
         ),
+        pytest.param(pl.Series([1.0], dtype=pl.Float16), id="Float16"),
+        pytest.param(pl.Series([1], dtype=pl.Int128), id="Int128"),
+        pytest.param(pl.Series([1], dtype=pl.UInt128), id="UInt128"),
+        pytest.param(pl.Series(["a"], dtype=pl.Categorical), id="Categorical"),
+        pytest.param(pl.Series(["a"], dtype=pl.Enum(["a"])), id="Enum"),
+        pytest.param(pl.Series([Decimal(1)], dtype=pl.Decimal(10, 2)), id="Decimal"),
+        pytest.param(pl.Series([date(2020, 1, 1)]), id="Date"),
+        pytest.param(pl.Series([time(12, 0)]), id="Time"),
+        pytest.param(pl.Series([timedelta(seconds=1)]), id="Duration"),
+        pytest.param(
+            pl.Series([datetime(2020, 1, 1)]).dt.replace_time_zone("UTC"),
+            id="Datetime_tz",
+        ),
+        pytest.param(pl.Series([{"a": 1}]), id="Struct"),
     ],
 )
 def test_a_rejected_dtype_raises_rather_than_aborting(series):
@@ -2112,3 +2126,11 @@ def test_every_byte_hasher_says_so_in_its_docstring():
     for namespace, method, _ in _BYTE_HASHERS:
         doc = getattr(classes[namespace], method).__doc__ or ""
         assert "Binary" in doc, f"{namespace}.{method} does not mention Binary"
+
+
+@pytest.mark.parametrize("dtype", [pl.Float16, pl.Float32, pl.Float64])
+def test_encode_rows_widens_every_float_to_f64(dtype):
+    df = pl.DataFrame({"x": pl.Series([1.5], dtype=dtype)})
+    f64 = pl.DataFrame({"x": pl.Series([1.5], dtype=pl.Float64)})
+
+    assert _encode(df) == _encode(f64)

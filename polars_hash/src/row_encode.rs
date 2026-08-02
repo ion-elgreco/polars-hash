@@ -176,7 +176,7 @@ impl Column {
             }
             DataType::Int128 => Column::Signed128(s.i128()?.clone()),
             DataType::UInt128 => Column::Unsigned128(s.u128()?.clone()),
-            DataType::Float32 | DataType::Float64 => {
+            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
                 Column::Float(s.cast(&DataType::Float64)?.f64()?.clone())
             }
             DataType::String => Column::Text(s.str()?.clone()),

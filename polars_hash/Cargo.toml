@@ -10,24 +10,13 @@ crate-type = ["cdylib"]
 [dependencies]
 # A dtype feature left off here is not merely unsupported: polars panics while
 # reading the arrow type, and a panic across the plugin's C boundary aborts the
-# process rather than raising. Every dtype that can reach an expression needs one.
-polars = { version = "0.54.4", features = [
-    "dtype-struct",
-    "dtype-array",
-    "timezones",
-    "dtype-i8",
-    "dtype-i16",
-    "dtype-u8",
-    "dtype-u16",
-    "dtype-u128",
-] }
+# process rather than raising. Any column can reach an expression, so `dtype-full`
+# rather than a list: a list has to be extended for every dtype polars adds, and
+# leaving one out costs the caller their interpreter. It does not pull in `object`,
+# which polars hands to a plugin as Binary and no feature here can help with.
+polars = { version = "0.54.4", features = ["dtype-full", "timezones"] }
 pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
-pyo3-polars = { version = "0.27", features = [
-    "derive",
-    "dtype-struct",
-    "dtype-decimal",
-    "dtype-array",
-] }
+pyo3-polars = { version = "0.27", features = ["derive", "dtype-full"] }
 serde = { version = "1", features = ["derive"] }
 wyhash = { version = "0.6.0" }
 geohash = { version = "0.13.2" }

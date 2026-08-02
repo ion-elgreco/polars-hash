@@ -154,7 +154,7 @@ is held drops out:
 | Rule | Effect |
 |------|--------|
 | Every integer width shares one class | `Int8(1)`, `Int64(1)` and `UInt64(1)` agree |
-| `Float32` widens to `Float64` | `Float32(1.5)` and `Float64(1.5)` agree |
+| `Float16` and `Float32` widen to `Float64` | every float width agrees on `1.5` |
 | `-0.0` becomes `0.0`, and every NaN payload becomes one NaN | rows polars calls equal cannot hash apart |
 | Temporal values become nanoseconds | `Datetime("ms")` and `Datetime("ns")` agree on an instant |
 | A time zone is not read | a zone is how an instant is shown, not which instant it is |
