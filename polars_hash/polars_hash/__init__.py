@@ -417,9 +417,12 @@ def encode_rows(
     # A plugin cannot expand a wildcard the way `pl.concat_str` does: `pl.all()` would
     # clone the call once per column instead of passing them all to one. The struct is
     # what carries a whole row across in a single input.
-    return cast(
-        HExpr, _plugin("encode_rows", pl.struct(exprs, *more_exprs), version=version)
-    )
+    #
+    # It is named rather than left to inherit the first column's name: the output is
+    # the whole row, not that column, and in `with_columns` the inherited name replaced
+    # the very column it had just encoded.
+    row = pl.struct(exprs, *more_exprs).alias("row")
+    return cast(HExpr, _plugin("encode_rows", row, version=version))
 
 
 _HASH_NAMESPACES = {

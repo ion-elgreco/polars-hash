@@ -65,7 +65,10 @@ df.select(plh.encode_rows("foo", "bar").nchash.xxh3_64())
 | `*more_exprs` | `IntoExpr` | — | More columns, as positional arguments. |
 | `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 is frozen. |
 
-**Returns:** Binary, one value per row. Never null, even for a row that holds nulls.
+**Returns:** Binary, one value per row, in a column named `row`. Never null, even for
+a row that holds nulls. The name is fixed rather than taken from the first column, so
+`with_columns` adds the encoding instead of replacing a column with it. Use `.alias()`
+for any other name.
 
 ---
 

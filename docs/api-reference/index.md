@@ -117,7 +117,8 @@ These rules apply to all the expressions above.
   on [`cityhash64()`](non-cryptographic.md#cityhash64), where `seed=None` is how you
   ask for the unseeded algorithm.
 - **Output name.** The output column has the same name as the input column. To keep
-  both columns, use `.alias()`.
+  both columns, use `.alias()`. [`encode_rows`](rows.md#encode_rows) is the exception:
+  its output is the row rather than any one column, so it is named `row`.
 - **Incorrect input type.** The expression raises an error when the input type is not
   permitted. This occurs when Polars collects the data, not when you build the
   expression. All errors from the plugin become

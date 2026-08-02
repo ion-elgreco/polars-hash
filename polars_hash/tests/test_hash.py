@@ -1946,3 +1946,13 @@ def test_encode_rows_keeps_struct_shapes_apart():
     split = pl.DataFrame({"a": [{"x": 1}], "b": [2]})
 
     assert _encode(wide) != _encode(split)
+
+
+def test_encode_rows_does_not_take_the_name_of_a_column_it_encodes():
+    """Naming the output after the first column made `with_columns` replace it."""
+    df = pl.DataFrame({"foo": ["a"], "bar": [1]})
+
+    result = df.with_columns(plh.encode_rows(pl.all()))
+
+    assert result.columns == ["foo", "bar", "row"]
+    assert result["foo"].to_list() == ["a"]
