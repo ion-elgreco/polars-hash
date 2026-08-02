@@ -1,4 +1,4 @@
-use polars::chunked_array::ops::arity::unary_elementwise_values;
+use polars::chunked_array::ops::arity::{unary_elementwise, unary_elementwise_values};
 use polars::prelude::*;
 
 /// Run `op` over the bytes of every value, for either a String or a Binary column.
@@ -6,18 +6,29 @@ use polars::prelude::*;
 /// A hash reads bytes, so the two dtypes differ only in how an element is reached.
 /// Keeping the match here lets each expression stay a single line, gives them all
 /// one error message, and is what lets `encode_rows` feed any of them.
+///
+/// The walk over a column that holds nulls skips them. The `_values` walk visits
+/// every slot, so a mostly-null column used to cost what a full one does and to throw
+/// away an allocation per null for the digests that return a `Vec`. It is still the
+/// faster of the two when there is nothing to skip, so both are here.
 pub fn hash_bytes<V, F, R>(s: &Series, op: F) -> PolarsResult<ChunkedArray<V>>
 where
     V: PolarsDataType,
     F: Fn(&[u8]) -> R,
-    V::Array: ArrayFromIter<R>,
+    V::Array: ArrayFromIter<R> + ArrayFromIter<Option<R>>,
 {
-    match s.dtype() {
-        DataType::String => Ok(unary_elementwise_values(s.str()?, |v: &str| {
+    match (s.dtype(), s.null_count() == 0) {
+        (DataType::String, true) => Ok(unary_elementwise_values(s.str()?, |v: &str| {
             op(v.as_bytes())
         })),
-        DataType::Binary => Ok(unary_elementwise_values(s.binary()?, &op)),
-        dtype => polars_bail!(
+        (DataType::String, false) => Ok(unary_elementwise(s.str()?, |v: Option<&str>| {
+            v.map(|v| op(v.as_bytes()))
+        })),
+        (DataType::Binary, true) => Ok(unary_elementwise_values(s.binary()?, &op)),
+        (DataType::Binary, false) => Ok(unary_elementwise(s.binary()?, |v: Option<&[u8]>| {
+            v.map(&op)
+        })),
+        (dtype, _) => polars_bail!(
             InvalidOperation: "expected `String` or `Binary` input, got `{}`", dtype
         ),
     }
