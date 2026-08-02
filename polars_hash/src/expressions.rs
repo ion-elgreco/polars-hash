@@ -490,14 +490,11 @@ fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> 
     Ok(out.into_series())
 }
 
-// TODO: return `UInt128` from murmur128 and xxh3_128, as `cityhash128` already does.
-// It changes the type of an already released output, so it needs its own release with
-// a deprecation cycle, using the `DeprecationWarning` path `chash.sha256` already takes.
-#[polars_expr(output_type=Binary)]
+#[polars_expr(output_type=UInt128)]
 fn murmur128(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<BinaryType> = unary_elementwise_values(ca, |v| murmurhash3_128(v, seed));
+    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, |v| murmurhash3_128(v, seed));
     Ok(out.into_series())
 }
 
@@ -525,11 +522,11 @@ fn xxh3_64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=Binary)]
+#[polars_expr(output_type=UInt128)]
 fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let seed = kwargs.seed as u64;
-    let out: ChunkedArray<BinaryType> = unary_elementwise_values(ca, |v| xxhash3_128(v, seed));
+    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, |v| xxhash3_128(v, seed));
     Ok(out.into_series())
 }
 
