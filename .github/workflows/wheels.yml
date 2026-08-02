@@ -32,8 +32,6 @@ jobs:
           - { platform: linux, runner: ubuntu-latest, target: x86_64 }
           - { platform: linux, runner: ubuntu-latest, target: x86 }
           - { platform: linux, runner: ubuntu-latest, target: aarch64 }
-          - { platform: linux, runner: ubuntu-latest, target: armv7 }
-          - { platform: linux, runner: ubuntu-latest, target: ppc64le }
           - { platform: windows, runner: windows-latest, target: x64, python-architecture: x64 }
           - { platform: windows, runner: windows-latest, target: x86, python-architecture: x86 }
           - { platform: macos, runner: macos-latest, target: x86_64 }
@@ -51,19 +49,21 @@ jobs:
           rust-cache: ${{ matrix.platform != 'linux' }}
 
       # maturin-action sets RUSTC_WRAPPER from `sccache`, and ignores
-      # `manylinux` off Linux.
+      # `manylinux` off Linux. It runs in `polars_hash` because cargo reads
+      # `.cargo/config.toml` from the working directory, and gxhash needs it.
       - name: Build wheels
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
         with:
+          working-directory: polars_hash
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.platform == 'linux' && 'auto' || '' }}
-          args: --release --out dist ${{ matrix.platform == 'linux' && '-i python3.10' || '--find-interpreter' }} --manifest-path polars_hash/Cargo.toml
+          args: --release --out dist ${{ matrix.platform == 'linux' && '-i python3.10' || '--find-interpreter' }}
           sccache: ${{ inputs.cache }}
       - name: Upload wheels
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wheels-${{ matrix.platform }}-${{ matrix.target }}
-          path: dist
+          path: polars_hash/dist
 
   sdist:
     name: sdist

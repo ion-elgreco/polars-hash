@@ -26,6 +26,9 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | [`cityhash32()`](#cityhash32) | Utf8 | UInt32 | — |
 | [`cityhash64(seed)`](#cityhash64) | Utf8 | UInt64 | `u64`, optional |
 | [`cityhash128()`](#cityhash128) | Utf8 | UInt128 | — |
+| [`gxhash32(seed)`](#gxhash32) | Utf8 | UInt32 | `u64` |
+| [`gxhash64(seed)`](#gxhash64) | Utf8 | UInt64 | `u64` |
+| [`gxhash128(seed)`](#gxhash128) | Utf8 | UInt128 | `u64` |
 | [`md5()`](#md5) | Utf8, Binary | Utf8 | — |
 | [`sha1()`](#sha1) | Utf8 | Utf8 | — |
 
@@ -334,6 +337,118 @@ df.select(plh.col("foo").nchash.cityhash128())
     Polars encodes `UInt128` as a private Arrow type, so `to_arrow()` and
     `to_pandas()` raise `ArrowInvalid` and `to_numpy()` fails on this column.
     `write_parquet`, `write_ipc`, joins, `group_by` and sorting all work. Cast to
+    `pl.Binary` or split the halves if the column has to reach pandas or NumPy.
+
+---
+
+## `gxhash32(seed)` { #gxhash32 }
+
+GxHash with 32-bit output. GxHash reaches its speed through the AES block cipher, which
+the CPU runs as a single instruction, so it is the fastest expression in the namespace
+for input above about a hundred bytes. Below that,
+[`xxh3_64()`](#xxh3_64) is the one to beat.
+
+```python
+df.select(plh.col("foo").nchash.gxhash32())
+# 2751540945
+
+df.select(plh.col("foo").nchash.gxhash32(seed=42))
+# 3382299372
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u64`. |
+
+**Returns:** UInt32
+
+!!! warning "GxHash needs a CPU with AES instructions"
+    The algorithm has no software fallback. The published wheels cover x86, x86-64 and
+    aarch64, and every one of them is built with the instructions enabled, so a CPU
+    without them stops the process the moment a GxHash expression runs. On x86 the
+    instructions arrived with Westmere in 2010 and every processor since has them. On
+    ARM they are an optional extension: Apple silicon and server parts have them, and
+    some small boards, such as the Raspberry Pi 4, do not.
+
+    The instructions are enabled for the whole build rather than for GxHash alone, so on
+    x86 `ahash`, which the [`h3`](h3.md) namespace pulls in, switches to its AES-NI
+    implementation as well and the `h3` expressions come to need them too. On aarch64
+    `ahash` keeps its portable path, so there GxHash is the only namespace affected.
+
+    There are no `linux-armv7` or `linux-ppc64le` wheels from 0.8.0 on, because GxHash
+    cannot be built for either.
+
+!!! note "The seed is unsigned here and signed upstream"
+    GxHash takes an `i64` seed. This namespace presents every 64-bit seed as a `u64`
+    for consistency, so a seed at or above `2**63` is the upstream seed minus `2**64`:
+    `seed=2**64 - 1` here is `-1` there. Both reach the same 64 bits.
+
+---
+
+## `gxhash64(seed)` { #gxhash64 }
+
+GxHash with 64-bit output.
+
+```python
+df.select(plh.col("foo").nchash.gxhash64())
+# 2180020304351407825
+
+df.select(plh.col("foo").nchash.gxhash64(seed=42))
+# 15254170022685821676
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u64`. |
+
+**Returns:** UInt64
+
+!!! warning "The values are stable for GxHash 3 only"
+    GxHash holds its output stable across platforms, but only within a major version.
+    polars-hash pins GxHash 3 exactly, so the values here do not change without a
+    release that says so. A system on GxHash 2 gives different values for the same
+    input and seed.
+
+!!! note "Seed 0 is the default, not a separate mode"
+    Every GxHash expression is seeded, and the default seed is `0`. Unlike
+    [`cityhash64()`](#cityhash64), there is no unseeded form to differ from.
+
+---
+
+## `gxhash128(seed)` { #gxhash128 }
+
+GxHash with 128-bit output. Like [`cityhash128()`](#cityhash128) the output is a
+`UInt128`, so the whole hash is one integer.
+
+```python
+df.select(plh.col("foo").nchash.gxhash128())
+# 56218077491375249900279963678916292305
+
+df.select(plh.col("foo").nchash.gxhash128(seed=42))
+# 11136336363892181958542060125951740652
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u64`. |
+
+**Returns:** UInt128
+
+!!! note "The three widths are one hash, cut short"
+    GxHash builds a single 128-bit state and each width reads the low part of it, so
+    `gxhash32()` is the low 32 bits of `gxhash64()`, which is the low 64 bits of
+    `gxhash128()`. Ask for the width you need; the narrow ones cost no less than the
+    wide one.
+
+!!! warning "`UInt128` does not leave Polars yet"
+    Polars encodes `UInt128` as a private Arrow type, so `to_arrow()` and
+    `to_pandas()` raise `ArrowInvalid` and `to_numpy()` fails on this column. Cast to
     `pl.Binary` or split the halves if the column has to reach pandas or NumPy.
 
 ---

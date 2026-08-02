@@ -72,12 +72,27 @@ print(result)
 ╞═════════════════════════════════════════╡
 │ 133423608296839006301901834072762183026 │
 └─────────────────────────────────────────┘
+
+result = df.select(plh.col('foo').nchash.gxhash64())
+print(result)
+┌─────────────────────┐
+│ foo                 │
+│ ---                 │
+│ u64                 │
+╞═════════════════════╡
+│ 2180020304351407825 │
+└─────────────────────┘
 ```
 
 `cityhash32()` and `cityhash64()` return the values printed above for `farmhash32()`
 and `farmhash64()`. That is expected: FarmHash reuses CityHash for short input, and
 `hello_world` is 11 bytes. See
 [the CityHash reference](https://ion-elgreco.github.io/polars-hash/latest/api-reference/non-cryptographic/#cityhash32).
+
+The GxHash expressions need a CPU with AES instructions and have no software fallback.
+Every x86, x86-64 and aarch64 wheel is built for them; there are no `linux-armv7` or
+`linux-ppc64le` wheels from 0.8.0 on, because GxHash cannot be built for either. See
+[the GxHash reference](https://ion-elgreco.github.io/polars-hash/latest/api-reference/non-cryptographic/#gxhash32).
 
 ### Geo Hashers
 ```python

@@ -930,6 +930,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
 [[package]]
+name = "gxhash"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3ce1bab7aa741d4e7042b2aae415b78741f267a98a7271ea226cd5ba6c43d7d"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2423,13 +2432,14 @@ dependencies = [
 
 [[package]]
 name = "polars_hash"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "blake3",
  "cityhash-rs",
  "cityhasher",
  "farmhash",
  "geohash",
+ "gxhash",
  "h3o",
  "hex",
  "hmac",

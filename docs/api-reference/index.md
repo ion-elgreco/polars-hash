@@ -49,6 +49,9 @@ Full page: [nchash](non-cryptographic.md).
 | [`nchash.cityhash32()`](non-cryptographic.md#cityhash32) | Utf8 | UInt32 | CityHash `CityHash32`. |
 | [`nchash.cityhash64(seed)`](non-cryptographic.md#cityhash64) | Utf8 | UInt64 | CityHash `CityHash64`, or `CityHash64WithSeed` when given a seed. |
 | [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8 | UInt128 | CityHash `CityHash128`. |
+| [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8 | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
+| [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8 | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
+| [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8 | UInt128 | GxHash with 128-bit output. Needs a CPU with AES instructions. |
 | [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
 | [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8 | Utf8 | SHA-1. |
 
@@ -109,4 +112,7 @@ These rules apply to all the expressions above.
   `polars.exceptions.ComputeError` in Python. The message starts with `the plugin
   failed with message:`.
 - **Stability.** The same input and the same arguments always give the same output.
-  This does not change between polars-hash releases or Polars releases.
+  This does not change between polars-hash releases or Polars releases. The exception is
+  [GxHash](non-cryptographic.md#gxhash64), whose values hold within one major version of
+  the algorithm. polars-hash pins that version, so only a release that says so can move
+  them.

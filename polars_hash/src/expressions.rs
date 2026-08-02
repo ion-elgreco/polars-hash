@@ -113,6 +113,20 @@ fn cityhash_128(value: &str) -> u128 {
     cityhash_rs::cityhash_110_128(value.as_bytes())
 }
 
+// gxhash seeds are `i64`, the type kwargs already travel in, so these pass
+// `kwargs.seed` through where the other hashers cast it back to `u64`.
+fn gxhash_32(value: &str, seed: i64) -> u32 {
+    gxhash::gxhash32(value.as_bytes(), seed)
+}
+
+fn gxhash_64(value: &str, seed: i64) -> u64 {
+    gxhash::gxhash64(value.as_bytes(), seed)
+}
+
+fn gxhash_128(value: &str, seed: i64) -> u128 {
+    gxhash::gxhash128(value.as_bytes(), seed)
+}
+
 #[polars_expr(output_type=UInt32)]
 fn farmhash32(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
@@ -156,6 +170,30 @@ fn cityhash64_with_seed(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsRes
 fn cityhash128(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, cityhash_128);
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=UInt32)]
+fn gxhash32(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let seed = kwargs.seed;
+    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, |v| gxhash_32(v, seed));
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=UInt64)]
+fn gxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let seed = kwargs.seed;
+    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, |v| gxhash_64(v, seed));
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=UInt128)]
+fn gxhash128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let seed = kwargs.seed;
+    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, |v| gxhash_128(v, seed));
     Ok(out.into_series())
 }
 

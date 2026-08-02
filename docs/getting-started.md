@@ -6,9 +6,15 @@
 pip install polars-hash
 ```
 
-polars-hash supplies prebuilt wheels for Linux, macOS, and Windows. It requires
-`polars >= 1.34.0` and Python 3.10 or later. `plh.__version__` gives the installed
-version.
+polars-hash supplies prebuilt wheels for Linux, macOS, and Windows, on x86, x86-64 and
+aarch64. It requires `polars >= 1.34.0` and Python 3.10 or later. `plh.__version__`
+gives the installed version.
+
+Releases up to 0.7.0 also carried `linux-armv7` and `linux-ppc64le` wheels. Those
+targets have no AES instructions, which the [GxHash
+expressions](api-reference/non-cryptographic.md#gxhash32) need, so 0.8.0 dropped them.
+Pip falls back to the source distribution on any platform without a wheel, and that
+build needs a Rust toolchain and fails on those two targets.
 
 ## Your first hash
 
