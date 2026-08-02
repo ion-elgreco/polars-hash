@@ -286,9 +286,14 @@ def test_h3_invalid_coords(latitude, longitude):
     "dtype",
     [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64],
 )
-def test_from_coords_length_dtypes(dtype):
+def test_length_arg_dtypes(dtype):
+    """All three namespaces route the length/precision through `_length_expr`."""
     df = pl.DataFrame(
-        {"latitude": [35.3003], "longitude": [-120.6623]},
+        {
+            "latitude": [35.3003],
+            "longitude": [-120.6623],
+            "t": [datetime(2017, 2, 21, 20, 15, 13)],
+        },
     ).with_columns(coord=pl.struct(["latitude", "longitude"]), n=pl.lit(5, dtype=dtype))
 
     assert df.select(pl.col("coord").geohash.from_coords("n")).to_series()[0] == "9q60y"  # type: ignore
@@ -296,6 +301,7 @@ def test_from_coords_length_dtypes(dtype):
         df.select(pl.col("coord").h3.from_coords("n")).to_series()[0]  # type: ignore
         == "8529adc7fffffff"
     )
+    assert df.select(plh.col("t").timehash.from_datetime("n")).to_series()[0] == "afccc"
 
 
 def test_from_coords_null_coords():
@@ -774,13 +780,48 @@ def test_timehash_date():
     )
 
 
-@pytest.mark.parametrize("dtype", [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8])
-def test_timehash_precision_dtypes(dtype):
-    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 13)]}).with_columns(
-        n=pl.lit(4, dtype=dtype)
+def test_timehash_one_window_shares_a_hash():
+    """The feature's central promise. The precision-8 window is about 4 minutes."""
+    base = datetime(2017, 2, 21, 20, 15, 13)
+    df = pl.DataFrame(
+        {"t": [base, base + timedelta(seconds=1), base + timedelta(seconds=2)]}
     )
 
-    assert df.select(plh.col("t").timehash.from_datetime("n")).to_series()[0] == "afcc"
+    hashes = df.select(plh.col("t").timehash.from_datetime(8)).to_series().to_list()
+
+    assert len(set(hashes)) == 1
+
+
+def test_timehash_separate_windows_differ():
+    """The other half of the promise: 10 minutes apart cannot share a 4 minute bin."""
+    base = datetime(2017, 2, 21, 20, 15, 13)
+    df = pl.DataFrame({"t": [base, base + timedelta(minutes=10)]})
+
+    hashes = df.select(plh.col("t").timehash.from_datetime(8)).to_series().to_list()
+
+    assert hashes[0] != hashes[1]
+
+
+@pytest.mark.parametrize("precision", [4, 8, 10, 14, 16])
+def test_timehash_decode_stays_inside_its_window(precision):
+    """to_datetime returns the window midpoint, so re-encoding must land in the same
+    window. Catches an interval shift that the single fixed instant would not."""
+    base = datetime(2017, 2, 21, 20, 15, 13)
+    df = pl.DataFrame(
+        {
+            "t": [
+                base + timedelta(seconds=i * 37, microseconds=i * 811)
+                for i in range(50)
+            ]
+        }
+    )
+
+    hashed = df.select(plh.col("t").timehash.from_datetime(precision))
+    again = hashed.select(
+        plh.col("t").timehash.to_datetime().timehash.from_datetime(precision)
+    )
+
+    assert again.to_series().to_list() == hashed.to_series().to_list()
 
 
 def test_timehash_precision_per_row():
@@ -982,14 +1023,13 @@ def test_timehash_not_strict_still_rejects_invalid_precision():
         df.select(plh.col("t").timehash.from_datetime(99, strict=False))
 
 
-@pytest.mark.parametrize("seconds", [0.0, 4039372800.0])
-def test_timehash_range_bounds_are_encodable(seconds):
+@pytest.mark.parametrize(
+    ("seconds", "expected"), [(0.0, "0000"), (4039372800.0, "ffff")]
+)
+def test_timehash_range_bounds_are_encodable(seconds, expected):
     df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
 
-    assert df.select(plh.col("t").timehash.from_datetime(4)).to_series()[0] in (
-        "0000",
-        "ffff",
-    )
+    assert df.select(plh.col("t").timehash.from_datetime(4)).to_series()[0] == expected
 
 
 @pytest.mark.parametrize(
@@ -1020,13 +1060,22 @@ def test_timehash_float32_is_rejected():
         df.select(plh.col("t").timehash.from_datetime(10))
 
 
-@pytest.mark.parametrize("value", ["", "zzz", "AFCC", "afcc "])
-def test_timehash_invalid_hash(value):
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("", "timehash may not be empty"),
+        ("zzz", "invalid timehash character 'z'"),
+        ("AFCC", "invalid timehash character 'A'"),
+        ("afcc ", "invalid timehash character ' '"),
+    ],
+)
+def test_timehash_invalid_hash(value, message):
+    """Pin the exact message: every error this module emits contains "timehash"."""
     df = pl.DataFrame({"h": [value]})
 
-    with pytest.raises(ComputeError, match="timehash"):
+    with pytest.raises(ComputeError, match=message):
         df.select(plh.col("h").timehash.to_datetime())
-    with pytest.raises(ComputeError, match="timehash"):
+    with pytest.raises(ComputeError, match=message):
         df.select(plh.col("h").timehash.neighbors())
 
 
