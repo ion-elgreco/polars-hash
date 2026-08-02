@@ -9,7 +9,7 @@ use crate::timehashers::{
     validate_precision,
 };
 use crate::xxhash_hashers::*;
-use hmac::Mac;
+use hmac::KeyInit;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise, unary_elementwise,
