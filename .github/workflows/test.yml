@@ -1,0 +1,65 @@
+name: test
+
+on:
+  workflow_call:
+    inputs:
+      cache:
+        description: Restore the cargo registry and sccache.
+        type: boolean
+        default: true
+
+permissions: {}
+
+env:
+  # sccache cannot cache incrementally compiled artifacts.
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    name: tests ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # Native runners only — these build the extension and execute the suite,
+        # so a target has to be one the runner can actually run.
+        include:
+          - { platform: linux-x86_64, runner: ubuntu-latest }
+          - { platform: linux-aarch64, runner: ubuntu-24.04-arm }
+          - { platform: windows-x64, runner: windows-latest }
+          - { platform: macos-aarch64, runner: macos-latest }
+    defaults:
+      run:
+        working-directory: polars_hash
+    env:
+      RUSTC_WRAPPER: ${{ inputs.cache && 'sccache' || '' }}
+      SCCACHE_GHA_ENABLED: 'true'
+      # Fail on a stale uv.lock; local `make venv` re-resolves instead.
+      UV_LOCKED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          cache: ${{ inputs.cache }}
+          uv: 'true'
+          rust-toolchain: 'true'
+
+      # The Windows runner image ships Bash and MSYS2 but no make.
+      - name: Install make
+        if: runner.os == 'Windows'
+        run: choco install make --no-progress -y
+
+      - run: make install
+      - run: make test
+
+      # Type and lint checks are OS-independent; one leg is enough.
+      - if: matrix.platform == 'linux-x86_64'
+        run: make check
