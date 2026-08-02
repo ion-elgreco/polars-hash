@@ -204,10 +204,17 @@ impl Column {
                 let arr = ca
                     .downcast_get(0)
                     .expect("a rechunked column has one chunk");
+                let offsets = arr.offsets();
+                // The offsets of a sliced column are trimmed to the slice, but
+                // `get_inner` hands back the whole values buffer of the column it was
+                // sliced from. Trimming it here is what keeps a ten-row slice from
+                // preparing the million values behind it.
+                let (first, last) = (*offsets.first(), *offsets.last());
+                let values = ca.get_inner().slice(first, (last - first) as usize);
                 Column::List {
                     valid: row_validity(&s)?,
-                    offsets: arr.offsets().as_slice().to_vec(),
-                    values: Box::new(Column::prepare(&ca.get_inner())?),
+                    offsets: offsets.as_slice().iter().map(|o| o - first).collect(),
+                    values: Box::new(Column::prepare(&values)?),
                 }
             }
             // An Array holds the same values a List does, only with its length in the
