@@ -391,34 +391,37 @@ def encode_rows(
     *more_exprs: IntoExpr,
     version: int = 1,
 ) -> HExpr:
-    """Encode whole rows to Binary, ready for any hasher in this package.
+    """Changes each row into Binary, for use with any hasher in this package.
 
-    Concatenating columns cannot hash a row: ``("ab", "c")`` and ``("a", "bc")`` reach
-    the same string, one null swallows the row, and a List or a Struct has no string
-    form at all. This gives each row bytes that no other row can produce, so::
+    A hash of joined columns is not sufficient. The rows ``("ab", "c")`` and
+    ``("a", "bc")`` make the same string, one null makes the full row null, and a List
+    column or a Struct column has no string form. This function gives each row bytes
+    that no other row can make::
 
         df.select(plh.encode_rows(pl.all()).chash.sha2_256())
 
-    A value is encoded by what it means, not by how polars holds it, so an ``Int32``
-    hashes like the ``Int64`` beside it. Column names never reach the bytes, so
-    renaming a column keeps its hash while reordering does not. A null is a value the
-    encoding holds, so a row containing one still hashes. The reference lists every
-    rule.
+    The encoder reads the meaning of a value, not the polars storage of it. Therefore
+    an ``Int32`` and the ``Int64`` next to it make the same hash. The encoder does not
+    read the column names. Therefore a new name for a column keeps its hash, but a new
+    order of the columns does not. A null is one of the values that the encoding
+    writes. Therefore a row with a null also has a hash. The reference gives all the
+    rules.
 
     Args:
-        exprs: The columns to encode, in the order they make up the row.
+        exprs: The columns to encode, in the order of the row.
         *more_exprs: More columns, as positional arguments.
-        version: The encoding to write. Version 1 is frozen; a later one would have
-            to be asked for by number.
+        version: The encoding to write. Version 1 does not change. To use a later
+            version, give its number.
 
     Returns:
-        Expression producing Binary, one value per row and never null.
+        An expression that makes Binary. There is one value for each row, and no
+        value is null.
     """
-    # A plugin cannot expand a wildcard the way `pl.concat_str` does: `pl.all()` would
-    # clone the call once per column instead of passing them all to one. The struct is
-    # what carries a whole row across in a single input. It is named rather than left
-    # to inherit the first column's name, which in `with_columns` replaced the very
-    # column it had just encoded.
+    # A plugin cannot expand a wildcard, but `pl.concat_str` can. `pl.all()` makes a
+    # copy of the call for each column. It does not send all the columns to one call.
+    # The struct sends a full row as one input. This code gives the struct a name. If
+    # it kept the name of the first column, `with_columns` replaced that column with
+    # its own encoding.
     row = pl.struct(exprs, *more_exprs).alias("row")
     return cast(HExpr, _plugin("encode_rows", row, version=version))
 
@@ -429,8 +432,8 @@ _HASH_NAMESPACES = (
     UUIDHashNameSpace,
 )
 
-# Reached through `hash_rows`, this one files its DeprecationWarning against this
-# module rather than the caller, where a filter could find it.
+# If `hash_rows` calls this method, the DeprecationWarning shows this module and not
+# the file of the user. A warning filter cannot then find it.
 _DEPRECATED_ALGORITHMS = {"sha256": "sha2_256"}
 
 
@@ -445,23 +448,23 @@ def _takes_no_arguments(member: Any) -> bool:
 
 
 def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> pl.Expr:
-    """Find `algorithm` among the namespaces, so this stays one name behind them all.
+    """Finds `algorithm` in the namespaces. Therefore one name is sufficient for all.
 
-    A list here would be a second copy of an API that already exists, and would go
-    stale the next time a hasher lands.
+    A list in this module would be a second copy of an API that is already available.
+    The copy would be incorrect after the next new hasher.
     """
-    # Read off the classes rather than off `encoded.chash` and its siblings: those go
-    # through the `pl.Expr` registry, where whichever package claimed the name last
-    # would be the one answering.
+    # This code reads the classes and not `encoded.chash` or the equivalent names.
+    # Those names use the `pl.Expr` registry, where the last package to register a
+    # name is the package that answers.
     if not algorithm.startswith("_") and algorithm not in _DEPRECATED_ALGORITHMS:
         for namespace in _HASH_NAMESPACES:
             method = getattr(namespace(encoded), algorithm, None)
             if callable(method):
                 return method(**kwargs)
 
-    # Only the ones that need nothing else. `hmac_sha256` and its kind still work when
-    # their argument comes too, but naming them here would send a reader to a
-    # `TypeError` raised inside a namespace class they never asked for.
+    # Only the algorithms that need no other argument. `hmac_sha256` and the
+    # equivalent methods still work if their argument comes with them. But a user who
+    # reads their names here gets a `TypeError` from a namespace class.
     unaided = sorted(
         name
         for namespace in _HASH_NAMESPACES
@@ -511,32 +514,33 @@ def hash_rows(
     version: int = 1,
     **kwargs: Any,
 ) -> pl.DataFrame | pl.LazyFrame:
-    """Add a column holding the hash of each row.
+    """Adds a column that contains the hash of each row.
 
-    A shorthand for [`encode_rows`][polars_hash.encode_rows] followed by a hasher::
+    This function is [`encode_rows`][polars_hash.encode_rows] and then a hasher. These
+    two lines give the same result::
 
         plh.hash_rows(df)
         df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash"))
 
-    Reach for the expression when the hash belongs inside a larger one, and for this
-    when a frame needs a fingerprint column. The encoding rules are the same either
-    way, and [`encode_rows`][polars_hash.encode_rows] states them.
+    Use the expression if the hash is part of a larger expression. Use this function
+    if a frame needs one column of hashes. The encoding rules are the same for both,
+    and [`encode_rows`][polars_hash.encode_rows] gives them.
 
     Args:
-        frame: The frame to fingerprint. A `LazyFrame` stays lazy.
-        subset: The columns that make up a row, all but `name` by default. Accepts
-            anything `pl.struct` does, selectors included.
-        algorithm: Any hasher in the `chash`, `nchash` or `uuidhash` namespaces, by
-            name.
-        name: The column to add, replacing one of that name.
-        version: The encoding to write. Version 1 is frozen.
-        **kwargs: Arguments for the hasher, such as `key` for `hmac_sha256`.
+        frame: The frame to hash. A `LazyFrame` stays lazy.
+        subset: The columns of a row. The default is all the columns but `name`. This
+            argument accepts all that `pl.struct` accepts, and also selectors.
+        algorithm: The name of a hasher in the `chash`, `nchash` or `uuidhash`
+            namespace.
+        name: The column to add. It replaces a column with the same name.
+        version: The encoding to write. Version 1 does not change.
+        **kwargs: Arguments for the hasher, for example `key` for `hmac_sha256`.
 
     Returns:
-        The frame with the hash column added.
+        The frame, with the hash column added.
     """
-    # `pl.all()` would fold a hash column left by an earlier run into the encoding,
-    # so refreshing a stored fingerprint reported every row as changed.
+    # `pl.all()` includes a hash column from an earlier call in the encoding. A
+    # second call then shows each row as a changed row.
     default = pl.all().exclude(name)
     encoded = encode_rows(default if subset is None else subset, version=version)
     return frame.with_columns(_hash_algorithm(encoded, algorithm, kwargs).alias(name))

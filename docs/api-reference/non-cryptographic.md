@@ -1,8 +1,9 @@
 # `nchash` — Non-cryptographic hash functions
 
 polars-hash registers these expressions on `pl.Expr` as `.nchash`. They are fast and
-their output is stable. Each expression accepts Utf8 or Binary: a hash reads bytes, so
-the dtype holding them never changes the digest. A null input gives a null output.
+their output is constant. Each expression accepts Utf8 or Binary. A hash reads bytes,
+and therefore the data type of the input does not change the digest. A null input
+gives a null output.
 
 All the examples on this page use this data:
 
@@ -54,7 +55,8 @@ df.select(plh.col("foo").nchash.wyhash())
 └──────────────────────┘
 ```
 
-A `Binary` column hashes its bytes, as it does for every expression on this page:
+This expression hashes the bytes of a `Binary` column. Each expression on this page
+does the same:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
@@ -483,7 +485,7 @@ df.select(plh.col("foo").nchash.md5())
 # 99b1ff8f11781541f7f89f9bd41c4a17
 ```
 
-A `Binary` column hashes its bytes:
+This expression hashes the bytes of a `Binary` column:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.md5())  # type: ignore

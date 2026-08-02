@@ -1,14 +1,14 @@
 # Rows — hash a whole row
 
-polars-hash gives two functions that hash a row rather than a value:
-`plh.encode_rows`, an expression, and `plh.hash_rows`, the frame-level shorthand.
+polars-hash gives two functions that hash a row and not one value. `plh.encode_rows`
+is an expression. `plh.hash_rows` is the equivalent function for a full frame.
 
-Concatenating the columns first cannot do this. `("ab", "c")` and `("a", "bc")` reach
-the same string, so they reach the same digest. One null makes the whole row null. A
-`List`, an `Array` or a `Struct` has no string form to concatenate at all.
+A hash of the joined columns is not sufficient. The rows `("ab", "c")` and
+`("a", "bc")` make the same string, and therefore the same digest. One null makes the
+full row null. A `List`, an `Array` or a `Struct` column has no string form.
 
-`encode_rows` writes each row as bytes that no other row can produce, and any hasher
-in this package takes them from there.
+`encode_rows` writes each row as bytes that no other row can make. Any hasher in this
+package then reads those bytes.
 
 All the examples on this page use this data:
 
@@ -30,7 +30,7 @@ df = pl.DataFrame(
 
 ## `encode_rows(exprs, *more_exprs, version)` { #encode_rows }
 
-Encodes whole rows to Binary, ready for any hasher in this package.
+Changes each row into Binary, for use with any hasher in this package.
 
 ```python
 df.select(plh.encode_rows(pl.all()).chash.sha2_256())
@@ -40,7 +40,7 @@ df.select(plh.encode_rows(pl.all()).chash.sha2_256())
 9055866af8d3c113e0a8fdb729ce8e6fa67ed5f6f51efa8235a588e88ea972f4
 ```
 
-The bytes themselves are a value you can keep, compare or store:
+You can keep, compare or store the bytes:
 
 ```python
 df.select(plh.encode_rows(pl.all()))
@@ -50,7 +50,7 @@ df.select(plh.encode_rows(pl.all()))
 b'\r\x04\x05\x0bhello_world\x03\x01*\x0c\x03\x03\x01\x01\x03\x01\x02\x03\x01\x03\r\x01\x03\x01\x01'
 ```
 
-Naming the columns works as well, and fixes the order of the row:
+You can also give the column names. The names set the order of the row:
 
 ```python
 df.select(plh.encode_rows("foo", "bar").nchash.xxh3_64())
@@ -61,20 +61,20 @@ df.select(plh.encode_rows("foo", "bar").nchash.xxh3_64())
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `exprs` | `IntoExpr \| Iterable[IntoExpr]` | required | The columns that make up the row, in order. Accepts anything `pl.struct` does, selectors included. |
+| `exprs` | `IntoExpr \| Iterable[IntoExpr]` | required | The columns of the row, in order. This argument accepts all that `pl.struct` accepts, and also selectors. |
 | `*more_exprs` | `IntoExpr` | — | More columns, as positional arguments. |
-| `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 is frozen. |
+| `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 does not change. |
 
-**Returns:** Binary, one value per row, in a column named `row`. Never null, even for
-a row that holds nulls. The name is fixed rather than taken from the first column, so
-`with_columns` adds the encoding instead of replacing a column with it. Use `.alias()`
-for any other name.
+**Returns:** Binary. There is one value for each row, in a column with the name
+`row`. No value is null, and a row with nulls also has a value. The name does not come
+from the first column. Therefore `with_columns` adds the encoding and does not replace
+a column with it. Use `.alias()` for a different name.
 
 ---
 
 ## `hash_rows(frame, subset, ...)` { #hash_rows }
 
-Adds a column holding the hash of each row.
+Adds a column that contains the hash of each row.
 
 ```python
 plh.hash_rows(df.select("foo", "bar"))
@@ -90,26 +90,27 @@ plh.hash_rows(df.select("foo", "bar"))
 └─────────────┴─────┴─────────────────────┘
 ```
 
-It is `encode_rows` plus a hasher, so these two are the same:
+This function is `encode_rows` and then a hasher. These two lines give the same
+result:
 
 ```python
 plh.hash_rows(df)
 df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash"))
 ```
 
-Use `hash_rows` when a frame needs a fingerprint column, and `encode_rows` when the
-hash belongs inside a larger expression.
+Use `hash_rows` if a frame needs one column of hashes. Use `encode_rows` if the hash
+is part of a larger expression.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `frame` | `pl.DataFrame \| pl.LazyFrame` | required | The frame to fingerprint. A `LazyFrame` stays lazy. |
-| `subset` | `IntoExpr \| Iterable[IntoExpr] \| None` | `None` | The columns that make up a row. `None` reads them all except `name`, so re-running over an earlier result gives the same hashes. |
-| `algorithm` | `str` | `"xxh3_64"` | Any hasher in the `chash`, `nchash` or `uuidhash` namespaces, by name. |
-| `name` | `str` | `"hash"` | The name of the column to add. An existing column of that name is replaced, and the default `subset` leaves it out of the encoding. |
-| `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 is frozen. |
-| `**kwargs` | `Any` | — | Arguments for the hasher, such as `key` for `hmac_sha256`. |
+| `frame` | `pl.DataFrame \| pl.LazyFrame` | required | The frame to hash. A `LazyFrame` stays lazy. |
+| `subset` | `IntoExpr \| Iterable[IntoExpr] \| None` | `None` | The columns of a row. `None` selects all the columns but `name`. Therefore a second call on an earlier result gives the same hashes. |
+| `algorithm` | `str` | `"xxh3_64"` | The name of a hasher in the `chash`, `nchash` or `uuidhash` namespace. |
+| `name` | `str` | `"hash"` | The name of the column to add. It replaces a column with the same name, and the default `subset` does not include it. |
+| `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 does not change. |
+| `**kwargs` | `Any` | — | Arguments for the hasher, for example `key` for `hmac_sha256`. |
 
 **Returns:** The frame, with the hash column added.
 
@@ -117,13 +118,13 @@ hash belongs inside a larger expression.
 
 ## The encoding { #encoding }
 
-Version 1. These bytes are frozen. A stored hash outlives the release that wrote it,
-so a change to the format takes a new version number rather than an edit, and
-`version=1` keeps giving these bytes.
+This is version 1. These bytes do not change. A user can keep a hash for longer than
+the release that made it. Therefore a new format takes a new version number, and
+`version=1` always gives these bytes.
 
-A row is a struct value: every column in order, and nothing else. Each value is a tag
-byte and a payload. A payload is either fixed width or carries its own length, so the
-values need no separator between them and no row can be read two ways.
+A row is a struct value. It contains each column in order, and nothing more. Each
+value has a tag byte and a payload. A payload has a fixed width, or it starts with its
+own length. Therefore the values need no separator, and a row has only one reading.
 
 | Tag | Class | Payload |
 |-----|-------|---------|
@@ -142,43 +143,44 @@ values need no separator between them and no row can be read two ways.
 | `0c` | List | element count as a varint, then the elements |
 | `0d` | Struct | field count as a varint, then the fields |
 
-A varint is base 128, least significant group first, with the high bit set on every
-group but the last. `Int64(1)` therefore reaches five bytes in a one-column frame:
-`0d 01` for the row and its one field, then `03 01 01`.
+A varint is an integer in base 128. The least significant group is first. Each group
+has the high bit set, but the last group does not. Therefore `Int64(1)` takes five
+bytes in a frame with one column: `0d 01` for the row and its one field, and then
+`03 01 01`.
 
-### What a value is read as
+### How the encoder reads a value
 
-polars holds one value in more than one way. The encoding reads the value, so how it
-is held drops out:
-
-| Rule | Effect |
-|------|--------|
-| Every integer width shares one class | `Int8(1)`, `Int64(1)` and `UInt64(1)` agree |
-| `Float16` and `Float32` widen to `Float64` | every float width agrees on `1.5` |
-| `-0.0` becomes `0.0`, and every NaN payload becomes one NaN | rows polars calls equal cannot hash apart |
-| Temporal values become nanoseconds | `Datetime("ms")` and `Datetime("ns")` agree on an instant |
-| A time zone is not read | a zone is how an instant is shown, not which instant it is |
-| A decimal drops trailing zeros | `1.50` and `1.500` agree |
-| `Categorical` and `Enum` are read as their string | the physical index depends on insertion order, so it is not read |
-| `Array` is read as a `List` | `Array(Int64, 2)` of `[1, 2]` and `List` of `[1, 2]` agree |
-
-### What stays apart
+Polars can store one value in more than one way. The encoder reads the value, and not
+the storage:
 
 | Rule | Effect |
 |------|--------|
-| A null is a value | null, `""` and `0` are three values, and a row holding one still hashes |
-| A null `List` is not an empty `List` | and a null `Struct` is not a struct of nulls |
-| Each class has its own tag | `1` and `1.0` differ, and so do a `Date` and the `Datetime` at midnight |
-| Column order is read | `(1, 2)` and `(2, 1)` differ |
+| All the integer widths use one class | `Int8(1)`, `Int64(1)` and `UInt64(1)` give the same bytes |
+| `Float16` and `Float32` change to `Float64` | all the float widths give the same bytes for `1.5` |
+| `-0.0` changes to `0.0`, and each NaN payload changes to one NaN | two rows that polars reads as equal make one hash |
+| Time values change to nanoseconds | `Datetime("ms")` and `Datetime("ns")` give the same bytes for one time |
+| The encoder does not read a time zone | a zone changes the display of a time, but not the time |
+| A decimal loses the zeros at the end | `1.50` and `1.500` give the same bytes |
+| `Categorical` and `Enum` change to their string | the physical index depends on the order of the values, and therefore the encoder does not read it |
+| An `Array` changes to a `List` | `Array(Int64, 2)` of `[1, 2]` and `List` of `[1, 2]` give the same bytes |
 
-### What is not read at all
+### Which values stay different
 
-**Column names.** Renaming a column keeps every hash. Reordering the columns does not,
-because order is what tells the values apart.
+| Rule | Effect |
+|------|--------|
+| A null is a value | null, `""` and `0` are three values, and a row with a null also has a hash |
+| A null `List` is not an empty `List` | a null `Struct` is also not a struct of nulls |
+| Each class has its own tag | `1` and `1.0` are different, and a `Date` and the `Datetime` at midnight are also different |
+| The encoder reads the column order | `(1, 2)` and `(2, 1)` are different |
 
-**Chunking and slicing.** A frame read in one chunk, in ten, or sliced out of a larger
-one gives the same bytes for the same rows.
+### What the encoder does not read
 
-**Nothing else.** Two columns of `(Int, Int)` and one `Struct` holding two `Int`
-fields are told apart by the field counts, so a schema change is visible in the hash
-even when the values do not move.
+**The column names.** A new name for a column keeps all the hashes. A new order of the
+columns does not, because the order identifies the values.
+
+**The chunks and the slices.** One chunk, ten chunks, or a slice of a larger frame all
+give the same bytes for the same rows.
+
+**Nothing more.** The field counts make two columns of `(Int, Int)` different from one
+`Struct` with two `Int` fields. Therefore a change to the schema also changes the hash,
+even if the values stay the same.

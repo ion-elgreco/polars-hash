@@ -1,31 +1,36 @@
-//! A canonical byte encoding for a row, so that hashing one is stable.
+//! Changes a row into bytes. The bytes are constant, and therefore a hash of them is
+//! also constant.
 //!
-//! Concatenating columns is not enough: `("ab", "c")` and `("a", "bc")` reach the same
-//! string, a null swallows the whole row, and a List or a Struct has no string form at
-//! all. This module writes a row as bytes no other row can produce.
+//! A hash of joined columns is not sufficient. The rows `("ab", "c")` and `("a", "bc")`
+//! make the same string. One null value makes the full row null. A List column or a
+//! Struct column has no string form. This module writes each row as bytes that no
+//! other row can make.
 //!
-//! Every value is a tag byte and a payload. A payload is either fixed width or carries
-//! its own length, so values need no separator between them. [`VERSION`] promises
-//! those bytes never change.
+//! Each value has a tag byte and a payload. A payload has a fixed width, or it starts
+//! with its own length. Therefore the values need no separator between them.
+//! [`VERSION`] keeps these bytes constant.
 //!
-//! A value is encoded by what it means rather than by how polars holds it, so
-//! `Int8(1)`, `Int64(1)` and `UInt64(1)` agree, as do a `Datetime` in milliseconds and
-//! the same instant in nanoseconds. The docs list every rule.
+//! The encoder reads the meaning of a value, not the polars storage of it. Therefore
+//! `Int8(1)`, `Int64(1)` and `UInt64(1)` make the same bytes. A `Datetime` in
+//! milliseconds and the same time in nanoseconds also make the same bytes. The
+//! documentation gives all the rules.
 //!
-//! # Why this is not a crate wrapper
+//! # Why this module is not a wrapper
 //!
-//! Every other expression here wraps upstream, and that is the rule. This module is a
-//! deliberate exception: what it writes is a layout of polars' own dtypes rather than
-//! a published algorithm, and `polars-row` cannot serve — it normalises no widths and
-//! no time units, its entry points are `_`-prefixed internals, and its bytes carry no
-//! promise across polars releases, which is the promise this package is for.
+//! Each of the other expressions wraps a crate. That is the rule for this package.
+//! This module is a permitted exception. It writes a layout of the polars data types,
+//! not a published algorithm. The `polars-row` crate is not a substitute: it does not
+//! normalize the widths or the time units, its functions are internal, and its bytes
+//! can change with each polars release. This package must give constant bytes.
 //!
-//! The cost stays here: [`VERSION`] pins these bytes, and the golden vectors hold them.
+//! The cost of the exception stays here. [`VERSION`] keeps these bytes, and the golden
+//! vectors in the tests make sure that they do not change.
 
 use polars::prelude::*;
 
-/// The encoding this module writes. A change to any byte below needs a new version
-/// rather than an edit, because a stored hash outlives the release that wrote it.
+/// The encoding version that this module writes. A user can keep a hash for longer
+/// than the release that made it. Therefore do not change the bytes below. Add a new
+/// version.
 pub const VERSION: u64 = 1;
 
 const TAG_NULL: u8 = 0x00;
@@ -43,7 +48,8 @@ const TAG_DECIMAL: u8 = 0x0b;
 const TAG_LIST: u8 = 0x0c;
 const TAG_STRUCT: u8 = 0x0d;
 
-/// Base-128, least significant group first, high bit set on every group but the last.
+/// Writes an integer in base 128. The least significant group is first. Each group
+/// has the high bit set, but the last group does not.
 fn push_varint(out: &mut Vec<u8>, mut value: u128) {
     while value >= 0x80 {
         out.push(value as u8 | 0x80);
@@ -52,25 +58,27 @@ fn push_varint(out: &mut Vec<u8>, mut value: u128) {
     out.push(value as u8);
 }
 
-/// Sign and magnitude, so one encoding covers every integer width and both signs: the
-/// sign byte keeps `-1` clear of a magnitude that spends every bit, which is how both
-/// `i64::MIN` and `u128::MAX` fit while a small value stays short.
+/// Writes a sign byte and then the magnitude. One encoding is sufficient for all the
+/// integer widths and for both signs. The sign byte keeps `-1` different from a
+/// magnitude that uses all the bits. Therefore `i64::MIN` and `u128::MAX` are both
+/// possible, and a small value stays short.
 fn push_scalar(out: &mut Vec<u8>, tag: u8, value: i128) {
     out.push(tag);
     out.push(u8::from(value >= 0));
     push_varint(out, value.unsigned_abs());
 }
 
-/// The `u128` values above `i128::MAX`, which land on the bytes [`push_scalar`] would
-/// give them if they fit.
+/// Writes a `u128` value that is more than `i128::MAX`. The bytes are the same bytes
+/// that [`push_scalar`] writes for a smaller value.
 fn push_unsigned(out: &mut Vec<u8>, value: u128) {
     out.push(TAG_INT);
     out.push(1);
     push_varint(out, value);
 }
 
-/// `-0.0` and `0.0` are one value to polars, and so are the NaN payloads, so both
-/// collapse here: rows that compare equal may not hash apart.
+/// Polars reads `-0.0` and `0.0` as one value. It also reads all the NaN payloads as
+/// one value. This function does the same, because two equal rows must make the same
+/// hash.
 fn push_float(out: &mut Vec<u8>, value: f64) {
     let value = if value.is_nan() {
         f64::NAN
@@ -87,12 +95,12 @@ fn push_bytes(out: &mut Vec<u8>, tag: u8, value: &[u8]) {
     out.extend_from_slice(value);
 }
 
-/// Trailing zeros carry no value, so `1.50` and `1.500` reach the same bytes however
-/// wide the column that held them was declared.
+/// Removes the zeros at the end of the value. Therefore `1.50` and `1.500` make the
+/// same bytes, and the declared width of the column has no effect.
 ///
-/// The strip comes down by powers of ten: `Decimal(38, 18)` is the ordinary shape for
-/// money, and a digit at a time cost every row eighteen divisions, worst of all for a
-/// zero. Six cover the whole `i128` range.
+/// The function removes the zeros with powers of ten. `Decimal(38, 18)` is the usual
+/// type for money. One digit at each step made 18 divisions for each row, and a zero
+/// value made the most divisions. Six divisions are sufficient for all `i128` values.
 fn push_decimal(out: &mut Vec<u8>, unscaled: i128, scale: usize) {
     let (mut unscaled, mut scale) = (unscaled, scale);
     if unscaled == 0 {
@@ -110,8 +118,8 @@ fn push_decimal(out: &mut Vec<u8>, unscaled: i128, scale: usize) {
     push_varint(out, scale as u128);
 }
 
-/// A column ready to encode. Every dtype match, cast and downcast happens once here,
-/// so encoding a row is only a walk over values that are already typed.
+/// A column that is ready to encode. This code does each data type match, cast and
+/// downcast one time. Therefore the encoder reads only values that have a known type.
 enum Column {
     Null,
     Bool(BooleanChunked),
@@ -122,8 +130,8 @@ enum Column {
     Float(Float64Chunked),
     Text(StringChunked),
     Bytes(BinaryChunked),
-    /// Its physical value times `per_unit` gives the payload, which is what lets one
-    /// time unit hash like another.
+    /// The payload is the physical value multiplied by `per_unit`. Therefore two
+    /// different time units make the same hash.
     Temporal {
         tag: u8,
         values: Int64Chunked,
@@ -134,7 +142,7 @@ enum Column {
         values: Int128Chunked,
         scale: usize,
     },
-    /// A List, and a fixed-size Array once it is cast to one.
+    /// A List column. An Array column also uses this variant, after a cast.
     List {
         valid: Option<Vec<bool>>,
         offsets: Vec<i64>,
@@ -146,8 +154,9 @@ enum Column {
     },
 }
 
-/// Row-level nulls of a nested column, which its child values cannot report. `None`
-/// when the column has none, so the common case costs nothing.
+/// Gives the null rows of a nested column. The child values cannot show these nulls.
+/// The result is `None` if the column has no nulls, because that is the usual
+/// condition.
 fn row_validity(s: &Series) -> PolarsResult<Option<Vec<bool>>> {
     if s.null_count() == 0 {
         return Ok(None);
@@ -161,8 +170,8 @@ fn is_valid(valid: &Option<Vec<bool>>, i: usize) -> bool {
     valid.as_ref().is_none_or(|valid| valid[i])
 }
 
-/// Nanoseconds in one unit, so a `Datetime` or a `Duration` reaches the same payload
-/// whichever unit polars stored it in.
+/// Gives the number of nanoseconds in one unit. Therefore a `Datetime` or a
+/// `Duration` makes the same payload for each unit.
 fn per_unit(unit: &TimeUnit) -> i128 {
     match unit {
         TimeUnit::Nanoseconds => 1,
@@ -189,8 +198,8 @@ impl Column {
                 Column::Float(s.cast(&DataType::Float64)?.f64()?.clone())
             }
             DataType::String => Column::Text(s.str()?.clone()),
-            // A category is hashed as the string it stands for: its physical index
-            // depends on the order the values were first seen, not on the data.
+            // The encoder hashes the string of a category, not its physical index.
+            // The index depends on the order of the first values, not on the data.
             DataType::Categorical(_, _) | DataType::Enum(_, _) => {
                 Column::Text(s.cast(&DataType::String)?.str()?.clone())
             }
@@ -203,8 +212,8 @@ impl Column {
                 values: s.to_physical_repr().i64()?.clone(),
                 per_unit: 1,
             },
-            // The time zone is how an instant is shown, not which instant it is, so it
-            // does not reach the bytes.
+            // A time zone changes the display of a time, but not the time itself.
+            // Therefore the encoder does not read it.
             DataType::Datetime(unit, _) => Column::Temporal {
                 tag: TAG_DATETIME,
                 values: s.to_physical_repr().i64()?.clone(),
@@ -225,9 +234,9 @@ impl Column {
                     .downcast_get(0)
                     .expect("a rechunked column has one chunk");
                 let offsets = arr.offsets();
-                // The offsets are trimmed to the slice but `get_inner` is not: it
-                // hands back the values buffer of the column the slice came from.
-                // Trimming here keeps a ten-row slice off the million behind it.
+                // The offsets apply to the slice, but `get_inner` gives the full
+                // values buffer of the source column. This code cuts the buffer.
+                // Therefore a slice of ten rows does not read the values before it.
                 let (first, last) = (*offsets.first(), *offsets.last());
                 let values = ca.get_inner().slice(first, (last - first) as usize);
                 Column::List {
@@ -236,8 +245,8 @@ impl Column {
                     values: Box::new(Column::prepare(&values)?),
                 }
             }
-            // An Array holds the same values a List does, only with its length in the
-            // dtype, so it takes the same bytes rather than a shape of its own.
+            // An Array contains the same values as a List, but it keeps its length
+            // in the data type. Therefore it makes the same bytes as a List.
             DataType::Array(inner, _) => Column::prepare(&s.cast(&DataType::List(inner.clone()))?)?,
             DataType::Struct(_) => Column::Struct {
                 valid: row_validity(&s)?,
@@ -324,9 +333,9 @@ impl Column {
                 if !is_valid(valid, i) {
                     return out.push(TAG_NULL);
                 }
-                // The field count for the reason a list writes its element count:
-                // without it the last field runs into whatever follows, and two rows
-                // of different shape reach the same bytes.
+                // The encoder writes the field count, as it does for the element
+                // count of a list. Without the count, the last field continues into
+                // the next value, and two different rows make the same bytes.
                 out.push(TAG_STRUCT);
                 push_varint(out, fields.len() as u128);
                 for field in fields {
@@ -337,11 +346,12 @@ impl Column {
     }
 }
 
-/// Encode every row of `inputs` into its canonical bytes.
+/// Changes each row of `inputs` into its canonical bytes.
 ///
-/// A row is the inputs in order, so the caller decides what a row is and column names
-/// never reach the bytes. The result is never null: a null is a value the encoding
-/// holds, which is what lets a row containing one still have a hash.
+/// A row is the inputs in their given order. Therefore the caller sets the content of
+/// a row, and the encoder does not read the column names. The result has no null
+/// values. A null is one of the values that the encoding writes. Therefore a row with
+/// a null value also has a hash.
 pub fn encode_rows(inputs: &[Series], version: u64) -> PolarsResult<BinaryChunked> {
     if version != VERSION {
         polars_bail!(

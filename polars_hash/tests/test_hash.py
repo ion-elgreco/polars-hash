@@ -547,7 +547,7 @@ def test_gxhash_rejects_a_non_string_column(hash_fn):
     ids=[f"{m}{sorted(k)}" for _, m, k in _BYTE_HASHERS],
 )
 def test_binary_input_hashes_like_the_same_utf8_bytes(namespace, method, kwargs):
-    """A hash reads bytes, so the dtype holding them may not change the digest."""
+    """A hash reads bytes. Therefore the data type must not change the digest."""
     df = pl.DataFrame({"s": ["hello_world", None], "b": [b"hello_world", None]})
 
     result = df.select(
@@ -559,7 +559,7 @@ def test_binary_input_hashes_like_the_same_utf8_bytes(namespace, method, kwargs)
 
 
 def test_binary_input_takes_bytes_that_are_not_utf8():
-    """The reason Binary is worth accepting: these bytes have no string to stand in."""
+    """This is why Binary is necessary: these bytes have no equivalent string."""
     df = pl.DataFrame({"b": [b"\xff\xfe\x00"]})
 
     result = df.select(plh.col("b").chash.sha2_256())
@@ -599,8 +599,8 @@ def test_a_hasher_names_both_dtypes_it_accepts():
     ],
 )
 def test_a_rejected_dtype_raises_rather_than_aborting(series):
-    """Polars panics while reading an arrow type whose dtype feature is off, and a
-    panic across the plugin's C boundary aborts the process instead of raising."""
+    """Polars makes a panic when it reads an arrow type with no data type feature.
+    A panic at the C boundary of the plugin stops the process. It raises no error."""
     df = pl.DataFrame({"literal": series})
 
     with pytest.raises(ComputeError, match="expected `String`"):
@@ -1690,8 +1690,8 @@ _ENCODINGS = [
     ),
     ("list_1_2", pl.Series([[1, 2]]), "0d010c02030101030102"),
     ("struct_a_1", pl.Series([{"a": 1}]), "0d010d01030101"),
-    # One per branch of the encoder, including those that agree with a vector above:
-    # a Null column and an unsigned integer reach the same bytes by their own path.
+    # One vector for each branch of the encoder. Some of them give the same bytes as
+    # a vector above, but a Null column and an unsigned integer use their own branch.
     ("null_dtype", pl.Series([None], dtype=pl.Null), "0d0100"),
     ("uint_1", pl.Series([1], dtype=pl.UInt64), "0d01030101"),
     (
@@ -1729,14 +1729,14 @@ def _encode(df: pl.DataFrame) -> list[bytes]:
 
 
 def test_encode_rows_separates_columns_that_concat_str_runs_together():
-    """`("ab", "c")` and `("a", "bc")` are one string but two rows."""
+    """The rows `("ab", "c")` and `("a", "bc")` make one string, but they are two rows."""
     df = pl.DataFrame({"a": ["ab", "a"], "b": ["c", "bc"]})
 
     assert _encode(df)[0] != _encode(df)[1]
 
 
 def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
-    """The case from issue #43 that `concat_str` cannot reach at all."""
+    """The example from issue #43. `concat_str` cannot do this."""
     df = pl.DataFrame(
         {
             "foo": ["hello_world"],
@@ -1807,7 +1807,7 @@ def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
     ],
 )
 def test_encode_rows_reads_a_value_by_what_it_means(left, right):
-    """How polars holds a value is not part of the value."""
+    """The polars storage of a value is not part of the value."""
     assert _encode(pl.DataFrame({"x": left})) == _encode(pl.DataFrame({"x": right}))
 
 
@@ -1855,7 +1855,7 @@ def test_encode_rows_reads_the_columns_in_order():
 
 
 def test_encode_rows_gives_a_row_with_a_null_a_hash_of_its_own():
-    """`concat_str` returns null for the whole row instead. A null is a value."""
+    """`concat_str` gives null for the full row. A null is a value."""
     df = pl.DataFrame({"a": ["x", None, "x"], "b": ["y", "y", None]})
 
     result = df.select(plh.encode_rows(pl.all()).chash.sha2_256().alias("h"))["h"]
@@ -1865,7 +1865,7 @@ def test_encode_rows_gives_a_row_with_a_null_a_hash_of_its_own():
 
 
 def test_encode_rows_is_blind_to_chunking_and_slicing():
-    """Offsets of a sliced list column do not start at zero."""
+    """The offsets of a sliced list column do not start at zero."""
     df = pl.DataFrame({"x": [[1, 2], [3], [4, 5, 6]], "y": ["a", "b", "c"]})
     chunked = pl.concat([df[:1], df[1:]], rechunk=False)
 
@@ -1970,8 +1970,8 @@ def test_hash_rows_rejects_an_algorithm_it_has_no_hasher_for(algorithm):
 
 
 def test_encode_rows_keeps_struct_shapes_apart():
-    """A struct writes its field count, as a list writes its element count: without
-    it two rows of different shape reach the same bytes."""
+    """A struct writes its field count, as a list writes its element count. Without
+    the count, two rows with different shapes make the same bytes."""
     wide = pl.DataFrame({"a": [{"x": 1, "y": 2}]})
     split = pl.DataFrame({"a": [{"x": 1}], "b": [2]})
 
@@ -1979,7 +1979,7 @@ def test_encode_rows_keeps_struct_shapes_apart():
 
 
 def test_encode_rows_does_not_take_the_name_of_a_column_it_encodes():
-    """Naming the output after the first column made `with_columns` replace it."""
+    """If the output kept the name of the first column, `with_columns` replaced it."""
     df = pl.DataFrame({"foo": ["a"], "bar": [1]})
 
     result = df.with_columns(plh.encode_rows(pl.all()))
@@ -1989,7 +1989,7 @@ def test_encode_rows_does_not_take_the_name_of_a_column_it_encodes():
 
 
 def test_hash_rows_does_not_read_the_column_it_writes():
-    """Re-running it over its own output reported every row as changed."""
+    """A second call on its own output showed each row as a changed row."""
     df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
 
     once = plh.hash_rows(df)
@@ -1998,7 +1998,7 @@ def test_hash_rows_does_not_read_the_column_it_writes():
 
 
 def test_hash_rows_uses_this_packages_hashers():
-    """Resolving through `pl.Expr` let any package that claims `nchash` take over."""
+    """With `pl.Expr`, a package that registers `nchash` can answer for this one."""
 
     class Hijack:
         def __init__(self, expr: pl.Expr) -> None:
@@ -2021,8 +2021,8 @@ def test_hash_rows_uses_this_packages_hashers():
 
 
 def test_the_row_api_rejects_an_object_column():
-    """Polars hands a plugin an Object column as Binary, so a hasher would digest
-    CPython pointers. The struct that carries a row is what refuses it."""
+    """Polars sends an Object column to a plugin as Binary. A hasher then reads the
+    CPython pointers. The struct that contains a row rejects such a column."""
 
     class Opaque:
         pass
@@ -2045,8 +2045,9 @@ def test_the_row_api_rejects_an_object_column():
     ],
 )
 def test_a_zero_width_array_raises_rather_than_aborting(call):
-    """`FixedSizeListArray::try_from_ffi` asserts when the child is empty, upstream of
-    anything here. Reachable from `list.to_array(0)`, so pin that it stays catchable."""
+    """`FixedSizeListArray::try_from_ffi` makes an assertion if the child is empty.
+    This is upstream code. A user can make such a column with `list.to_array(0)`.
+    Therefore this test makes sure that the error stays catchable."""
     df = pl.DataFrame({"x": pl.Series([[], []], dtype=pl.Array(pl.Int64, 0))})
 
     with pytest.raises(ComputeError, match="the plugin panicked"):
@@ -2055,8 +2056,8 @@ def test_a_zero_width_array_raises_rather_than_aborting(call):
 
 @pytest.mark.parametrize("scale", range(37))
 def test_encode_rows_strips_every_decimal_scale_the_same_way(scale):
-    """Every width has to land where a digit-at-a-time strip would. 15 at scale s is
-    15 followed by s zeros unscaled."""
+    """Each width must give the result of a removal of one digit at each step. The
+    unscaled value of 15 at scale s is 15 and then s zeros."""
     df = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, scale))})
     fifteen = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, 0))})
 
@@ -2072,7 +2073,7 @@ def test_encode_rows_reads_a_decimal_zero_as_one_value(scale):
 
 
 def test_encode_rows_keeps_the_widest_integers_apart():
-    """`u128` above `i128::MAX` and `i128::MIN` share a magnitude and differ by sign."""
+    """A `u128` above `i128::MAX` and `i128::MIN` have one magnitude and two signs."""
     biggest = pl.DataFrame({"x": pl.Series([2**127], dtype=pl.UInt128)})
     smallest = pl.DataFrame({"x": pl.Series([-(2**127)], dtype=pl.Int128)})
 
@@ -2100,7 +2101,7 @@ def test_hash_rows_still_takes_an_algorithm_that_needs_an_argument():
 
 
 def test_hash_rows_points_the_deprecated_alias_at_its_replacement():
-    """Called from here its warning would name this package's source, not the user's."""
+    """From this module, the warning shows this package and not the file of the user."""
     df = pl.DataFrame({"a": [1]})
 
     with pytest.raises(ValueError, match="unknown algorithm 'sha256'"):
@@ -2108,8 +2109,8 @@ def test_hash_rows_points_the_deprecated_alias_at_its_replacement():
 
 
 def test_every_byte_hasher_says_so_in_its_docstring():
-    """`help()` and an IDE hover are the last place the removed Utf8-only rule can
-    survive, and nothing else checks them."""
+    """`help()` and an IDE show these strings. No other test reads them, and the old
+    Utf8-only rule can stay in them."""
     classes = {
         "chash": plh.CryptographicHashingNameSpace,
         "nchash": plh.NonCryptographicHashingNameSpace,

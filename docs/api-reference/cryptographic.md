@@ -1,8 +1,9 @@
 # `chash` — Cryptographic hash functions
 
 polars-hash registers these expressions on `pl.Expr` as `.chash`. Each expression
-accepts Utf8 or Binary and gives a lowercase hex string. A hash reads bytes, so the
-dtype holding them never changes the digest. A null input gives a null output.
+accepts Utf8 or Binary, and gives a hexadecimal string in lowercase. A hash reads
+bytes. Therefore the data type of the input does not change the digest. A null input
+gives a null output.
 
 All the examples on this page use this data:
 
@@ -200,7 +201,8 @@ df.select(plh.col("foo").chash.blake3())
 9833e5324eb2400de814730f4e92810905351bc0451e10b75847210c1d7c37ed
 ```
 
-A `Binary` column hashes its bytes, as it does for every expression on this page:
+This expression hashes the bytes of a `Binary` column. Each expression on this page
+does the same:
 
 ```python
 pl.select(pl.lit(b"my_bytes").chash.blake3())  # type: ignore

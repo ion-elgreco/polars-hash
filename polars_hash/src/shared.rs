@@ -1,15 +1,16 @@
 use polars::chunked_array::ops::arity::{unary_elementwise, unary_elementwise_values};
 use polars::prelude::*;
 
-/// Run `op` over the bytes of every value, for either a String or a Binary column.
+/// Runs `op` on the bytes of each value of a String column or a Binary column.
 ///
-/// A hash reads bytes, so the two dtypes differ only in how an element is reached.
-/// Keeping the match here lets each expression stay one line, gives them all one error
-/// message, and is what lets `encode_rows` feed any of them.
+/// A hash reads bytes. Therefore the two data types are different only in the method
+/// to read an element. This function keeps that match in one place. Each expression
+/// stays one line, all of them give the same error message, and `encode_rows` can send
+/// its bytes to any of them.
 ///
-/// A column holding nulls takes the walk that skips them. The `_values` walk visits
-/// every slot, so a mostly-null column cost what a full one does. It is still the
-/// faster of the two when there is nothing to skip, so both are here.
+/// A column with nulls uses the walk that omits them. The `_values` walk reads each
+/// slot, and therefore a column of nulls cost as much as a full column. The `_values`
+/// walk is still the faster walk if there are no nulls. Both walks are here.
 pub fn hash_bytes<V, F, R>(s: &Series, op: F) -> PolarsResult<ChunkedArray<V>>
 where
     V: PolarsDataType,
@@ -33,10 +34,10 @@ where
     }
 }
 
-/// The [`hash_bytes`] counterpart for a digest written out as hex.
+/// The equivalent of [`hash_bytes`] for a digest in hexadecimal.
 ///
-/// `op` appends to a buffer that is reused across rows rather than returning a
-/// `String`, so a digest costs no allocation of its own.
+/// `op` writes to a buffer that each row uses again. It does not return a `String`.
+/// Therefore a digest needs no memory of its own.
 pub fn hash_bytes_into_string<F>(s: &Series, mut op: F) -> PolarsResult<StringChunked>
 where
     F: FnMut(&[u8], &mut std::string::String),

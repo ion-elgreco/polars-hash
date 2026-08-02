@@ -214,8 +214,8 @@ result = df.select(plh.concat_str("foo", "bar").chash.sha256())
 
 ## Hash a whole row
 
-`encode_rows` gives each row bytes no other row can produce, whatever its columns
-hold, and any hasher takes them from there.
+`encode_rows` gives each row bytes that no other row can make, for all column types.
+Any hasher then reads those bytes.
 
 ```python
 df = pl.DataFrame(
@@ -233,12 +233,13 @@ shape: (1, 1)
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-`plh.hash_rows(frame)` is the same thing for a whole `DataFrame` or `LazyFrame`, and
-adds the result as a column.
+`plh.hash_rows(frame)` does the same for a full `DataFrame` or `LazyFrame`. It adds
+the result as a column.
 
-A value is hashed for what it means, not for how polars holds it: an `Int32` hashes
-like the `Int64` beside it, a millisecond `Datetime` like the same instant in
-nanoseconds, and a `Categorical` like the string it stands for. Column names are not
-hashed, so renaming is free while reordering is not. The
+The encoder reads the meaning of a value, not the polars storage of it. An `Int32` and
+the `Int64` next to it make the same hash. A `Datetime` in milliseconds and the same
+time in nanoseconds also make the same hash, and a `Categorical` makes the hash of its
+string. The encoder does not read the column names. Therefore a new name keeps the
+hash, but a new order does not. The
 [reference](https://ion-elgreco.github.io/polars-hash/latest/api-reference/rows/)
-states every rule and the byte layout, which is frozen at version 1.
+gives all the rules and the byte layout of version 1, which does not change.

@@ -8,11 +8,11 @@ name = "polars_hash"
 crate-type = ["cdylib"]
 
 [dependencies]
-# A dtype feature left off here does not merely reject that dtype: polars panics
-# reading the arrow type, and a panic across the plugin's C boundary aborts the
-# process. `dtype-full` rather than a list, since a list has to grow with polars and
-# leaving one out costs the caller their interpreter. It excludes `object`, which
-# arrives as Binary whatever is set here.
+# If a data type feature is absent, polars does not only reject that data type. It
+# makes a panic when it reads the arrow type, and a panic at the C boundary of the
+# plugin stops the process. Therefore use `dtype-full` and not a list. A list must
+# grow with polars, and one absent feature stops the interpreter of the user.
+# `dtype-full` does not include `object`, which polars always sends as Binary.
 polars = { version = "0.54.4", features = ["dtype-full", "timezones"] }
 pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
 pyo3-polars = { version = "0.27", features = ["derive", "dtype-full"] }
