@@ -1908,7 +1908,7 @@ def test_hash_rows_stays_lazy():
     frame = pl.LazyFrame({"a": [1]}).select(plh.hash_rows(pl.all()).nchash.xxh3_64())
 
     assert isinstance(frame, pl.LazyFrame)
-    assert frame.collect()["row"].dtype == pl.UInt64
+    assert frame.collect()["a"].dtype == pl.UInt64
 
 
 def test_hash_rows_keeps_struct_shapes_apart():
@@ -1920,14 +1920,14 @@ def test_hash_rows_keeps_struct_shapes_apart():
     assert _encode(wide) != _encode(split)
 
 
-def test_hash_rows_does_not_take_the_name_of_a_column_it_encodes():
-    """If the output kept the name of the first column, `with_columns` replaced it."""
+def test_hash_rows_names_the_output_after_the_first_column():
+    """`pl.struct`, `pl.concat_str` and each `*_horizontal` expression do the same.
+    Therefore `with_columns` replaces that column, and `select` keeps its name."""
     df = pl.DataFrame({"foo": ["a"], "bar": [1]})
 
-    result = df.with_columns(plh.hash_rows(pl.all()))
-
-    assert result.columns == ["foo", "bar", "row"]
-    assert result["foo"].to_list() == ["a"]
+    assert df.select(plh.hash_rows(pl.all())).columns == ["foo"]
+    assert df.select(plh.hash_rows(pl.all()).alias("h")).columns == ["h"]
+    assert df.with_columns(plh.hash_rows(pl.all())).columns == ["foo", "bar"]
 
 
 def test_hash_rows_rejects_an_object_column():

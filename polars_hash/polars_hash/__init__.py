@@ -418,11 +418,14 @@ def hash_rows(
     """
     # A plugin cannot expand a wildcard, but `pl.concat_str` can. `pl.all()` makes a
     # copy of the call for each column. It does not send all the columns to one call.
-    # The struct sends a full row as one input. This code gives the struct a name. If
-    # it kept the name of the first column, `with_columns` replaced that column with
-    # its own encoding.
-    row = pl.struct(exprs, *more_exprs).alias("row")
-    return cast(HExpr, _plugin("encode_rows", row, version=version))
+    # The struct sends a full row as one input.
+    #
+    # The output keeps the name of the first column, as `pl.struct`, `pl.concat_str`
+    # and each `*_horizontal` expression do. A constant name such as `row` would also
+    # replace a column, and it would replace one that the caller did not expect.
+    return cast(
+        HExpr, _plugin("encode_rows", pl.struct(exprs, *more_exprs), version=version)
+    )
 
 
 __all__ = ["UUIDNamespace", "__version__", "col", "concat_str", "hash_rows"]

@@ -63,10 +63,16 @@ df.select(plh.hash_rows("foo", "bar").nchash.xxh3_64())
 | `*more_exprs` | `IntoExpr` | — | More columns, as positional arguments. |
 | `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 does not change. |
 
-**Returns:** Binary. There is one value for each row, in a column with the name
-`row`. No value is null, and a row with nulls also has a value. The name does not come
-from the first column. Therefore `with_columns` adds the encoding and does not replace
-a column with it. Use `.alias()` for a different name.
+**Returns:** Binary. There is one value for each row, and no value is null. A row
+with nulls also has a value.
+
+The output column keeps the name of the first column, as `pl.struct`, `pl.concat_str`
+and each `*_horizontal` expression do. Therefore `with_columns` replaces that column.
+Use `.alias()` to keep it:
+
+```python
+df.with_columns(plh.hash_rows(pl.all()).nchash.xxh3_64().alias("hash"))
+```
 
 ---
 

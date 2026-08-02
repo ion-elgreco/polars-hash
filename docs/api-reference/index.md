@@ -116,8 +116,9 @@ These rules apply to all the expressions above.
   on [`cityhash64()`](non-cryptographic.md#cityhash64), where `seed=None` is how you
   ask for the unseeded algorithm.
 - **Output name.** The output column has the same name as the input column. To keep
-  both columns, use `.alias()`. [`hash_rows`](rows.md#hash_rows) is the exception.
-  Its output is the row and not one column, and therefore its name is `row`.
+  both columns, use `.alias()`. [`hash_rows`](rows.md#hash_rows) reads more than one
+  column, and it keeps the name of the first, as the polars `*_horizontal` expressions
+  do.
 - **Object columns.** Polars sends an `Object` column to a plugin as `Binary`, and it
   keeps no mark to identify the two. Therefore a hasher reads the eight bytes of the
   CPython pointer and not the value. These bytes change with each run. The digest is
