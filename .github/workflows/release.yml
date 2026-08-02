@@ -12,10 +12,17 @@ concurrency:
 permissions: {}
 
 jobs:
-  build:
+  tests:
     permissions:
       contents: read
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/test.yml
+    with:
+      cache: false
+
+  wheels:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/wheels.yml
     with:
       cache: false
 
@@ -23,7 +30,7 @@ jobs:
     name: Publish to PyPI
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [build]
+    needs: [tests, wheels]
     permissions:
       contents: read
     steps:
