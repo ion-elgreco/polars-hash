@@ -438,9 +438,12 @@ def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> p
     Listing the algorithms here instead would be a second copy of an API that already
     exists, and one that goes stale the next time a hasher lands.
     """
+    # Built from the classes rather than from `encoded.chash` and its siblings: those
+    # go through the `pl.Expr` registry, where any package that claims one of these
+    # names last would be the one answering.
     if not algorithm.startswith("_"):
-        for namespace in _HASH_NAMESPACES:
-            method = getattr(getattr(encoded, namespace), algorithm, None)
+        for namespace in _HASH_NAMESPACES.values():
+            method = getattr(namespace(encoded), algorithm, None)
             if callable(method):
                 return method(**kwargs)
 

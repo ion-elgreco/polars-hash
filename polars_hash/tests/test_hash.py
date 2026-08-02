@@ -1965,3 +1965,26 @@ def test_hash_rows_does_not_read_the_column_it_writes():
     once = plh.hash_rows(df)
 
     assert_series_equal(plh.hash_rows(once)["hash"], once["hash"])
+
+
+def test_hash_rows_uses_this_packages_hashers():
+    """Resolving through `pl.Expr` let any package that claims `nchash` take over."""
+
+    class Hijack:
+        def __init__(self, expr: pl.Expr) -> None:
+            self._expr = expr
+
+        def xxh3_64(self) -> pl.Expr:
+            return pl.lit("PWNED")
+
+    with pytest.warns(UserWarning, match="overriding existing custom namespace"):
+        pl.api.register_expr_namespace("nchash")(Hijack)
+    try:
+        result = plh.hash_rows(pl.DataFrame({"a": [1]}))
+
+        assert result["hash"].dtype == pl.UInt64
+    finally:
+        with pytest.warns(UserWarning, match="overriding existing custom namespace"):
+            pl.api.register_expr_namespace("nchash")(
+                plh.NonCryptographicHashingNameSpace
+            )
