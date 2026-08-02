@@ -94,13 +94,12 @@ Full page: [uuidhash](uuid.md).
 
 ## Rows — whole-row hashing
 
-These are functions on `plh`. They are not expressions in a namespace. They hash a
-full row, and a hash of the joined columns cannot do this. Full page: [rows](rows.md).
+This is a function on `plh`. It is not an expression in a namespace. It hashes a full
+row, and a hash of the joined columns cannot do this. Full page: [rows](rows.md).
 
 | Function | Input | Output | Description |
 |----------|-------|--------|-------------|
-| [`plh.encode_rows(exprs, version)`](rows.md#encode_rows) | Any columns | Binary | Changes each row into bytes that no other row can make, for use with any hasher above. |
-| [`plh.hash_rows(frame, subset, ...)`](rows.md#hash_rows) | DataFrame or LazyFrame | The frame, plus a column | Adds a column that contains the hash of each row. |
+| [`plh.hash_rows(exprs, version)`](rows.md#hash_rows) | Any columns | Binary | Changes each row into bytes that no other row can make, for use with any hasher above. |
 
 ## Conventions
 
@@ -110,22 +109,21 @@ These rules apply to all the expressions above.
   `select`, in `with_columns`, in `group_by(...).agg`, and in streaming mode. Polars
   can also divide the data into chunks and change the order of operations.
 - **Null values.** A null input gives a null output. The expression does not hash a
-  substitute value. [`encode_rows`](rows.md#encode_rows) is the exception. A null is
+  substitute value. [`hash_rows`](rows.md#hash_rows) is the exception. A null is
   one of the values of a row, and therefore a row with a null also has a hash. The
   rules for the scalar arguments are different: `length`, `key`, `namespace`,
   `default`, `len` and `precision` must not be null, and neither may `seed` — except
   on [`cityhash64()`](non-cryptographic.md#cityhash64), where `seed=None` is how you
   ask for the unseeded algorithm.
 - **Output name.** The output column has the same name as the input column. To keep
-  both columns, use `.alias()`. [`encode_rows`](rows.md#encode_rows) is the exception.
+  both columns, use `.alias()`. [`hash_rows`](rows.md#hash_rows) is the exception.
   Its output is the row and not one column, and therefore its name is `row`.
 - **Object columns.** Polars sends an `Object` column to a plugin as `Binary`, and it
   keeps no mark to identify the two. Therefore a hasher reads the eight bytes of the
   CPython pointer and not the value. These bytes change with each run. The digest is
   not repeatable, and two equal objects give two different digests. Change an `Object`
-  column to a usual data type before you hash it.
-  [`encode_rows`](rows.md#encode_rows) and [`hash_rows`](rows.md#hash_rows) reject such
-  a column.
+  column to a usual data type before you hash it. [`hash_rows`](rows.md#hash_rows)
+  rejects such a column.
 - **Incorrect input type.** The expression raises an error when the input type is not
   permitted. This occurs when Polars collects the data, not when you build the
   expression. All errors from the plugin become

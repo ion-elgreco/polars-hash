@@ -1,13 +1,12 @@
 # Rows — hash a whole row
 
-polars-hash gives two functions that hash a row and not one value. `plh.encode_rows`
-is an expression. `plh.hash_rows` is the equivalent function for a full frame.
+`plh.hash_rows` is an expression that hashes a row and not one value.
 
 A hash of the joined columns is not sufficient. The rows `("ab", "c")` and
 `("a", "bc")` make the same string, and therefore the same digest. One null makes the
 full row null. A `List`, an `Array` or a `Struct` column has no string form.
 
-`encode_rows` writes each row as bytes that no other row can make. Any hasher in this
+`hash_rows` writes each row as bytes that no other row can make. Any hasher in this
 package then reads those bytes.
 
 All the examples on this page use this data:
@@ -23,17 +22,16 @@ df = pl.DataFrame(
 
 | Function | Input | Output |
 |----------|-------|--------|
-| [`encode_rows(exprs, version)`](#encode_rows) | Any columns | Binary |
-| [`hash_rows(frame, subset, ...)`](#hash_rows) | DataFrame or LazyFrame | The frame, plus a column |
+| [`hash_rows(exprs, version)`](#hash_rows) | Any columns | Binary |
 
 ---
 
-## `encode_rows(exprs, *more_exprs, version)` { #encode_rows }
+## `hash_rows(exprs, *more_exprs, version)` { #hash_rows }
 
 Changes each row into Binary, for use with any hasher in this package.
 
 ```python
-df.select(plh.encode_rows(pl.all()).chash.sha2_256())
+df.select(plh.hash_rows(pl.all()).chash.sha2_256())
 ```
 
 ```text
@@ -43,7 +41,7 @@ df.select(plh.encode_rows(pl.all()).chash.sha2_256())
 You can keep, compare or store the bytes:
 
 ```python
-df.select(plh.encode_rows(pl.all()))
+df.select(plh.hash_rows(pl.all()))
 ```
 
 ```text
@@ -53,7 +51,7 @@ b'\r\x04\x05\x0bhello_world\x03\x01*\x0c\x03\x03\x01\x01\x03\x01\x02\x03\x01\x03
 You can also give the column names. The names set the order of the row:
 
 ```python
-df.select(plh.encode_rows("foo", "bar").nchash.xxh3_64())
+df.select(plh.hash_rows("foo", "bar").nchash.xxh3_64())
 # 9123089596710669414
 ```
 
@@ -69,50 +67,6 @@ df.select(plh.encode_rows("foo", "bar").nchash.xxh3_64())
 `row`. No value is null, and a row with nulls also has a value. The name does not come
 from the first column. Therefore `with_columns` adds the encoding and does not replace
 a column with it. Use `.alias()` for a different name.
-
----
-
-## `hash_rows(frame, subset, ...)` { #hash_rows }
-
-Adds a column that contains the hash of each row.
-
-```python
-plh.hash_rows(df.select("foo", "bar"))
-```
-
-```text
-┌─────────────┬─────┬─────────────────────┐
-│ foo         ┆ bar ┆ hash                │
-│ ---         ┆ --- ┆ ---                 │
-│ str         ┆ i64 ┆ u64                 │
-╞═════════════╪═════╪═════════════════════╡
-│ hello_world ┆ 42  ┆ 9123089596710669414 │
-└─────────────┴─────┴─────────────────────┘
-```
-
-This function is `encode_rows` and then a hasher. These two lines give the same
-result:
-
-```python
-plh.hash_rows(df)
-df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash"))
-```
-
-Use `hash_rows` if a frame needs one column of hashes. Use `encode_rows` if the hash
-is part of a larger expression.
-
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `frame` | `pl.DataFrame \| pl.LazyFrame` | required | The frame to hash. A `LazyFrame` stays lazy. |
-| `subset` | `IntoExpr \| Iterable[IntoExpr] \| None` | `None` | The columns of a row. `None` selects all the columns but `name`. Therefore a second call on an earlier result gives the same hashes. |
-| `algorithm` | `str` | `"xxh3_64"` | The name of a hasher in the `chash`, `nchash` or `uuidhash` namespace. |
-| `name` | `str` | `"hash"` | The name of the column to add. It replaces a column with the same name, and the default `subset` does not include it. |
-| `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 does not change. |
-| `**kwargs` | `Any` | — | Arguments for the hasher, for example `key` for `hmac_sha256`. |
-
-**Returns:** The frame, with the hash column added.
 
 ---
 

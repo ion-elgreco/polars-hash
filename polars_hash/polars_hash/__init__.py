@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import inspect
 import warnings
 from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol, cast, overload
+from typing import Any, Protocol, cast
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -386,7 +385,7 @@ col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
-def encode_rows(
+def hash_rows(
     exprs: IntoExpr | Iterable[IntoExpr],
     *more_exprs: IntoExpr,
     version: int = 1,
@@ -396,9 +395,9 @@ def encode_rows(
     A hash of joined columns is not sufficient. The rows ``("ab", "c")`` and
     ``("a", "bc")`` make the same string, one null makes the full row null, and a List
     column or a Struct column has no string form. This function gives each row bytes
-    that no other row can make::
+    that no other row can make. A hasher then reads those bytes::
 
-        df.select(plh.encode_rows(pl.all()).chash.sha2_256())
+        df.select(plh.hash_rows(pl.all()).chash.sha2_256())
 
     The encoder reads the meaning of a value, not the polars storage of it. Therefore
     an ``Int32`` and the ``Int64`` next to it make the same hash. The encoder does not
@@ -426,131 +425,4 @@ def encode_rows(
     return cast(HExpr, _plugin("encode_rows", row, version=version))
 
 
-_HASH_NAMESPACES = (
-    CryptographicHashingNameSpace,
-    NonCryptographicHashingNameSpace,
-    UUIDHashNameSpace,
-)
-
-# If `hash_rows` calls this method, the DeprecationWarning shows this module and not
-# the file of the user. A warning filter cannot then find it.
-_DEPRECATED_ALGORITHMS = {"sha256": "sha2_256"}
-
-
-def _takes_no_arguments(member: Any) -> bool:
-    parameters = list(inspect.signature(member).parameters.values())[1:]
-    return all(
-        parameter.default is not inspect.Parameter.empty
-        or parameter.kind
-        in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
-        for parameter in parameters
-    )
-
-
-def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> pl.Expr:
-    """Finds `algorithm` in the namespaces. Therefore one name is sufficient for all.
-
-    A list in this module would be a second copy of an API that is already available.
-    The copy would be incorrect after the next new hasher.
-    """
-    # This code reads the classes and not `encoded.chash` or the equivalent names.
-    # Those names use the `pl.Expr` registry, where the last package to register a
-    # name is the package that answers.
-    if not algorithm.startswith("_") and algorithm not in _DEPRECATED_ALGORITHMS:
-        for namespace in _HASH_NAMESPACES:
-            method = getattr(namespace(encoded), algorithm, None)
-            if callable(method):
-                return method(**kwargs)
-
-    # Only the algorithms that need no other argument. `hmac_sha256` and the
-    # equivalent methods still work if their argument comes with them. But a user who
-    # reads their names here gets a `TypeError` from a namespace class.
-    unaided = sorted(
-        name
-        for namespace in _HASH_NAMESPACES
-        for name, member in vars(namespace).items()
-        if callable(member)
-        and not name.startswith("_")
-        and name not in _DEPRECATED_ALGORITHMS
-        and _takes_no_arguments(member)
-    )
-    replacement = _DEPRECATED_ALGORITHMS.get(algorithm)
-    instead = f" Use {replacement!r} instead." if replacement else ""
-    raise ValueError(
-        f"unknown algorithm {algorithm!r}, expected one of {unaided}.{instead}"
-    )
-
-
-@overload
-def hash_rows(
-    frame: pl.DataFrame,
-    subset: IntoExpr | Iterable[IntoExpr] | None = ...,
-    *,
-    algorithm: str = ...,
-    name: str = ...,
-    version: int = ...,
-    **kwargs: Any,
-) -> pl.DataFrame: ...
-
-
-@overload
-def hash_rows(
-    frame: pl.LazyFrame,
-    subset: IntoExpr | Iterable[IntoExpr] | None = ...,
-    *,
-    algorithm: str = ...,
-    name: str = ...,
-    version: int = ...,
-    **kwargs: Any,
-) -> pl.LazyFrame: ...
-
-
-def hash_rows(
-    frame: pl.DataFrame | pl.LazyFrame,
-    subset: IntoExpr | Iterable[IntoExpr] | None = None,
-    *,
-    algorithm: str = "xxh3_64",
-    name: str = "hash",
-    version: int = 1,
-    **kwargs: Any,
-) -> pl.DataFrame | pl.LazyFrame:
-    """Adds a column that contains the hash of each row.
-
-    This function is [`encode_rows`][polars_hash.encode_rows] and then a hasher. These
-    two lines give the same result::
-
-        plh.hash_rows(df)
-        df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash"))
-
-    Use the expression if the hash is part of a larger expression. Use this function
-    if a frame needs one column of hashes. The encoding rules are the same for both,
-    and [`encode_rows`][polars_hash.encode_rows] gives them.
-
-    Args:
-        frame: The frame to hash. A `LazyFrame` stays lazy.
-        subset: The columns of a row. The default is all the columns but `name`. This
-            argument accepts all that `pl.struct` accepts, and also selectors.
-        algorithm: The name of a hasher in the `chash`, `nchash` or `uuidhash`
-            namespace.
-        name: The column to add. It replaces a column with the same name.
-        version: The encoding to write. Version 1 does not change.
-        **kwargs: Arguments for the hasher, for example `key` for `hmac_sha256`.
-
-    Returns:
-        The frame, with the hash column added.
-    """
-    # `pl.all()` includes a hash column from an earlier call in the encoding. A
-    # second call then shows each row as a changed row.
-    default = pl.all().exclude(name)
-    encoded = encode_rows(default if subset is None else subset, version=version)
-    return frame.with_columns(_hash_algorithm(encoded, algorithm, kwargs).alias(name))
-
-
-__all__ = [
-    "UUIDNamespace",
-    "__version__",
-    "col",
-    "concat_str",
-    "encode_rows",
-    "hash_rows",
-]
+__all__ = ["UUIDNamespace", "__version__", "col", "concat_str", "hash_rows"]

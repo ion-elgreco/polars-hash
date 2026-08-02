@@ -1663,7 +1663,7 @@ def test_uuid5_concat_rejects_a_length_mismatch(default):
         )
 
 
-# `encode_rows` writes version 1 of the encoding. These bytes are frozen: a stored
+# `hash_rows` writes version 1 of the encoding. These bytes are frozen: a stored
 # hash outlives the release that wrote it, so a change here needs a new version.
 _ENCODINGS = [
     ("null", pl.Series([None], dtype=pl.Int64), "0d0100"),
@@ -1716,26 +1716,26 @@ _ENCODINGS = [
     ("series", "expected"),
     [pytest.param(s, e, id=name) for name, s, e in _ENCODINGS],
 )
-def test_encode_rows_writes_the_documented_bytes(series, expected):
+def test_hash_rows_writes_the_documented_bytes(series, expected):
     df = pl.DataFrame({"x": series})
 
-    result = df.select(plh.encode_rows(pl.all()).alias("e"))
+    result = df.select(plh.hash_rows(pl.all()).alias("e"))
 
     assert result["e"][0].hex() == expected
 
 
 def _encode(df: pl.DataFrame) -> list[bytes]:
-    return df.select(plh.encode_rows(pl.all()).alias("e"))["e"].to_list()
+    return df.select(plh.hash_rows(pl.all()).alias("e"))["e"].to_list()
 
 
-def test_encode_rows_separates_columns_that_concat_str_runs_together():
+def test_hash_rows_separates_columns_that_concat_str_runs_together():
     """The rows `("ab", "c")` and `("a", "bc")` make one string, but they are two rows."""
     df = pl.DataFrame({"a": ["ab", "a"], "b": ["c", "bc"]})
 
     assert _encode(df)[0] != _encode(df)[1]
 
 
-def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
+def test_hash_rows_hashes_a_row_holding_a_list_and_a_struct():
     """The example from issue #43. `concat_str` cannot do this."""
     df = pl.DataFrame(
         {
@@ -1746,7 +1746,7 @@ def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
         }
     )
 
-    result = df.select(plh.encode_rows(pl.all()).chash.sha2_256())
+    result = df.select(plh.hash_rows(pl.all()).chash.sha2_256())
 
     assert (
         result.item()
@@ -1806,7 +1806,7 @@ def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
         ),
     ],
 )
-def test_encode_rows_reads_a_value_by_what_it_means(left, right):
+def test_hash_rows_reads_a_value_by_what_it_means(left, right):
     """The polars storage of a value is not part of the value."""
     assert _encode(pl.DataFrame({"x": left})) == _encode(pl.DataFrame({"x": right}))
 
@@ -1840,31 +1840,31 @@ def test_encode_rows_reads_a_value_by_what_it_means(left, right):
         ),
     ],
 )
-def test_encode_rows_keeps_values_apart(left, right):
+def test_hash_rows_keeps_values_apart(left, right):
     assert _encode(pl.DataFrame({"x": left})) != _encode(pl.DataFrame({"x": right}))
 
 
-def test_encode_rows_ignores_column_names():
+def test_hash_rows_ignores_column_names():
     assert _encode(pl.DataFrame({"a": [1]})) == _encode(pl.DataFrame({"zzz": [1]}))
 
 
-def test_encode_rows_reads_the_columns_in_order():
+def test_hash_rows_reads_the_columns_in_order():
     assert _encode(pl.DataFrame({"a": [1], "b": [2]})) != _encode(
         pl.DataFrame({"a": [2], "b": [1]})
     )
 
 
-def test_encode_rows_gives_a_row_with_a_null_a_hash_of_its_own():
+def test_hash_rows_gives_a_row_with_a_null_a_hash_of_its_own():
     """`concat_str` gives null for the full row. A null is a value."""
     df = pl.DataFrame({"a": ["x", None, "x"], "b": ["y", "y", None]})
 
-    result = df.select(plh.encode_rows(pl.all()).chash.sha2_256().alias("h"))["h"]
+    result = df.select(plh.hash_rows(pl.all()).chash.sha2_256().alias("h"))["h"]
 
     assert result.null_count() == 0
     assert result[1] != result[2]
 
 
-def test_encode_rows_is_blind_to_chunking_and_slicing():
+def test_hash_rows_is_blind_to_chunking_and_slicing():
     """The offsets of a sliced list column do not start at zero."""
     df = pl.DataFrame({"x": [[1, 2], [3], [4, 5, 6]], "y": ["a", "b", "c"]})
     chunked = pl.concat([df[:1], df[1:]], rechunk=False)
@@ -1874,102 +1874,44 @@ def test_encode_rows_is_blind_to_chunking_and_slicing():
     assert _encode(df.filter(pl.col("y") != "b")) == [_encode(df)[0], _encode(df)[2]]
 
 
-def test_encode_rows_takes_named_columns_and_an_expression():
+def test_hash_rows_takes_named_columns_and_an_expression():
     df = pl.DataFrame({"a": [1], "b": ["x"], "c": [True]})
 
     assert (
-        _encode(df)
-        == df.select(plh.encode_rows("a", "b", "c").alias("e"))["e"].to_list()
+        _encode(df) == df.select(plh.hash_rows("a", "b", "c").alias("e"))["e"].to_list()
     )
 
 
-def test_encode_rows_rejects_an_encoding_it_cannot_write():
+def test_hash_rows_rejects_an_encoding_it_cannot_write():
     df = pl.DataFrame({"a": [1]})
 
     with pytest.raises(ComputeError, match="unknown row encoding version 2"):
-        df.select(plh.encode_rows(pl.all(), version=2))
+        df.select(plh.hash_rows(pl.all(), version=2))
 
 
 @pytest.mark.parametrize(
     ("namespace", "method"),
     [("chash", "sha2_256"), ("nchash", "xxh3_64"), ("uuidhash", "uuid5")],
 )
-def test_encode_rows_feeds_any_hasher(namespace, method):
+def test_hash_rows_feeds_any_hasher(namespace, method):
     df = pl.DataFrame({"a": [1, 1, 2], "b": [[1], [1], [2]]})
 
     result = df.select(
-        getattr(getattr(plh.encode_rows(pl.all()), namespace), method)().alias("h")
+        getattr(getattr(plh.hash_rows(pl.all()), namespace), method)().alias("h")
     )["h"]
 
     assert result[0] == result[1]
     assert result[0] != result[2]
 
 
-def test_hash_rows_adds_a_fingerprint_column():
-    df = pl.DataFrame({"a": [1, 1, 2], "b": [[1], [1], [2]]})
-
-    result = plh.hash_rows(df)
-
-    assert result.columns == ["a", "b", "hash"]
-    assert result["hash"][0] == result["hash"][1] != result["hash"][2]
-
-
-def test_hash_rows_is_the_expression_it_says_it_is():
-    df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
-
-    assert_frame_equal(
-        plh.hash_rows(df),
-        df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash")),
-    )
-
-
-def test_hash_rows_keeps_a_lazyframe_lazy():
-    frame = plh.hash_rows(pl.LazyFrame({"a": [1]}))
+def test_hash_rows_stays_lazy():
+    frame = pl.LazyFrame({"a": [1]}).select(plh.hash_rows(pl.all()).nchash.xxh3_64())
 
     assert isinstance(frame, pl.LazyFrame)
-    assert frame.collect()["hash"].dtype == pl.UInt64
+    assert frame.collect()["row"].dtype == pl.UInt64
 
 
-def test_hash_rows_reads_only_the_subset():
-    df = pl.DataFrame({"a": [1, 1], "b": ["x", "y"]})
-
-    result = plh.hash_rows(df, "a")
-
-    assert result["hash"][0] == result["hash"][1]
-
-
-@pytest.mark.parametrize(
-    ("algorithm", "kwargs", "dtype"),
-    [
-        ("sha2_256", {}, pl.Utf8),
-        ("hmac_sha256", {"key": "secret"}, pl.Utf8),
-        ("cityhash128", {}, pl.UInt128),
-        ("uuid5", {}, pl.Utf8),
-    ],
-)
-def test_hash_rows_reaches_every_namespace(algorithm, kwargs, dtype):
-    df = pl.DataFrame({"a": [1]})
-
-    result = plh.hash_rows(df, algorithm=algorithm, name="h", **kwargs)
-
-    assert result["h"].dtype == dtype
-
-
-def test_hash_rows_names_the_column():
-    df = pl.DataFrame({"a": [1]})
-
-    assert plh.hash_rows(df, name="row_id").columns == ["a", "row_id"]
-
-
-@pytest.mark.parametrize("algorithm", ["nope", "_expr"])
-def test_hash_rows_rejects_an_algorithm_it_has_no_hasher_for(algorithm):
-    df = pl.DataFrame({"a": [1]})
-
-    with pytest.raises(ValueError, match="unknown algorithm"):
-        plh.hash_rows(df, algorithm=algorithm)
-
-
-def test_encode_rows_keeps_struct_shapes_apart():
+def test_hash_rows_keeps_struct_shapes_apart():
     """A struct writes its field count, as a list writes its element count. Without
     the count, two rows with different shapes make the same bytes."""
     wide = pl.DataFrame({"a": [{"x": 1, "y": 2}]})
@@ -1978,49 +1920,17 @@ def test_encode_rows_keeps_struct_shapes_apart():
     assert _encode(wide) != _encode(split)
 
 
-def test_encode_rows_does_not_take_the_name_of_a_column_it_encodes():
+def test_hash_rows_does_not_take_the_name_of_a_column_it_encodes():
     """If the output kept the name of the first column, `with_columns` replaced it."""
     df = pl.DataFrame({"foo": ["a"], "bar": [1]})
 
-    result = df.with_columns(plh.encode_rows(pl.all()))
+    result = df.with_columns(plh.hash_rows(pl.all()))
 
     assert result.columns == ["foo", "bar", "row"]
     assert result["foo"].to_list() == ["a"]
 
 
-def test_hash_rows_does_not_read_the_column_it_writes():
-    """A second call on its own output showed each row as a changed row."""
-    df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
-
-    once = plh.hash_rows(df)
-
-    assert_series_equal(plh.hash_rows(once)["hash"], once["hash"])
-
-
-def test_hash_rows_uses_this_packages_hashers():
-    """With `pl.Expr`, a package that registers `nchash` can answer for this one."""
-
-    class Hijack:
-        def __init__(self, expr: pl.Expr) -> None:
-            self._expr = expr
-
-        def xxh3_64(self) -> pl.Expr:
-            return pl.lit("PWNED")
-
-    with pytest.warns(UserWarning, match="overriding existing custom namespace"):
-        pl.api.register_expr_namespace("nchash")(Hijack)
-    try:
-        result = plh.hash_rows(pl.DataFrame({"a": [1]}))
-
-        assert result["hash"].dtype == pl.UInt64
-    finally:
-        with pytest.warns(UserWarning, match="overriding existing custom namespace"):
-            pl.api.register_expr_namespace("nchash")(
-                plh.NonCryptographicHashingNameSpace
-            )
-
-
-def test_the_row_api_rejects_an_object_column():
+def test_hash_rows_rejects_an_object_column():
     """Polars sends an Object column to a plugin as Binary. A hasher then reads the
     CPython pointers. The struct that contains a row rejects such a column."""
 
@@ -2029,19 +1939,15 @@ def test_the_row_api_rejects_an_object_column():
 
     df = pl.DataFrame({"x": pl.Series([Opaque()], dtype=pl.Object), "y": [1]})
 
-    for call in (
-        lambda: df.select(plh.encode_rows(pl.all())),
-        lambda: plh.hash_rows(df),
-    ):
-        with pytest.raises(InvalidOperationError, match="nested objects are not"):
-            call()
+    with pytest.raises(InvalidOperationError, match="nested objects are not"):
+        df.select(plh.hash_rows(pl.all()))
 
 
 @pytest.mark.parametrize(
     "call",
     [
         pytest.param(lambda df: df.select(plh.col("x").chash.sha2_256()), id="hasher"),
-        pytest.param(lambda df: df.select(plh.encode_rows(pl.all())), id="encode_rows"),
+        pytest.param(lambda df: df.select(plh.hash_rows(pl.all())), id="hash_rows"),
     ],
 )
 def test_a_zero_width_array_raises_rather_than_aborting(call):
@@ -2055,7 +1961,7 @@ def test_a_zero_width_array_raises_rather_than_aborting(call):
 
 
 @pytest.mark.parametrize("scale", range(37))
-def test_encode_rows_strips_every_decimal_scale_the_same_way(scale):
+def test_hash_rows_strips_every_decimal_scale_the_same_way(scale):
     """Each width must give the result of a removal of one digit at each step. The
     unscaled value of 15 at scale s is 15 and then s zeros."""
     df = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, scale))})
@@ -2065,47 +1971,19 @@ def test_encode_rows_strips_every_decimal_scale_the_same_way(scale):
 
 
 @pytest.mark.parametrize("scale", [0, 1, 18, 37])
-def test_encode_rows_reads_a_decimal_zero_as_one_value(scale):
+def test_hash_rows_reads_a_decimal_zero_as_one_value(scale):
     df = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, scale))})
     zero = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, 0))})
 
     assert _encode(df) == _encode(zero)
 
 
-def test_encode_rows_keeps_the_widest_integers_apart():
+def test_hash_rows_keeps_the_widest_integers_apart():
     """A `u128` above `i128::MAX` and `i128::MIN` have one magnitude and two signs."""
     biggest = pl.DataFrame({"x": pl.Series([2**127], dtype=pl.UInt128)})
     smallest = pl.DataFrame({"x": pl.Series([-(2**127)], dtype=pl.Int128)})
 
     assert _encode(biggest) != _encode(smallest)
-
-
-def test_hash_rows_lists_only_algorithms_it_can_call_unaided():
-    df = pl.DataFrame({"a": [1]})
-
-    with pytest.raises(ValueError, match="unknown algorithm") as raised:
-        plh.hash_rows(df, algorithm="nope")
-
-    message = str(raised.value)
-    assert "sha2_256" in message and "xxh3_64" in message
-    for needs_an_argument in ("uuid5_concat", "hmac_sha256", "sha3_shake128"):
-        assert needs_an_argument not in message
-
-
-def test_hash_rows_still_takes_an_algorithm_that_needs_an_argument():
-    df = pl.DataFrame({"a": [1]})
-
-    result = plh.hash_rows(df, algorithm="hmac_sha256", key="secret")
-
-    assert result["hash"].dtype == pl.Utf8
-
-
-def test_hash_rows_points_the_deprecated_alias_at_its_replacement():
-    """From this module, the warning shows this package and not the file of the user."""
-    df = pl.DataFrame({"a": [1]})
-
-    with pytest.raises(ValueError, match="unknown algorithm 'sha256'"):
-        plh.hash_rows(df, algorithm="sha256")
 
 
 def test_every_byte_hasher_says_so_in_its_docstring():
@@ -2123,7 +2001,7 @@ def test_every_byte_hasher_says_so_in_its_docstring():
 
 
 @pytest.mark.parametrize("dtype", [pl.Float16, pl.Float32, pl.Float64])
-def test_encode_rows_widens_every_float_to_f64(dtype):
+def test_hash_rows_widens_every_float_to_f64(dtype):
     df = pl.DataFrame({"x": pl.Series([1.5], dtype=dtype)})
     f64 = pl.DataFrame({"x": pl.Series([1.5], dtype=pl.Float64)})
 
