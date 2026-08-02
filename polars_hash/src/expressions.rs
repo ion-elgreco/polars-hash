@@ -371,8 +371,8 @@ fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     };
     let precision = precision.i64()?;
 
-    let out: StringChunked = match precision.len() {
-        1 => match unsafe { precision.get_unchecked(0) } {
+    let out: StringChunked = match (seconds.len(), precision.len()) {
+        (_, 1) => match unsafe { precision.get_unchecked(0) } {
             Some(precision) => try_unary_elementwise(&seconds, |seconds_opt| {
                 timehash_encoder(seconds_opt, Some(precision))
             }),
@@ -380,7 +380,21 @@ fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
                 "Precision may not be null".to_string().into(),
             )),
         },
-        _ => try_binary_elementwise(&seconds, precision, timehash_encoder),
+        (1, _) => {
+            let seconds = unsafe { seconds.get_unchecked(0) };
+            try_unary_elementwise(precision, |precision_opt| {
+                timehash_encoder(seconds, precision_opt)
+            })
+            .map(|out| out.with_name(inputs[0].name().clone()))
+        }
+        (timestamps, precisions) if timestamps == precisions => {
+            try_binary_elementwise(&seconds, precision, timehash_encoder)
+        }
+        (timestamps, precisions) => polars_bail!(
+            ShapeMismatch:
+            "timestamp column has length {} and precision has length {}, expected equal lengths or a scalar",
+            timestamps, precisions
+        ),
     }?;
     Ok(out.into_series())
 }

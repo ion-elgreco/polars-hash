@@ -768,6 +768,65 @@ def test_timehash_precision_per_row():
     assert_frame_equal(result, expected)
 
 
+def test_timehash_scalar_timestamp_broadcasts():
+    """One timestamp against a precision column must yield one hash per row."""
+    df = pl.DataFrame({"n": [4, 8, 10]})
+
+    result = df.select(
+        pl.lit(datetime(2017, 2, 21, 20, 15, 13)).timehash.from_datetime("n").alias("h")
+    )
+
+    expected = pl.DataFrame(
+        [pl.Series("h", ["afcc", "afcccc0e", "afcccc0e1b"], dtype=pl.Utf8)]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_scalar_timestamp_broadcasts_in_with_columns():
+    df = pl.DataFrame({"n": [4, 8, 10]})
+
+    result = df.with_columns(
+        h=pl.lit(datetime(2017, 2, 21, 20, 15, 13)).timehash.from_datetime("n")
+    )
+
+    assert result["h"].to_list() == ["afcc", "afcccc0e", "afcccc0e1b"]
+
+
+def test_timehash_scalar_timestamp_broadcasts_across_chunks():
+    """Chunk layout must not change the result. Zipping operands of unequal length
+    panics inside polars' chunk alignment rather than broadcasting."""
+    df = pl.concat(
+        [pl.DataFrame({"n": [4, 8]}), pl.DataFrame({"n": [10]})], rechunk=False
+    )
+    assert df["n"].n_chunks() == 2
+
+    result = df.select(
+        pl.lit(datetime(2017, 2, 21, 20, 15, 13)).timehash.from_datetime("n").alias("h")
+    )
+
+    assert result["h"].to_list() == ["afcc", "afcccc0e", "afcccc0e1b"]
+
+
+def test_timehash_null_scalar_timestamp_broadcasts():
+    df = pl.DataFrame({"n": [4, 8, 10]})
+
+    result = df.select(
+        pl.lit(None, dtype=pl.Datetime("us")).timehash.from_datetime("n").alias("h")
+    )
+
+    assert result["h"].to_list() == [None, None, None]
+
+
+def test_timehash_length_mismatch_is_rejected():
+    """Neither operand is a scalar, so there is nothing to broadcast: erroring beats
+    zipping down to the shorter one and silently dropping rows."""
+    df = pl.DataFrame({"n": [4, 8, 10]})
+    timestamps = pl.Series([datetime(2017, 2, 21, 20, 15, 13)] * 2)
+
+    with pytest.raises(ComputeError, match="expected equal lengths or a scalar"):
+        df.select(pl.lit(timestamps).timehash.from_datetime("n"))
+
+
 def test_timehash_null():
     df = pl.DataFrame(
         {
