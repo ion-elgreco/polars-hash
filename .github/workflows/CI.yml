@@ -19,3 +19,26 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/test.yml
+
+  # release-docs only runs on tags, so a broken nav entry or dead link would
+  # otherwise surface at release time. --strict fails the build on both.
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Nothing compiles here, so `cache: false` skips the sccache and
+      # cargo-registry steps.
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          uv: 'true'
+          cache: 'false'
+
+      - run: make -C polars_hash docs-build
