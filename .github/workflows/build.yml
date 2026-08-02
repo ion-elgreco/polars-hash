@@ -1,0 +1,134 @@
+name: build
+
+# The tag trigger lives in release.yml, not here: a workflow holding publish
+# credentials must not restore a cache a PR could have influenced. zizmor's
+# cache-poisoning audit enforces that split.
+
+on:
+  workflow_call:
+    inputs:
+      cache:
+        description: Restore the cargo registry and sccache.
+        type: boolean
+        default: true
+
+permissions: {}
+
+env:
+  # sccache cannot cache incrementally compiled artifacts.
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux_tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: polars_hash
+    env:
+      RUSTC_WRAPPER: ${{ inputs.cache && 'sccache' || '' }}
+      SCCACHE_GHA_ENABLED: 'true'
+      # Fail on a stale uv.lock; local `make venv` re-resolves instead.
+      UV_LOCKED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          cache: ${{ inputs.cache }}
+          uv: 'true'
+          rust-toolchain: 'true'
+
+      - run: make install
+      - run: make test
+      - run: make check
+
+  wheels:
+    name: wheels ${{ matrix.platform }}-${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux, runner: ubuntu-latest, target: x86_64 }
+          - { platform: linux, runner: ubuntu-latest, target: x86 }
+          - { platform: linux, runner: ubuntu-latest, target: aarch64 }
+          - { platform: linux, runner: ubuntu-latest, target: armv7 }
+          - { platform: linux, runner: ubuntu-latest, target: ppc64le }
+          - { platform: windows, runner: windows-latest, target: x64, python-architecture: x64 }
+          - { platform: windows, runner: windows-latest, target: x86, python-architecture: x86 }
+          - { platform: macos, runner: macos-latest, target: x86_64 }
+          - { platform: macos, runner: macos-latest, target: aarch64 }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-architecture: ${{ matrix.python-architecture }}
+          cache: ${{ inputs.cache }}
+          rust-cache: ${{ matrix.platform != 'linux' }}
+
+      # maturin-action sets RUSTC_WRAPPER from `sccache`, and ignores
+      # `manylinux` off Linux.
+      - name: Build wheels
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.platform == 'linux' && 'auto' || '' }}
+          args: --release --out dist ${{ matrix.platform == 'linux' && '-i python3.10' || '--find-interpreter' }} --manifest-path polars_hash/Cargo.toml
+          sccache: ${{ inputs.cache }}
+      - name: Upload wheels
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wheels-${{ matrix.platform }}-${{ matrix.target }}
+          path: dist
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build sdist
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
+        with:
+          command: sdist
+          args: --out dist --manifest-path polars_hash/Cargo.toml
+      - name: Upload sdist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wheels-sdist
+          path: dist
+
+  merge_wheels:
+    name: Merge wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [linux_tests, wheels, sdist]
+    permissions:
+      contents: read
+    steps:
+      - name: Merge wheels
+        uses: actions/upload-artifact/merge@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wheels
+          pattern: wheels-*
+          # Otherwise every wheel is stored twice.
+          delete-merged: true

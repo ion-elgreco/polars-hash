@@ -1,0 +1,77 @@
+name: "Setup Python and Rust environment"
+description: "Set up Python, the Rust toolchain, and the sccache / cargo-registry caches."
+
+inputs:
+  python-version:
+    description: "The Python version to set up."
+    required: false
+    default: "3.10"
+
+  python-architecture:
+    description: "Interpreter architecture. Empty means 'use the runner arch' — only the Windows legs need to pin it."
+    required: false
+    default: ""
+
+  uv:
+    description: "Install uv and let it manage Python. Jobs that instead need an interpreter on PATH for maturin to discover leave this 'false' and get setup-python."
+    required: false
+    default: "false"
+
+  cache:
+    description: "Enable the compile caches (sccache + cargo registry). Release workflows set this to 'false' so no cache can reach a published wheel."
+    required: false
+    default: "true"
+
+  rust-cache:
+    description: "Enable the cargo registry cache. Container builds set this to 'false' — maturin-action does not mount the host ~/.cargo into its manylinux image, so there is no registry there to cache."
+    required: false
+    default: "true"
+
+  rust-toolchain:
+    description: "Install the toolchain up front. Jobs that compile through maturin-action leave this 'false' and let the action manage it."
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Install uv
+      if: inputs.uv == 'true'
+      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+        enable-cache: ${{ inputs.cache }}
+
+    # The Windows x86 leg needs a real 32-bit interpreter for
+    # `--find-interpreter`; uv's managed Pythons are not on PATH.
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      if: inputs.uv != 'true'
+      with:
+        python-version: ${{ inputs.python-version }}
+        architecture: ${{ inputs.python-architecture }}
+
+    # Run from polars_hash so rustup picks up its rust-toolchain file.
+    - name: Set up Rust
+      if: inputs.rust-toolchain == 'true'
+      shell: bash
+      working-directory: polars_hash
+      run: rustup show
+
+    # maturin-action exports only the retired v1 cache variables, so as of
+    # v1.51.0 container builds are 100% miss without this step's
+    # ACTIONS_CACHE_SERVICE_V2 / ACTIONS_RESULTS_URL. Re-check on SHA bumps.
+    - name: Set up sccache
+      if: inputs.cache == 'true'
+      uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+    # Registry only — compiled artifacts are sccache's job. The registry is
+    # target-independent, so one `shared-key` across every job is correct.
+    - name: Cache cargo registry
+      if: inputs.cache == 'true' && inputs.rust-cache == 'true'
+      uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      with:
+        workspaces: polars_hash
+        shared-key: polars-hash
+        cache-targets: false
+        cache-on-failure: true
