@@ -385,4 +385,41 @@ col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
-__all__ = ["UUIDNamespace", "__version__", "col", "concat_str"]
+def encode_rows(
+    exprs: IntoExpr | Iterable[IntoExpr],
+    *more_exprs: IntoExpr,
+    version: int = 1,
+) -> HExpr:
+    """Encode whole rows to Binary, ready for any hasher in this package.
+
+    Concatenating columns cannot hash a row: ``("ab", "c")`` and ``("a", "bc")`` reach
+    the same string, one null swallows the row, and a List or a Struct has no string
+    form at all. This gives each row bytes that no other row can produce, so::
+
+        df.select(plh.encode_rows(pl.all()).chash.sha2_256())
+
+    A value is encoded by what it means, not by how polars holds it, so an ``Int32``
+    hashes like the ``Int64`` beside it and a millisecond ``Datetime`` like the same
+    instant in nanoseconds. Column names never reach the bytes, so renaming a column
+    keeps its hash while reordering the columns does not. A null is a value the
+    encoding holds rather than an absent row, so a row containing one still hashes.
+    The reference lists every rule.
+
+    Args:
+        exprs: The columns to encode, in the order they make up the row.
+        *more_exprs: More columns, as positional arguments.
+        version: The encoding to write. Version 1 is frozen; a later version, if one
+            is ever needed, has to be asked for by number.
+
+    Returns:
+        Expression producing Binary, one value per row and never null.
+    """
+    # A plugin cannot expand a wildcard the way `pl.concat_str` does: `pl.all()` would
+    # clone the call once per column instead of passing them all to one. The struct is
+    # what carries a whole row across in a single input.
+    return cast(
+        HExpr, _plugin("encode_rows", pl.struct(exprs, *more_exprs), version=version)
+    )
+
+
+__all__ = ["UUIDNamespace", "__version__", "col", "concat_str", "encode_rows"]

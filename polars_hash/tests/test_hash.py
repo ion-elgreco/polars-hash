@@ -1647,3 +1647,226 @@ def test_uuid5_concat_rejects_a_length_mismatch(default):
         df.select(
             plh.col("id").uuidhash.uuid5_concat(pl.col("side").head(2), default=default)
         )
+
+
+# `encode_rows` writes version 1 of the encoding. These bytes are frozen: a stored
+# hash outlives the release that wrote it, so a change here needs a new version.
+_ENCODINGS = [
+    ("null", pl.Series([None], dtype=pl.Int64), "0d00"),
+    ("false", pl.Series([False]), "0d01"),
+    ("true", pl.Series([True]), "0d02"),
+    ("int_1", pl.Series([1], dtype=pl.Int64), "0d030101"),
+    ("int_minus_1", pl.Series([-1], dtype=pl.Int64), "0d030001"),
+    ("int_300", pl.Series([300], dtype=pl.Int64), "0d0301ac02"),
+    ("float_1_5", pl.Series([1.5]), "0d043ff8000000000000"),
+    ("string_ab", pl.Series(["ab"]), "0d05026162"),
+    ("binary_ff", pl.Series([b"\xff"]), "0d0601ff"),
+    ("date_day_1", pl.Series([date(1970, 1, 2)]), "0d070101"),
+    ("time_1ns", pl.Series([1], dtype=pl.Int64).cast(pl.Time), "0d080101"),
+    (
+        "datetime_1000us",
+        pl.Series([1000], dtype=pl.Int64).cast(pl.Datetime("us")),
+        "0d0901c0843d",
+    ),
+    ("duration_1us", pl.Series([timedelta(microseconds=1)]), "0d0a01e807"),
+    (
+        "decimal_1_50",
+        pl.Series([Decimal("1.50")], dtype=pl.Decimal(10, 2)),
+        "0d0b010f01",
+    ),
+    ("list_1_2", pl.Series([[1, 2]]), "0d0c02030101030102"),
+    ("struct_a_1", pl.Series([{"a": 1}]), "0d0d030101"),
+]
+
+
+@pytest.mark.parametrize(
+    ("series", "expected"),
+    [pytest.param(s, e, id=name) for name, s, e in _ENCODINGS],
+)
+def test_encode_rows_writes_the_documented_bytes(series, expected):
+    df = pl.DataFrame({"x": series})
+
+    result = df.select(plh.encode_rows(pl.all()).alias("e"))
+
+    assert result["e"][0].hex() == expected
+
+
+def _encode(df: pl.DataFrame) -> list[bytes]:
+    return df.select(plh.encode_rows(pl.all()).alias("e"))["e"].to_list()
+
+
+def test_encode_rows_separates_columns_that_concat_str_runs_together():
+    """`("ab", "c")` and `("a", "bc")` are one string but two rows."""
+    df = pl.DataFrame({"a": ["ab", "a"], "b": ["c", "bc"]})
+
+    assert _encode(df)[0] != _encode(df)[1]
+
+
+def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
+    """The case from issue #43 that `concat_str` cannot reach at all."""
+    df = pl.DataFrame(
+        {
+            "foo": ["hello_world"],
+            "baz": [42],
+            "qux": [[1, 2, 3]],
+            "quux": [{"a": 1, "b": 2}],
+        }
+    )
+
+    result = df.select(plh.encode_rows(pl.all()).chash.sha2_256())
+
+    assert (
+        result.item()
+        == "64cde83c2d50d5750e619b300565542899ea0d5e6c170146b75a301d9cdb9bc6"
+    )
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        pytest.param(
+            pl.Series([1], dtype=pl.Int8),
+            pl.Series([1], dtype=pl.Int64),
+            id="int_width",
+        ),
+        pytest.param(
+            pl.Series([1], dtype=pl.UInt64),
+            pl.Series([1], dtype=pl.Int64),
+            id="int_sign",
+        ),
+        pytest.param(
+            pl.Series([1.5], dtype=pl.Float32),
+            pl.Series([1.5], dtype=pl.Float64),
+            id="float_width",
+        ),
+        pytest.param(pl.Series([-0.0]), pl.Series([0.0]), id="negative_zero"),
+        pytest.param(
+            pl.Series([1000], dtype=pl.Int64).cast(pl.Datetime("ms")),
+            pl.Series([1_000_000_000], dtype=pl.Int64).cast(pl.Datetime("ns")),
+            id="datetime_unit",
+        ),
+        pytest.param(
+            pl.Series([datetime(2020, 1, 1)]).dt.replace_time_zone("UTC"),
+            pl.Series([datetime(2020, 1, 1)]),
+            id="datetime_time_zone",
+        ),
+        pytest.param(
+            pl.Series([timedelta(seconds=1)]).cast(pl.Duration("ms")),
+            pl.Series([timedelta(seconds=1)]).cast(pl.Duration("ns")),
+            id="duration_unit",
+        ),
+        pytest.param(
+            pl.Series([Decimal("1.50")], dtype=pl.Decimal(10, 2)),
+            pl.Series([Decimal("1.500")], dtype=pl.Decimal(10, 3)),
+            id="decimal_scale",
+        ),
+        pytest.param(
+            pl.Series(["a"], dtype=pl.Categorical), pl.Series(["a"]), id="categorical"
+        ),
+        pytest.param(
+            pl.Series(["a"], dtype=pl.Enum(["z", "a"])), pl.Series(["a"]), id="enum"
+        ),
+        pytest.param(
+            pl.Series([[1, 2]], dtype=pl.Array(pl.Int64, 2)),
+            pl.Series([[1, 2]]),
+            id="array_and_list",
+        ),
+    ],
+)
+def test_encode_rows_reads_a_value_by_what_it_means(left, right):
+    """How polars holds a value is not part of the value."""
+    assert _encode(pl.DataFrame({"x": left})) == _encode(pl.DataFrame({"x": right}))
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        pytest.param(
+            pl.Series([None], dtype=pl.Utf8), pl.Series([""]), id="null_and_empty"
+        ),
+        pytest.param(
+            pl.Series([None], dtype=pl.Int64),
+            pl.Series([0], dtype=pl.Int64),
+            id="null_and_zero",
+        ),
+        pytest.param(pl.Series([1], dtype=pl.Int64), pl.Series([1.0]), id="int_float"),
+        pytest.param(
+            pl.Series([date(2020, 1, 1)]),
+            pl.Series([datetime(2020, 1, 1)]),
+            id="date_datetime",
+        ),
+        pytest.param(
+            pl.Series([None], dtype=pl.Struct({"a": pl.Int64})),
+            pl.Series([{"a": None}], dtype=pl.Struct({"a": pl.Int64})),
+            id="null_struct_and_struct_of_nulls",
+        ),
+        pytest.param(
+            pl.Series([None], dtype=pl.List(pl.Int64)),
+            pl.Series([[]], dtype=pl.List(pl.Int64)),
+            id="null_list_and_empty_list",
+        ),
+    ],
+)
+def test_encode_rows_keeps_values_apart(left, right):
+    assert _encode(pl.DataFrame({"x": left})) != _encode(pl.DataFrame({"x": right}))
+
+
+def test_encode_rows_ignores_column_names():
+    assert _encode(pl.DataFrame({"a": [1]})) == _encode(pl.DataFrame({"zzz": [1]}))
+
+
+def test_encode_rows_reads_the_columns_in_order():
+    assert _encode(pl.DataFrame({"a": [1], "b": [2]})) != _encode(
+        pl.DataFrame({"a": [2], "b": [1]})
+    )
+
+
+def test_encode_rows_gives_a_row_with_a_null_a_hash_of_its_own():
+    """`concat_str` returns null for the whole row instead. A null is a value."""
+    df = pl.DataFrame({"a": ["x", None, "x"], "b": ["y", "y", None]})
+
+    result = df.select(plh.encode_rows(pl.all()).chash.sha2_256().alias("h"))["h"]
+
+    assert result.null_count() == 0
+    assert result[1] != result[2]
+
+
+def test_encode_rows_is_blind_to_chunking_and_slicing():
+    """Offsets of a sliced list column do not start at zero."""
+    df = pl.DataFrame({"x": [[1, 2], [3], [4, 5, 6]], "y": ["a", "b", "c"]})
+    chunked = pl.concat([df[:1], df[1:]], rechunk=False)
+
+    assert _encode(chunked) == _encode(df)
+    assert _encode(df[1:]) == _encode(df)[1:]
+    assert _encode(df.filter(pl.col("y") != "b")) == [_encode(df)[0], _encode(df)[2]]
+
+
+def test_encode_rows_takes_named_columns_and_an_expression():
+    df = pl.DataFrame({"a": [1], "b": ["x"], "c": [True]})
+
+    assert (
+        _encode(df)
+        == df.select(plh.encode_rows("a", "b", "c").alias("e"))["e"].to_list()
+    )
+
+
+def test_encode_rows_rejects_an_encoding_it_cannot_write():
+    df = pl.DataFrame({"a": [1]})
+
+    with pytest.raises(ComputeError, match="unknown row encoding version 2"):
+        df.select(plh.encode_rows(pl.all(), version=2))
+
+
+@pytest.mark.parametrize(
+    ("namespace", "method"),
+    [("chash", "sha2_256"), ("nchash", "xxh3_64"), ("uuidhash", "uuid5")],
+)
+def test_encode_rows_feeds_any_hasher(namespace, method):
+    df = pl.DataFrame({"a": [1, 1, 2], "b": [[1], [1], [2]]})
+
+    result = df.select(
+        getattr(getattr(plh.encode_rows(pl.all()), namespace), method)().alias("h")
+    )["h"]
+
+    assert result[0] == result[1]
+    assert result[0] != result[2]

@@ -3,6 +3,7 @@ mod geohashers;
 mod h3;
 mod hmac_hashers;
 mod murmurhash_hashers;
+mod row_encode;
 mod sha_hashers;
 mod shared;
 mod timehashers;

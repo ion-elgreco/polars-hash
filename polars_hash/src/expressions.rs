@@ -54,6 +54,11 @@ struct StrictKwargs {
     strict: bool,
 }
 
+#[derive(Deserialize)]
+struct VersionKwargs {
+    version: u64,
+}
+
 pub fn blake3_hash(value: &[u8], output: &mut string::String) {
     write!(output, "{}", blake3::hash(value)).unwrap()
 }
@@ -426,6 +431,11 @@ fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> 
     let seed = kwargs.seed as u64;
     let out: UInt128Chunked = hash_bytes(&inputs[0], |v| xxhash3_128(v, seed))?;
     Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Binary)]
+fn encode_rows(inputs: &[Series], kwargs: VersionKwargs) -> PolarsResult<Series> {
+    Ok(crate::row_encode::encode_rows(inputs, kwargs.version)?.into_series())
 }
 
 #[polars_expr(output_type=String)]
