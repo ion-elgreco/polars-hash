@@ -11,6 +11,24 @@
 //! A value is encoded by what it means rather than by how polars holds it, so
 //! `Int8(1)`, `Int64(1)` and `UInt64(1)` all reach the same bytes, as do a `Datetime`
 //! in milliseconds and the same instant in nanoseconds. The docs list every rule.
+//!
+//! # Why this one is written here
+//!
+//! Every other expression in this package wraps an upstream crate, and that is the
+//! rule: a hand-written algorithm is a correctness liability the wrapper model exists
+//! to avoid. This module is a deliberate exception, and the reasoning belongs next to
+//! the code rather than in a pull request nobody reads twice.
+//!
+//! What it writes is not a published algorithm that a crate could supply. It is a
+//! layout of polars' own dtypes, so only a polars-aware crate could hold it, and the
+//! one that exists cannot serve: `polars-row` normalises no widths and no time units,
+//! its entry points are `_`-prefixed internals of `polars-core`, and its bytes carry
+//! no promise from one polars release to the next — the single promise this package
+//! is for. Waiting on upstream would mean waiting for a stable row encoding that
+//! nobody has proposed.
+//!
+//! What that costs is real and stays here: [`VERSION`] pins these bytes forever, and
+//! the golden vectors in the test suite are what hold them.
 
 use polars::prelude::*;
 
