@@ -3,17 +3,18 @@ use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
+use crate::timehashers::{epoch_seconds, timehash_decoder, timehash_encoder, timehash_neighbors};
 use crate::xxhash_hashers::*;
 use hmac::Mac;
 use polars::{
     chunked_array::ops::arity::{
-        try_binary_elementwise, try_ternary_elementwise, unary_elementwise,
+        try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise, unary_elementwise,
     },
     prelude::*,
 };
 
 use polars_core::datatypes::{
-    DataType::{Float64, String, Struct},
+    DataType::{Datetime, Float64, String, Struct},
     Field,
 };
 use pyo3_polars::derive::polars_expr;
@@ -359,6 +360,58 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
 
     Ok(geohash_neighbors(ca)?.into_series())
+}
+
+#[polars_expr(output_type=String)]
+fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
+    let seconds = epoch_seconds(&inputs[0])?;
+    let precision = match inputs[1].dtype() {
+        dtype if dtype.is_integer() => inputs[1].cast(&DataType::Int64)?,
+        _ => polars_bail!(InvalidOperation:"Precision input needs to be integer"),
+    };
+    let precision = precision.i64()?;
+
+    let out: StringChunked = match precision.len() {
+        1 => match unsafe { precision.get_unchecked(0) } {
+            Some(precision) => try_unary_elementwise(&seconds, |seconds_opt| {
+                timehash_encoder(seconds_opt, Some(precision))
+            }),
+            _ => Err(PolarsError::ComputeError(
+                "Precision may not be null".to_string().into(),
+            )),
+        },
+        _ => try_binary_elementwise(&seconds, precision, timehash_encoder),
+    }?;
+    Ok(out.into_series())
+}
+
+pub fn timehash_decode_output(field: &[Field]) -> PolarsResult<Field> {
+    Ok(Field::new(
+        field[0].name().clone(),
+        Datetime(TimeUnit::Microseconds, None),
+    ))
+}
+
+#[polars_expr(output_type_func=timehash_decode_output)]
+fn thash_decode(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+
+    timehash_decoder(ca)
+}
+
+pub fn timehash_neighbors_output(field: &[Field]) -> PolarsResult<Field> {
+    let v: Vec<Field> = vec![
+        Field::new("before".into(), String),
+        Field::new("after".into(), String),
+    ];
+    Ok(Field::new(field[0].name().clone(), Struct(v)))
+}
+
+#[polars_expr(output_type_func=timehash_neighbors_output)]
+fn thash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+
+    Ok(timehash_neighbors(ca)?.into_series())
 }
 
 #[polars_expr(output_type=UInt32)]

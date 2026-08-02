@@ -307,6 +307,43 @@ class H3NameSpace:
         )
 
 
+@pl.api.register_expr_namespace("timehash")
+class TimeHashingNameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+
+    def from_datetime(self, precision: int | str | pl.Expr = 10) -> pl.Expr:
+        """Takes Datetime, Date or epoch seconds as input and returns utf8 hash using timehash.
+
+        Timestamps must fall between 1970-01-01 and 2098-01-01. Higher precision
+        means a shorter window: 10 covers about 4 seconds, 8 about 4 minutes.
+        """
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            args=[self._expr, _length_expr(precision)],
+            function_name="thash_encode",
+            is_elementwise=True,
+        )
+
+    def to_datetime(self) -> pl.Expr:
+        """Takes Utf8 hash as input and returns the midpoint of its window as Datetime."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="thash_decode",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def neighbors(self) -> pl.Expr:
+        """Takes Utf8 hash as input and returns a struct of the preceding and succeeding hash."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="thash_neighbors",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+
 class UUIDNamespace(str, Enum):
     """Standard namespace for UUID(v5) generation"""
 
@@ -381,6 +418,10 @@ class HExpr(pl.Expr):
         return H3NameSpace(self)
 
     @property
+    def timehash(self) -> TimeHashingNameSpace:
+        return TimeHashingNameSpace(self)
+
+    @property
     def uuidhash(self) -> UUIDHashNameSpace:
         return UUIDHashNameSpace(self)
 
@@ -402,6 +443,9 @@ class HashColumn(Protocol):
 
     @property
     def geohash(self) -> GeoHashingNameSpace: ...
+
+    @property
+    def timehash(self) -> TimeHashingNameSpace: ...
 
     @property
     def uuidhash(self) -> UUIDHashNameSpace: ...

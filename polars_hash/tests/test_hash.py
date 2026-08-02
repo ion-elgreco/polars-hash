@@ -1,3 +1,4 @@
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import polars as pl
@@ -627,6 +628,220 @@ def test_xxh3_128_seeded():
     )
 
     assert_frame_equal(result, expected)
+
+
+def test_timehash():
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 13)]})
+
+    result = df.select(plh.col("t").timehash.from_datetime())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("t", ["afcccc0e1b"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_to_datetime():
+    result = pl.select(pl.lit("afcccc0e1b").timehash.to_datetime())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [datetime(2017, 2, 21, 20, 15, 11, 292315)],
+                dtype=pl.Datetime("us"),
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_neighbors():
+    result = (
+        pl.from_dicts({"h1": "afcccc0e1b"})
+        .lazy()
+        .with_columns(plh.col("h1").timehash.neighbors())
+        .unnest("h1")
+        .collect()
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("before", ["afcccc0e1a"], dtype=pl.Utf8),
+            pl.Series("after", ["afcccc0e1c"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_range_edges_have_no_neighbor():
+    df = pl.DataFrame({"h": ["0000", "ffff"]})
+
+    result = df.select(plh.col("h").timehash.neighbors()).unnest("h")
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("before", [None, "fffe"], dtype=pl.Utf8),
+            pl.Series("after", ["0001", None], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("value", "dtype"),
+    [
+        (datetime(2017, 2, 21, 20, 15, 13), pl.Datetime("ms")),
+        (datetime(2017, 2, 21, 20, 15, 13), pl.Datetime("us")),
+        (datetime(2017, 2, 21, 20, 15, 13), pl.Datetime("ns")),
+        (1487708113.0, pl.Float64),
+        (1487708113, pl.Int64),
+        (1487708113, pl.UInt32),
+    ],
+)
+def test_timehash_input_dtypes(value, dtype):
+    df = pl.DataFrame({"t": pl.Series([value], dtype=dtype)})
+
+    assert (
+        df.select(plh.col("t").timehash.from_datetime(10)).to_series()[0]
+        == "afcccc0e1b"
+    )
+
+
+def test_timehash_time_zone_is_normalized():
+    df = pl.DataFrame(
+        {"t": [datetime(2017, 2, 21, 20, 15, 13, tzinfo=timezone.utc)]}
+    ).with_columns(pl.col("t").dt.convert_time_zone("America/New_York"))
+
+    assert (
+        df.select(plh.col("t").timehash.from_datetime(10)).to_series()[0]
+        == "afcccc0e1b"
+    )
+
+
+def test_timehash_date():
+    df = pl.DataFrame({"t": [date(2017, 2, 21)]})
+
+    assert (
+        df.select(plh.col("t").timehash.from_datetime(8)).to_series()[0] == "afccbfaf"
+    )
+
+
+@pytest.mark.parametrize("dtype", [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8])
+def test_timehash_precision_dtypes(dtype):
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 13)]}).with_columns(
+        n=pl.lit(4, dtype=dtype)
+    )
+
+    assert df.select(plh.col("t").timehash.from_datetime("n")).to_series()[0] == "afcc"
+
+
+def test_timehash_precision_per_row():
+    df = pl.DataFrame(
+        {"t": [datetime(2017, 2, 21, 20, 15, 13)] * 3, "n": [4, 8, 10]},
+    )
+
+    result = df.select(plh.col("t").timehash.from_datetime("n"))
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("t", ["afcc", "afcccc0e", "afcccc0e1b"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_null():
+    df = pl.DataFrame(
+        {
+            "t": pl.Series(
+                [datetime(2017, 2, 21, 20, 15, 13), None], dtype=pl.Datetime("us")
+            ),
+            "h": pl.Series(["afcccc0e1b", None], dtype=pl.Utf8),
+        }
+    )
+
+    result = df.select(
+        encoded=plh.col("t").timehash.from_datetime(10),
+        decoded=plh.col("h").timehash.to_datetime(),
+        neighbors=plh.col("h").timehash.neighbors(),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("encoded", ["afcccc0e1b", None], dtype=pl.Utf8),
+            pl.Series(
+                "decoded",
+                [datetime(2017, 2, 21, 20, 15, 11, 292315), None],
+                dtype=pl.Datetime("us"),
+            ),
+            pl.Series(
+                "neighbors",
+                [
+                    {"before": "afcccc0e1a", "after": "afcccc0e1c"},
+                    {"before": None, "after": None},
+                ],
+                dtype=pl.Struct({"before": pl.Utf8, "after": pl.Utf8}),
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize("precision", [-1, 0, 33])
+def test_timehash_invalid_precision(precision):
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 13)]})
+
+    with pytest.raises(ComputeError, match="expected precision between 1 and 32"):
+        df.select(plh.col("t").timehash.from_datetime(precision))
+
+
+@pytest.mark.parametrize(
+    "seconds",
+    [-1.0, 4039372801.0, float("nan"), float("inf"), float("-inf")],
+)
+def test_timehash_out_of_range(seconds):
+    df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
+
+    with pytest.raises(ComputeError, match="invalid timestamp range"):
+        df.select(plh.col("t").timehash.from_datetime(10))
+
+
+@pytest.mark.parametrize("seconds", [0.0, 4039372800.0])
+def test_timehash_range_bounds_are_encodable(seconds):
+    df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
+
+    assert df.select(plh.col("t").timehash.from_datetime(4)).to_series()[0] in (
+        "0000",
+        "ffff",
+    )
+
+
+def test_timehash_invalid_input_dtype():
+    df = pl.DataFrame({"t": ["not a timestamp"]})
+
+    with pytest.raises(ComputeError, match="timehash input needs to be"):
+        df.select(plh.col("t").timehash.from_datetime(10))
+
+
+@pytest.mark.parametrize("value", ["", "zzz", "AFCC", "afcc "])
+def test_timehash_invalid_hash(value):
+    df = pl.DataFrame({"h": [value]})
+
+    with pytest.raises(ComputeError, match="timehash"):
+        df.select(plh.col("h").timehash.to_datetime())
+    with pytest.raises(ComputeError, match="timehash"):
+        df.select(plh.col("h").timehash.neighbors())
+
+
+def test_timehash_multi_byte_hash_is_rejected():
+    """Upstream panics on a multi-byte character instead of erroring."""
+    df = pl.DataFrame({"h": ["é0"]})
+
+    with pytest.raises(ComputeError, match="invalid timehash character"):
+        df.select(plh.col("h").timehash.neighbors())
 
 
 def test_uuid5_url():
