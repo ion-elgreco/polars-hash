@@ -119,6 +119,12 @@ These rules apply to all the expressions above.
 - **Output name.** The output column has the same name as the input column. To keep
   both columns, use `.alias()`. [`encode_rows`](rows.md#encode_rows) is the exception:
   its output is the row rather than any one column, so it is named `row`.
+- **Object columns.** Polars hands a plugin an `Object` column as `Binary`, with no
+  mark left to tell the two apart, so a hasher digests the eight bytes of the CPython
+  pointer instead of the value. Those bytes move every run, so the digest is not
+  reproducible and two equal objects do not agree. Convert an `Object` column to a
+  real dtype before hashing it. [`encode_rows`](rows.md#encode_rows) and
+  [`hash_rows`](rows.md#hash_rows) refuse such a column outright.
 - **Incorrect input type.** The expression raises an error when the input type is not
   permitted. This occurs when Polars collects the data, not when you build the
   expression. All errors from the plugin become

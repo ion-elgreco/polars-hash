@@ -5,7 +5,7 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-from polars.exceptions import ComputeError
+from polars.exceptions import ComputeError, InvalidOperationError
 from polars.plugins import register_plugin_function
 from polars.testing import assert_frame_equal, assert_series_equal
 
@@ -1988,3 +1988,21 @@ def test_hash_rows_uses_this_packages_hashers():
             pl.api.register_expr_namespace("nchash")(
                 plh.NonCryptographicHashingNameSpace
             )
+
+
+def test_the_row_api_rejects_an_object_column():
+    """Polars hands a plugin an Object column as Binary, so a hasher cannot tell it
+    from real bytes and would digest CPython pointers. The struct that carries a row
+    is what refuses it — see the limitation noted in the reference."""
+
+    class Opaque:
+        pass
+
+    df = pl.DataFrame({"x": pl.Series([Opaque()], dtype=pl.Object), "y": [1]})
+
+    for call in (
+        lambda: df.select(plh.encode_rows(pl.all())),
+        lambda: plh.hash_rows(df),
+    ):
+        with pytest.raises(InvalidOperationError, match="nested objects are not"):
+            call()
