@@ -4,6 +4,8 @@ mod h3;
 mod hmac_hashers;
 mod murmurhash_hashers;
 mod sha_hashers;
+mod shared;
+mod timehashers;
 mod xxhash_hashers;
 
 use pyo3::types::{PyModule, PyModuleMethods};

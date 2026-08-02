@@ -1,3 +1,5 @@
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import polars as pl
@@ -284,9 +286,14 @@ def test_h3_invalid_coords(latitude, longitude):
     "dtype",
     [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64],
 )
-def test_from_coords_length_dtypes(dtype):
+def test_length_arg_dtypes(dtype):
+    """All three namespaces route the length/precision through `_length_expr`."""
     df = pl.DataFrame(
-        {"latitude": [35.3003], "longitude": [-120.6623]},
+        {
+            "latitude": [35.3003],
+            "longitude": [-120.6623],
+            "t": [datetime(2017, 2, 21, 20, 15, 13)],
+        },
     ).with_columns(coord=pl.struct(["latitude", "longitude"]), n=pl.lit(5, dtype=dtype))
 
     assert df.select(pl.col("coord").geohash.from_coords("n")).to_series()[0] == "9q60y"  # type: ignore
@@ -294,6 +301,7 @@ def test_from_coords_length_dtypes(dtype):
         df.select(pl.col("coord").h3.from_coords("n")).to_series()[0]  # type: ignore
         == "8529adc7fffffff"
     )
+    assert df.select(plh.col("t").timehash.from_datetime("n")).to_series()[0] == "afccc"
 
 
 def test_from_coords_null_coords():
@@ -627,6 +635,467 @@ def test_xxh3_128_seeded():
     )
 
     assert_frame_equal(result, expected)
+
+
+def test_timehash():
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 13)]})
+
+    result = df.select(plh.col("t").timehash.from_datetime())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("t", ["afcccc0e1b"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_to_datetime():
+    result = pl.select(pl.lit("afcccc0e1b").timehash.to_datetime())  # type: ignore
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [datetime(2017, 2, 21, 20, 15, 11, 292315, tzinfo=timezone.utc)],
+                dtype=pl.Datetime("us", "UTC"),
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize("dtype", [pl.Int8, pl.Int16, pl.UInt8, pl.UInt16])
+def test_timehash_small_integer_input_dtypes(dtype):
+    """These panic at the FFI boundary unless polars carries their dtype-* feature."""
+    df = pl.DataFrame({"t": pl.Series([100], dtype=dtype)})
+
+    assert df.select(plh.col("t").timehash.from_datetime(4)).to_series()[0] == "0000"
+
+
+def test_timehash_to_datetime_is_utc():
+    """Declared naive, the UTC instant reads as local time and compares wrong."""
+    result = pl.select(pl.lit("afcccc0e1b").timehash.to_datetime())  # type: ignore
+
+    assert result.schema["literal"] == pl.Datetime("us", "UTC")
+
+
+def test_timehash_to_datetime_recovers_the_original_time_zone():
+    """The zone cannot come from the hash, so UTC output makes the one step correct."""
+    df = pl.DataFrame(
+        {"t": [datetime(2017, 2, 21, 20, 15, 13, tzinfo=timezone.utc)]}
+    ).with_columns(pl.col("t").dt.convert_time_zone("America/New_York"))
+
+    hashed = df.select(plh.col("t").timehash.from_datetime(10))
+    decoded = hashed.select(
+        plh.col("t").timehash.to_datetime().dt.convert_time_zone("America/New_York")
+    )
+
+    assert decoded.schema["t"] == pl.Datetime("us", "America/New_York")
+    # decode returns the window midpoint, so allow half a window (~1.9s at precision 10)
+    assert abs((decoded["t"][0] - df["t"][0]).total_seconds()) < 2
+
+
+def test_timehash_neighbors():
+    result = (
+        pl.from_dicts({"h1": "afcccc0e1b"})
+        .lazy()
+        .with_columns(plh.col("h1").timehash.neighbors())
+        .unnest("h1")
+        .collect()
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("before", ["afcccc0e1a"], dtype=pl.Utf8),
+            pl.Series("after", ["afcccc0e1c"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_range_edges_have_no_neighbor():
+    df = pl.DataFrame({"h": ["0000", "ffff"]})
+
+    result = df.select(plh.col("h").timehash.neighbors()).unnest("h")
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("before", [None, "fffe"], dtype=pl.Utf8),
+            pl.Series("after", ["0001", None], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("value", "dtype"),
+    [
+        (datetime(2017, 2, 21, 20, 15, 13), pl.Datetime("ms")),
+        (datetime(2017, 2, 21, 20, 15, 13), pl.Datetime("us")),
+        (datetime(2017, 2, 21, 20, 15, 13), pl.Datetime("ns")),
+        (1487708113.0, pl.Float64),
+        (1487708113, pl.Int64),
+        (1487708113, pl.UInt32),
+    ],
+)
+def test_timehash_input_dtypes(value, dtype):
+    df = pl.DataFrame({"t": pl.Series([value], dtype=dtype)})
+
+    assert (
+        df.select(plh.col("t").timehash.from_datetime(10)).to_series()[0]
+        == "afcccc0e1b"
+    )
+
+
+def test_timehash_time_unit_does_not_change_the_hash():
+    """Nanoseconds run past 2^53, so converting to f64 first rounds to 256ns steps."""
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 14, 147738)]})
+
+    micros = df.with_columns(pl.col("t").cast(pl.Datetime("us")))
+    nanos = df.with_columns(pl.col("t").cast(pl.Datetime("ns")))
+
+    assert (
+        micros.select(plh.col("t").timehash.from_datetime(16)).to_series()[0]
+        == nanos.select(plh.col("t").timehash.from_datetime(16)).to_series()[0]
+    )
+
+
+def test_timehash_time_zone_is_normalized():
+    df = pl.DataFrame(
+        {"t": [datetime(2017, 2, 21, 20, 15, 13, tzinfo=timezone.utc)]}
+    ).with_columns(pl.col("t").dt.convert_time_zone("America/New_York"))
+
+    assert (
+        df.select(plh.col("t").timehash.from_datetime(10)).to_series()[0]
+        == "afcccc0e1b"
+    )
+
+
+def test_timehash_date():
+    df = pl.DataFrame({"t": [date(2017, 2, 21)]})
+
+    assert (
+        df.select(plh.col("t").timehash.from_datetime(8)).to_series()[0] == "afccbfaf"
+    )
+
+
+def test_timehash_one_window_shares_a_hash():
+    """The feature's central promise. The precision-8 window is about 4 minutes."""
+    base = datetime(2017, 2, 21, 20, 15, 13)
+    df = pl.DataFrame(
+        {"t": [base, base + timedelta(seconds=1), base + timedelta(seconds=2)]}
+    )
+
+    hashes = df.select(plh.col("t").timehash.from_datetime(8)).to_series().to_list()
+
+    assert len(set(hashes)) == 1
+
+
+def test_timehash_separate_windows_differ():
+    """The other half of the promise: 10 minutes apart cannot share a 4 minute bin."""
+    base = datetime(2017, 2, 21, 20, 15, 13)
+    df = pl.DataFrame({"t": [base, base + timedelta(minutes=10)]})
+
+    hashes = df.select(plh.col("t").timehash.from_datetime(8)).to_series().to_list()
+
+    assert hashes[0] != hashes[1]
+
+
+@pytest.mark.parametrize("precision", [4, 8, 10, 14, 16])
+def test_timehash_decode_stays_inside_its_window(precision):
+    """to_datetime returns the window midpoint, so re-encoding must land in the same
+    window. Catches an interval shift that the single fixed instant would not."""
+    base = datetime(2017, 2, 21, 20, 15, 13)
+    df = pl.DataFrame(
+        {
+            "t": [
+                base + timedelta(seconds=i * 37, microseconds=i * 811)
+                for i in range(50)
+            ]
+        }
+    )
+
+    hashed = df.select(plh.col("t").timehash.from_datetime(precision))
+    again = hashed.select(
+        plh.col("t").timehash.to_datetime().timehash.from_datetime(precision)
+    )
+
+    assert again.to_series().to_list() == hashed.to_series().to_list()
+
+
+def test_timehash_precision_per_row():
+    df = pl.DataFrame(
+        {"t": [datetime(2017, 2, 21, 20, 15, 13)] * 3, "n": [4, 8, 10]},
+    )
+
+    result = df.select(plh.col("t").timehash.from_datetime("n"))
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("t", ["afcc", "afcccc0e", "afcccc0e1b"], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_scalar_timestamp_broadcasts():
+    """One timestamp against a precision column must yield one hash per row."""
+    df = pl.DataFrame({"n": [4, 8, 10]})
+
+    result = df.select(
+        pl.lit(datetime(2017, 2, 21, 20, 15, 13)).timehash.from_datetime("n").alias("h")
+    )
+
+    expected = pl.DataFrame(
+        [pl.Series("h", ["afcc", "afcccc0e", "afcccc0e1b"], dtype=pl.Utf8)]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_timehash_scalar_timestamp_broadcasts_in_with_columns():
+    df = pl.DataFrame({"n": [4, 8, 10]})
+
+    result = df.with_columns(
+        h=pl.lit(datetime(2017, 2, 21, 20, 15, 13)).timehash.from_datetime("n")
+    )
+
+    assert result["h"].to_list() == ["afcc", "afcccc0e", "afcccc0e1b"]
+
+
+def test_timehash_scalar_timestamp_broadcasts_across_chunks():
+    """Zipping unequal lengths panics in chunk alignment instead of broadcasting."""
+    df = pl.concat(
+        [pl.DataFrame({"n": [4, 8]}), pl.DataFrame({"n": [10]})], rechunk=False
+    )
+    assert df["n"].n_chunks() == 2
+
+    result = df.select(
+        pl.lit(datetime(2017, 2, 21, 20, 15, 13)).timehash.from_datetime("n").alias("h")
+    )
+
+    assert result["h"].to_list() == ["afcc", "afcccc0e", "afcccc0e1b"]
+
+
+def test_timehash_null_scalar_timestamp_broadcasts():
+    df = pl.DataFrame({"n": [4, 8, 10]})
+
+    result = df.select(
+        pl.lit(None, dtype=pl.Datetime("us")).timehash.from_datetime("n").alias("h")
+    )
+
+    assert result["h"].to_list() == [None, None, None]
+
+
+def test_timehash_length_mismatch_is_rejected():
+    """Neither operand is a scalar, so erroring beats zipping down to the shorter."""
+    df = pl.DataFrame({"n": [4, 8, 10]})
+    timestamps = pl.Series([datetime(2017, 2, 21, 20, 15, 13)] * 2)
+
+    with pytest.raises(ComputeError, match="expected equal lengths or a scalar"):
+        df.select(pl.lit(timestamps).timehash.from_datetime("n"))
+
+
+def test_timehash_null_dtype_column():
+    """A scan that infers Null must behave like the same all-null data typed."""
+    df = pl.DataFrame({"t": pl.Series([None, None], dtype=pl.Null)})
+
+    assert df.select(plh.col("t").timehash.from_datetime(10)).to_series().to_list() == [
+        None,
+        None,
+    ]
+    assert df.select(plh.col("t").timehash.to_datetime()).to_series().to_list() == [
+        None,
+        None,
+    ]
+    assert df.select(plh.col("t").timehash.neighbors()).to_series().to_list() == [
+        {"before": None, "after": None},
+        {"before": None, "after": None},
+    ]
+
+
+def test_timehash_null():
+    df = pl.DataFrame(
+        {
+            "t": pl.Series(
+                [datetime(2017, 2, 21, 20, 15, 13), None], dtype=pl.Datetime("us")
+            ),
+            "h": pl.Series(["afcccc0e1b", None], dtype=pl.Utf8),
+        }
+    )
+
+    result = df.select(
+        encoded=plh.col("t").timehash.from_datetime(10),
+        decoded=plh.col("h").timehash.to_datetime(),
+        neighbors=plh.col("h").timehash.neighbors(),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("encoded", ["afcccc0e1b", None], dtype=pl.Utf8),
+            pl.Series(
+                "decoded",
+                [datetime(2017, 2, 21, 20, 15, 11, 292315, tzinfo=timezone.utc), None],
+                dtype=pl.Datetime("us", "UTC"),
+            ),
+            pl.Series(
+                "neighbors",
+                [
+                    {"before": "afcccc0e1a", "after": "afcccc0e1c"},
+                    {"before": None, "after": None},
+                ],
+                dtype=pl.Struct({"before": pl.Utf8, "after": pl.Utf8}),
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize("precision", [-1, 0, 33])
+def test_timehash_invalid_precision(precision):
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 13)]})
+
+    with pytest.raises(ComputeError, match="expected precision between 1 and 32"):
+        df.select(plh.col("t").timehash.from_datetime(precision))
+
+
+@pytest.mark.parametrize("precision", [-1, 0, 33])
+@pytest.mark.parametrize(
+    "values", [pytest.param([None, None], id="all-null"), pytest.param([], id="empty")]
+)
+def test_timehash_invalid_precision_without_a_non_null_row(values, precision):
+    """Precision is a static argument, so rejecting it must not depend on the data."""
+    df = pl.DataFrame({"t": pl.Series(values, dtype=pl.Datetime("us"))})
+
+    with pytest.raises(ComputeError, match="expected precision between 1 and 32"):
+        df.select(plh.col("t").timehash.from_datetime(precision))
+
+
+@pytest.mark.parametrize(
+    "seconds",
+    [-1.0, 4039372801.0, float("nan"), float("inf"), float("-inf")],
+)
+def test_timehash_out_of_range(seconds):
+    df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
+
+    with pytest.raises(ComputeError, match="invalid timestamp range"):
+        df.select(plh.col("t").timehash.from_datetime(10))
+
+
+@pytest.mark.parametrize(
+    "seconds", [-1.0, 4039372801.0, float("nan"), float("inf"), float("-inf")]
+)
+def test_timehash_out_of_range_not_strict(seconds):
+    """strict=False nulls an out-of-range row, matching polars' cast and str.to_date."""
+    df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
+
+    result = df.select(plh.col("t").timehash.from_datetime(10, strict=False))
+
+    assert result.to_series().to_list() == [None]
+
+
+def test_timehash_not_strict_keeps_the_valid_rows():
+    df = pl.DataFrame({"t": pl.Series([1487708113.0, -1.0], dtype=pl.Float64)})
+
+    result = df.select(plh.col("t").timehash.from_datetime(10, strict=False))
+
+    assert result.to_series().to_list() == ["afcccc0e1b", None]
+
+
+def test_timehash_not_strict_survives_when_then():
+    """when/then evaluates both branches, so a guard alone cannot exclude bad rows."""
+    df = pl.DataFrame({"t": [1.0e9, -5.0]})
+
+    result = df.with_columns(
+        h=pl.when(pl.col("t") >= 0).then(
+            plh.col("t").timehash.from_datetime(10, strict=False)
+        )
+    )
+
+    assert result["h"].to_list() == ["1fee011d0a", None]
+
+
+def test_timehash_not_strict_still_rejects_invalid_precision():
+    """Precision is a static argument, not per-row data, so strict does not soften it."""
+    df = pl.DataFrame({"t": pl.Series([1487708113.0], dtype=pl.Float64)})
+
+    with pytest.raises(ComputeError, match="expected precision between 1 and 32"):
+        df.select(plh.col("t").timehash.from_datetime(99, strict=False))
+
+
+@pytest.mark.parametrize(
+    ("seconds", "expected"), [(0.0, "0000"), (4039372800.0, "ffff")]
+)
+def test_timehash_range_bounds_are_encodable(seconds, expected):
+    df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
+
+    assert df.select(plh.col("t").timehash.from_datetime(4)).to_series()[0] == expected
+
+
+@pytest.mark.parametrize(
+    "series",
+    [
+        pytest.param(pl.Series(["not a timestamp"]), id="String"),
+        pytest.param(
+            pl.Series([Decimal(1487708113)], dtype=pl.Decimal(20, 0)), id="Decimal"
+        ),
+        pytest.param(pl.Series([True]), id="Boolean"),
+        pytest.param(pl.Series([timedelta(seconds=1)]), id="Duration"),
+        pytest.param(pl.Series([time(12, 0)]), id="Time"),
+        pytest.param(pl.Series([b"x"]), id="Binary"),
+    ],
+)
+def test_timehash_invalid_input_dtype(series):
+    df = pl.DataFrame({"t": series})
+
+    with pytest.raises(ComputeError, match="timehash input needs to be"):
+        df.select(plh.col("t").timehash.from_datetime(10))
+
+
+def test_timehash_float32_is_rejected():
+    """f32 spaces values 128s apart here, so 1487708113 is held as 1487708160."""
+    df = pl.DataFrame({"t": pl.Series([1487708113.0], dtype=pl.Float32)})
+
+    with pytest.raises(ComputeError, match="Float32 cannot hold epoch seconds"):
+        df.select(plh.col("t").timehash.from_datetime(10))
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("", "timehash may not be empty"),
+        ("zzz", "invalid timehash character 'z'"),
+        ("AFCC", "invalid timehash character 'A'"),
+        ("afcc ", "invalid timehash character ' '"),
+    ],
+)
+def test_timehash_invalid_hash(value, message):
+    """Pin the exact message: every error this module emits contains "timehash"."""
+    df = pl.DataFrame({"h": [value]})
+
+    with pytest.raises(ComputeError, match=message):
+        df.select(plh.col("h").timehash.to_datetime())
+    with pytest.raises(ComputeError, match=message):
+        df.select(plh.col("h").timehash.neighbors())
+
+
+def test_timehash_multi_byte_hash_is_rejected():
+    """Upstream panics on a multi-byte character instead of erroring."""
+    df = pl.DataFrame({"h": ["é0"]})
+
+    with pytest.raises(ComputeError, match="invalid timehash character"):
+        df.select(plh.col("h").timehash.neighbors())
+
+
+@pytest.mark.parametrize("value", ["a\x00b", "\x00"])
+def test_timehash_nul_byte_hash_is_rejected(value):
+    """A NUL reaches pyo3-polars inside the error text, which panics building it."""
+    df = pl.DataFrame({"h": [value]})
+
+    with pytest.raises(ComputeError, match="invalid timehash character"):
+        df.select(plh.col("h").timehash.to_datetime())
+    with pytest.raises(ComputeError, match="invalid timehash character"):
+        df.select(plh.col("h").timehash.neighbors())
 
 
 def test_uuid5_url():

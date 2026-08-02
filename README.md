@@ -124,12 +124,60 @@ shape: (1, 2)
 ```
 
 
+### Time Hasher
+
+Bins timestamps into variable-precision sliding windows of time, so rows that
+fall in the same window share a hash. Timestamps must lie between 1970-01-01 and
+2098-01-01. A higher precision means a shorter window: 10 covers about 4 seconds,
+8 about 4 minutes.
+
+Precision may be 1 to 32, but past about 18 the hash stops changing for present-day
+timestamps and the extra characters are padding. The exact point depends on the date:
+timestamps close to 1970 keep splitting to about 21, far-future ones run out sooner.
+
+```python
+from datetime import datetime
+
+df = pl.DataFrame({"datetime": [datetime(2017, 2, 21, 20, 15, 13)]})
+
+df.with_columns(
+    plh.col('datetime').timehash.from_datetime().alias('timehash')
+)
+shape: (1, 2)
+┌─────────────────────┬────────────┐
+│ datetime            ┆ timehash   │
+│ ---                 ┆ ---        │
+│ datetime[μs]        ┆ str        │
+╞═════════════════════╪════════════╡
+│ 2017-02-21 20:15:13 ┆ afcccc0e1b │
+└─────────────────────┴────────────┘
+
+
+pl.select(pl.lit('afcccc0e1b').timehash.to_datetime().alias('datetime'))
+shape: (1, 1)
+┌────────────────────────────────┐
+│ datetime                       │
+│ ---                            │
+│ datetime[μs, UTC]              │
+╞════════════════════════════════╡
+│ 2017-02-21 20:15:11.292315 UTC │
+└────────────────────────────────┘
+
+
+pl.select(pl.lit('afcccc0e1b').timehash.neighbors().alias('neighbors'))
+shape: (1, 1)
+┌─────────────────────────────┐
+│ neighbors                   │
+│ ---                         │
+│ struct[2]                   │
+╞═════════════════════════════╡
+│ {"afcccc0e1a","afcccc0e1c"} │
+└─────────────────────────────┘
+```
+
 ## Create hash from multiple columns
 ```python
-df = pl.DataFrame({
-    "foo":["hello_world"],
-    "bar": ["today"]
-})
+df = pl.DataFrame({"foo": ["hello_world"], "bar": ["today"]})
 
-result = df.select(plh.concat_str('foo','bar').chash.sha256())
+result = df.select(plh.concat_str("foo", "bar").chash.sha256())
 ```
