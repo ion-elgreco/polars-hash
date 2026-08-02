@@ -2006,3 +2006,21 @@ def test_the_row_api_rejects_an_object_column():
     ):
         with pytest.raises(InvalidOperationError, match="nested objects are not"):
             call()
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda df: df.select(plh.col("x").chash.sha2_256()), id="hasher"),
+        pytest.param(lambda df: df.select(plh.encode_rows(pl.all())), id="encode_rows"),
+    ],
+)
+def test_a_zero_width_array_raises_rather_than_aborting(call):
+    """`FixedSizeListArray::try_from_ffi` asserts when the child is empty, upstream of
+    anything this package runs. Reachable from `pl.col(...).list.to_array(0)`, so the
+    guarantee worth pinning is that it stays catchable rather than killing the process.
+    """
+    df = pl.DataFrame({"x": pl.Series([[], []], dtype=pl.Array(pl.Int64, 0))})
+
+    with pytest.raises(ComputeError, match="the plugin panicked"):
+        call(df)
