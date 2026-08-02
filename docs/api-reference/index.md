@@ -1,6 +1,6 @@
 # API Reference
 
-This page lists all public expressions in polars-hash. One import registers the five
+This page lists all public expressions in polars-hash. One import registers the six
 namespaces on `pl.Expr`:
 
 ```python
@@ -46,6 +46,9 @@ Full page: [nchash](non-cryptographic.md).
 | [`nchash.murmur128(seed)`](non-cryptographic.md#murmur128) | Utf8 | Binary | MurmurHash3, x64 128-bit variant. |
 | [`nchash.farmhash32()`](non-cryptographic.md#farmhash32) | Utf8 | UInt32 | FarmHash `fingerprint32`. |
 | [`nchash.farmhash64()`](non-cryptographic.md#farmhash64) | Utf8 | UInt64 | FarmHash `fingerprint64`. |
+| [`nchash.cityhash32()`](non-cryptographic.md#cityhash32) | Utf8 | UInt32 | CityHash `CityHash32`. |
+| [`nchash.cityhash64(seed)`](non-cryptographic.md#cityhash64) | Utf8 | UInt64 | CityHash `CityHash64`, or `CityHash64WithSeed` when given a seed. |
+| [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8 | UInt128 | CityHash `CityHash128`. |
 | [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
 | [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8 | Utf8 | SHA-1. |
 
@@ -67,6 +70,16 @@ Full page: [h3](h3.md).
 |------------|-------|--------|-------------|
 | [`h3.from_coords(len)`](h3.md#from_coords) | Struct | Utf8 | Encodes `{latitude, longitude}` to an H3 cell index at resolution `len`. `len` is 1 to 15. |
 
+## `timehash` — time bucket
+
+Full page: [timehash](timehash.md).
+
+| Expression | Input | Output | Description |
+|------------|-------|--------|-------------|
+| [`timehash.from_datetime(precision, strict)`](timehash.md#from_datetime) | Datetime, Date, epoch seconds | Utf8 | Encodes an instant to the timehash of the window that holds it. `precision` is 1 to 32. |
+| [`timehash.to_datetime()`](timehash.md#to_datetime) | Utf8 | Datetime (UTC) | Decodes a timehash to the midpoint of its window. |
+| [`timehash.neighbors()`](timehash.md#neighbors) | Utf8 | Struct | Gives the preceding and succeeding hash: `before`, `after`. |
+
 ## `uuidhash` — UUID v5
 
 Full page: [uuidhash](uuid.md).
@@ -84,8 +97,10 @@ These rules apply to all the expressions above.
   `select`, in `with_columns`, in `group_by(...).agg`, and in streaming mode. Polars
   can also divide the data into chunks and change the order of operations.
 - **Null values.** A null input gives a null output. The expression does not hash a
-  substitute value. The scalar arguments are different: `length`, `seed`, `key`,
-  `namespace`, `default`, and `len` must not be null.
+  substitute value. The scalar arguments are different: `length`, `key`, `namespace`,
+  `default`, `len` and `precision` must not be null, and neither may `seed` — except
+  on [`cityhash64()`](non-cryptographic.md#cityhash64), where `seed=None` is how you
+  ask for the unseeded algorithm.
 - **Output name.** The output column has the same name as the input column. To keep
   both columns, use `.alias()`.
 - **Incorrect input type.** The expression raises an error when the input type is not

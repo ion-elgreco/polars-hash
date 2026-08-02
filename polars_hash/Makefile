@@ -19,7 +19,7 @@ install-release: venv ## Install polars-hash in release mode
 
 lint: venv ## Run linter
 	uv run --no-sync ruff check --fix .
-	cargo check
+	cargo clippy --all-targets
 
 format: venv ## Run formatters
 	uv run --no-sync ruff format .
@@ -29,6 +29,8 @@ check: venv ## Verify types, lint and formatting without editing files
 	uv run --no-sync mypy polars_hash
 	uv run --no-sync ruff check --diff .
 	uv run --no-sync ruff format --check --diff
+	cargo fmt --check
+	cargo clippy --all-targets -- -D warnings
 
 test: install ## Run pytests
 	uv run --no-sync pytest tests/

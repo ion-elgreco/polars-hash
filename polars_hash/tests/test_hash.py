@@ -6,7 +6,7 @@ import polars as pl
 import pytest
 from polars.exceptions import ComputeError
 from polars.plugins import register_plugin_function
-from polars.testing import assert_frame_equal
+from polars.testing import assert_frame_equal, assert_series_equal
 
 import polars_hash as plh
 
@@ -211,6 +211,176 @@ def test_farmhash64():
     )
 
     assert_frame_equal(result, expected)
+
+
+# Reference values from the `cityhash` package on PyPI, which wraps the C++
+# implementation. The lengths straddle every dispatch branch, and the range where
+# CityHash and FarmHash still return the same value (<= 12 bytes for the 32-bit
+# pair, <= 32 for the 64-bit pair).
+CITYHASH_VECTORS = [
+    # value, cityhash32, cityhash64, cityhash64(seed=42), cityhash128
+    (
+        "hello_world",
+        1719156559,
+        15605398435621216523,
+        10175920941468920074,
+        133423608296839006301901834072762183026,
+    ),
+    (
+        "abcdefghijklm",
+        2011858552,
+        8550978237989882775,
+        5922989375063028602,
+        24191345147165086804460642396259579660,
+    ),
+    (
+        "the quick brown fox jumps over th",
+        1180637772,
+        16856596542782860373,
+        2679240623542055829,
+        336604998673075951095544934565492753941,
+    ),
+    (
+        "0123456789" * 10,
+        2906309322,
+        15263031703162308175,
+        4920090847931360695,
+        66910926801977979717489458583538888857,
+    ),
+    (
+        "polars-hash cityhash coverage row " * 5 + "0123456789" * 3,
+        1390292832,
+        6019340673294074119,
+        1791122867898158287,
+        246668851854637870664640075271962112941,
+    ),
+    # Hashed as its 22 UTF-8 bytes, not as 12 code points.
+    (
+        "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
+        "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
+        "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}",
+        1470863098,
+        17522264240893443485,
+        9690003126991708700,
+        20224271564307957976476495106258650914,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("value", "c32", "c64", "c64_seeded", "c128"),
+    CITYHASH_VECTORS,
+    ids=lambda v: None if not isinstance(v, str) else f"len{len(v.encode())}",
+)
+def test_cityhash_matches_the_reference(value, c32, c64, c64_seeded, c128):
+    df = pl.DataFrame({"literal": [value]})
+    result = df.select(
+        c32=plh.col("literal").nchash.cityhash32(),
+        c64=plh.col("literal").nchash.cityhash64(),
+        c64_seeded=plh.col("literal").nchash.cityhash64(seed=42),
+        c128=plh.col("literal").nchash.cityhash128(),
+    )
+
+    assert result.row(0) == (c32, c64, c64_seeded, c128)
+
+
+@pytest.mark.parametrize(
+    ("expr", "dtype", "empty"),
+    [
+        (plh.col("literal").nchash.cityhash32(), pl.UInt32, 3696677242),
+        (plh.col("literal").nchash.cityhash64(), pl.UInt64, 11160318154034397263),
+        (
+            plh.col("literal").nchash.cityhash64(seed=42),
+            pl.UInt64,
+            12207790695972129833,
+        ),
+        (
+            plh.col("literal").nchash.cityhash128(),
+            pl.UInt128,
+            82332263323914296566372529678324145705,
+        ),
+    ],
+    ids=["cityhash32", "cityhash64", "cityhash64_seeded", "cityhash128"],
+)
+def test_cityhash_null_and_empty(expr, dtype, empty):
+    df = pl.DataFrame({"literal": [None, ""]})
+    result = df.select(expr)
+
+    assert_frame_equal(result, pl.DataFrame(pl.Series("literal", [None, empty], dtype)))
+
+
+@pytest.mark.parametrize(
+    ("city", "farm", "shared"),
+    [("cityhash32", "farmhash32", 12), ("cityhash64", "farmhash64", 32)],
+)
+def test_cityhash_leaves_farmhash_above_the_shared_range(city, farm, shared):
+    """FarmHash reuses CityHash on short input, so only longer input tells them apart."""
+    df = pl.DataFrame({"literal": ["a" * shared, "a" * (shared + 1)]})
+    result = df.select(
+        city=getattr(plh.col("literal").nchash, city)(),
+        farm=getattr(plh.col("literal").nchash, farm)(),
+    )
+
+    assert result["city"][0] == result["farm"][0]
+    assert result["city"][1] != result["farm"][1]
+
+
+def test_cityhash64_seed_zero_is_not_unseeded():
+    """`CityHash64WithSeed(v, 0)` is its own hash, not `CityHash64(v)`."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    result = df.select(
+        seeded=plh.col("literal").nchash.cityhash64(seed=0),
+        unseeded=plh.col("literal").nchash.cityhash64(),
+    )
+
+    assert result["seeded"].to_list() == [14430004998761670210]
+    assert result["unseeded"].to_list() == [15605398435621216523]
+
+
+def test_cityhash64_seed_zero_on_an_empty_string_is_zero():
+    """`CityHash64("") == k2`, so `HashLen16(k2 - k2, 0)` really is 0."""
+    df = pl.DataFrame({"literal": [""]})
+
+    assert df.select(plh.col("literal").nchash.cityhash64(seed=0)).item() == 0
+
+
+@pytest.mark.parametrize(
+    "hash_fn", ["cityhash32", "cityhash64", "cityhash128", "farmhash32", "farmhash64"]
+)
+def test_cityhash_rejects_a_non_string_column(hash_fn):
+    df = pl.DataFrame({"literal": [1, 2, 3]})
+
+    with pytest.raises(ComputeError, match="expected `String`"):
+        df.select(getattr(plh.col("literal").nchash, hash_fn)())
+
+
+# Expected values come from the reference implementations: the `cityhash` and
+# `xxhash` packages on PyPI.
+@pytest.mark.parametrize(
+    ("hash_fn", "seed", "expected"),
+    [
+        ("cityhash64", 2**63 - 1, 813647477810708320),
+        ("cityhash64", 2**63, 14000826912671887845),
+        ("cityhash64", 2**64 - 1, 12146214194603664578),
+        ("xxhash64", 2**63, 2037080936879071958),
+        ("xxhash64", 2**64 - 1, 8264024218298755446),
+        ("xxh3_64", 2**63, 13487197773793219251),
+        ("xxh3_64", 2**64 - 1, 1513394910116877137),
+    ],
+)
+def test_seed_accepts_the_whole_u64_range(hash_fn, seed, expected):
+    """Seeds above `i64::MAX` reach the plugin, not just the lower half."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    expr = getattr(plh.col("literal").nchash, hash_fn)(seed=seed)
+
+    assert df.select(expr).item() == expected
+
+
+@pytest.mark.parametrize("hash_fn", ["cityhash64", "xxhash64", "xxh3_64", "xxh3_128"])
+@pytest.mark.parametrize("seed", [-1, 2**64, 2**70])
+def test_seed_outside_the_u64_range_errors(hash_fn, seed):
+    with pytest.raises(ValueError, match="seed must fit in a u64"):
+        getattr(plh.col("literal").nchash, hash_fn)(seed=seed)
 
 
 def test_geohash():
@@ -1149,3 +1319,58 @@ def test_uuid5_concat_with_default():
         ]
     )
     assert_frame_equal(result, expected)
+
+
+def test_uuid5_concat_broadcasts_a_literal():
+    df = pl.DataFrame({"id": ["x", "y", "z"]})
+    result = df.with_columns(out=plh.col("id").uuidhash.uuid5_concat(pl.lit("S")))
+
+    expected = pl.Series(
+        "out",
+        [
+            "186c8031-a217-596e-8c93-75b07f90af6f",
+            "d0f9d2b4-7e90-5f93-acd1-7f16a3774ed4",
+            "d3245ea2-4b8f-56e3-a9ea-9ba38b053026",
+        ],
+        dtype=pl.Utf8,
+    )
+    assert_series_equal(result["out"], expected)
+
+
+def test_uuid5_concat_default_broadcasts_a_literal():
+    df = pl.DataFrame({"id": ["x", "y", "z"]})
+    result = df.with_columns(
+        out=plh.col("id").uuidhash.uuid5_concat(
+            pl.lit(None, dtype=pl.Utf8), default="D"
+        )
+    )
+
+    expected = pl.Series(
+        "out",
+        [
+            "3d0f0686-fd0b-54bf-b4db-811c1c2d6f7c",
+            "1004bd8f-803b-5908-8c16-c2081cbf113c",
+            "61390897-7d4b-5d1f-9639-8a57caf8216e",
+        ],
+        dtype=pl.Utf8,
+    )
+    assert_series_equal(result["out"], expected)
+
+
+def test_uuid5_concat_broadcasts_the_first_column():
+    df = pl.DataFrame({"side": ["S", "S", "S"]})
+    result = df.with_columns(
+        out=pl.lit("x").uuidhash.uuid5_concat(pl.col("side"))  # type: ignore
+    )
+
+    assert result["out"].to_list() == ["186c8031-a217-596e-8c93-75b07f90af6f"] * 3
+
+
+@pytest.mark.parametrize("default", [None, "D"])
+def test_uuid5_concat_rejects_a_length_mismatch(default):
+    df = pl.DataFrame({"id": ["x", "y", "z"], "side": ["a", "b", "c"]})
+
+    with pytest.raises(ComputeError, match="expected equal lengths or a scalar"):
+        df.select(
+            plh.col("id").uuidhash.uuid5_concat(pl.col("side").head(2), default=default)
+        )

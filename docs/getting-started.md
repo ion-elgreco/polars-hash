@@ -7,7 +7,7 @@ pip install polars-hash
 ```
 
 polars-hash supplies prebuilt wheels for Linux, macOS, and Windows. It requires
-`polars >= 1.32.0` and Python 3.10 or later. `plh.__version__` gives the installed
+`polars >= 1.34.0` and Python 3.10 or later. `plh.__version__` gives the installed
 version.
 
 ## Your first hash
@@ -40,16 +40,17 @@ output a different name with `alias()`:
 df.with_columns(plh.col("foo").chash.sha2_256().alias("foo_sha256"))
 ```
 
-## The five namespaces
+## The six namespaces
 
-The `import polars_hash` statement registers all five namespaces on `pl.Expr`:
+The `import polars_hash` statement registers all six namespaces on `pl.Expr`:
 
 | Namespace | Contents | Reference |
 |-----------|----------|-----------|
 | `chash` | Cryptographic hash functions: SHA-2, SHA-3, SHAKE128, BLAKE3, HMAC | [chash](api-reference/cryptographic.md) |
-| `nchash` | Non-cryptographic hash functions: wyhash, xxHash, Murmur, FarmHash, MD5, SHA-1 | [nchash](api-reference/non-cryptographic.md) |
+| `nchash` | Non-cryptographic hash functions: wyhash, xxHash, Murmur, FarmHash, CityHash, MD5, SHA-1 | [nchash](api-reference/non-cryptographic.md) |
 | `geohash` | Geohash encode, decode, and neighbors | [geohash](api-reference/geohash.md) |
 | `h3` | H3 hexagonal cell index | [h3](api-reference/h3.md) |
+| `timehash` | Time-bucket encode, decode, and neighbors | [timehash](api-reference/timehash.md) |
 | `uuidhash` | Deterministic UUID v5 | [uuidhash](api-reference/uuid.md) |
 
 ## `plh.col` and `pl.col` { #plh-col-vs-pl-col }

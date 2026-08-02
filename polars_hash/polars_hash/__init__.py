@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -15,6 +15,39 @@ except ImportError:
     from polars.type_aliases import IntoExpr, PolarsDataType  # type: ignore[no-redef]
 
 from polars_hash._internal import __version__ as __version__
+
+_PLUGIN_PATH = Path(__file__).parent
+_U64_MAX = 2**64 - 1
+
+
+def _plugin(
+    function_name: str,
+    args: IntoExpr | list[IntoExpr],
+    **kwargs: Any,
+) -> pl.Expr:
+    """Call one of the plugin's expressions.
+
+    Every expression in this module is elementwise and lives in the same
+    directory, so the call site only ever varies by name, arguments and kwargs.
+    """
+    return register_plugin_function(
+        plugin_path=_PLUGIN_PATH,
+        function_name=function_name,
+        args=args,
+        is_elementwise=True,
+        kwargs=kwargs or None,
+    )
+
+
+def _encode_u64_seed(seed: int) -> int:
+    """Map a `u64` seed onto the `i64` range that plugin kwargs travel in.
+
+    Kwargs reach the plugin as a pickle, whose integers are `i64`, so a seed
+    above `i64::MAX` has to cross as its two's-complement counterpart.
+    """
+    if not 0 <= seed <= _U64_MAX:
+        raise ValueError(f"seed must fit in a u64, got {seed}")
+    return seed - 2**64 if seed >= 2**63 else seed
 
 
 @pl.api.register_expr_namespace("chash")
@@ -29,113 +62,51 @@ class CryptographicHashingNameSpace:
             category=DeprecationWarning,
             stacklevel=2,
         )
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha2_256",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha2_256", self._expr)
 
     def sha2_256(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha2_256",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha2_256", self._expr)
 
     def sha2_512(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-2 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha2_512",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha2_512", self._expr)
 
     def sha2_384(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-2 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha2_384",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha2_384", self._expr)
 
     def sha2_224(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-2 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha2_224",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha2_224", self._expr)
 
     def sha3_256(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-3 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha3_256",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha3_256", self._expr)
 
     def sha3_512(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-3 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha3_512",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha3_512", self._expr)
 
     def sha3_384(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-3 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha3_384",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha3_384", self._expr)
 
     def sha3_224(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-3 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha3_224",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha3_224", self._expr)
 
     def sha3_shake128(self, *, length: int) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with shake128 from SHA-3 family."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha3_shake128",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"length": length},
-        )
+        return _plugin("sha3_shake128", self._expr, length=length)
 
     def blake3(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with blake3."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="blake3",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("blake3", self._expr)
 
     def hmac_sha256(self, *, key: str) -> pl.Expr:
         """Takes Utf8 as input and returns hex-encoded HMAC-SHA256 string."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="hmac_sha256",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"key": key},
-        )
+        return _plugin("hmac_sha256", self._expr, key=key)
 
 
 @pl.api.register_expr_namespace("nchash")
@@ -145,108 +116,66 @@ class NonCryptographicHashingNameSpace:
 
     def wyhash(self) -> pl.Expr:
         """Takes Bytes or Utf8 as input and returns uint64 hash with wyhash."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="wyhash",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("wyhash", self._expr)
 
     def sha1(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with sha1."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="sha1",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("sha1", self._expr)
 
     def md5(self) -> pl.Expr:
         """Takes Utf8 as input and returns utf8 hash with md5."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="md5",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("md5", self._expr)
 
     def murmur32(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 as input and returns uint32 hash with murmur32."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="murmur32",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"seed": seed},
-        )
+        return _plugin("murmur32", self._expr, seed=seed)
 
     def murmur128(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 as input and returns binary hash with murmur128."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="murmur128",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"seed": seed},
-        )
+        return _plugin("murmur128", self._expr, seed=seed)
 
     def xxhash32(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 as input and returns uint32 hash with xxhash32."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="xxhash32",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"seed": seed},
-        )
+        return _plugin("xxhash32", self._expr, seed=seed)
 
     def xxhash64(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 as input and returns uint64 hash with xxhash64."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="xxhash64",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"seed": seed},
-        )
+        return _plugin("xxhash64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_64(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 as input and returns uint32 hash with XXH3 64bit."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="xxh3_64",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"seed": seed},
-        )
+        return _plugin("xxh3_64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 as input and returns binary hash with XXH3 128bit."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="xxh3_128",
-            args=self._expr,
-            is_elementwise=True,
-            kwargs={"seed": seed},
-        )
+        return _plugin("xxh3_128", self._expr, seed=_encode_u64_seed(seed))
 
     def farmhash32(self) -> pl.Expr:
         """Takes Utf8 as input and returns uint32 hash with FarmHash fingerprint32."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="farmhash32",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("farmhash32", self._expr)
 
     def farmhash64(self) -> pl.Expr:
         """Takes Utf8 as input and returns uint64 hash with FarmHash fingerprint64."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="farmhash64",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("farmhash64", self._expr)
+
+    def cityhash32(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with CityHash32."""
+        return _plugin("cityhash32", self._expr)
+
+    def cityhash64(self, *, seed: int | None = None) -> pl.Expr:
+        """Takes Utf8 as input and returns uint64 hash with CityHash64.
+
+        Without a seed this is `CityHash64`, with one `CityHash64WithSeed` — a
+        different value even for `seed=0`.
+        """
+        if seed is None:
+            return _plugin("cityhash64", self._expr)
+
+        return _plugin("cityhash64_with_seed", self._expr, seed=_encode_u64_seed(seed))
+
+    def cityhash128(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint128 hash with CityHash128."""
+        return _plugin("cityhash128", self._expr)
 
 
 def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
@@ -266,30 +195,15 @@ class GeoHashingNameSpace:
 
     def to_coords(self) -> pl.Expr:
         """Takes Utf8 as input and returns a struct of the coordinates."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="ghash_decode",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("ghash_decode", self._expr)
 
     def from_coords(self, len: int | str | pl.Expr = 12) -> pl.Expr:
         """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            args=[self._expr, _length_expr(len)],
-            function_name="ghash_encode",
-            is_elementwise=True,
-        )
+        return _plugin("ghash_encode", [self._expr, _length_expr(len)])
 
     def neighbors(self) -> pl.Expr:
         """Takes Utf8 hash as input and returns a struct of the neighbors."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="ghash_neighbors",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("ghash_neighbors", self._expr)
 
 
 @pl.api.register_expr_namespace("h3")
@@ -299,12 +213,7 @@ class H3NameSpace:
 
     def from_coords(self, len: int = 12) -> pl.Expr:
         """Takes Struct with latitude, longitude as input and returns utf8 H3 spatial index."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            args=[self._expr, _length_expr(len)],
-            function_name="h3_encode",
-            is_elementwise=True,
-        )
+        return _plugin("h3_encode", [self._expr, _length_expr(len)])
 
 
 @pl.api.register_expr_namespace("timehash")
@@ -330,12 +239,8 @@ class TimeHashingNameSpace:
         raising. A ``when``/``then`` guard cannot do this, because polars evaluates
         both branches over the whole column. Precision stays strict either way.
         """
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            args=[self._expr, _length_expr(precision)],
-            function_name="thash_encode",
-            is_elementwise=True,
-            kwargs={"strict": strict},
+        return _plugin(
+            "thash_encode", [self._expr, _length_expr(precision)], strict=strict
         )
 
     def to_datetime(self) -> pl.Expr:
@@ -344,21 +249,11 @@ class TimeHashingNameSpace:
         The hash holds an instant, not a wall clock, so the zone is not recoverable.
         The result is UTC; use ``.dt.convert_time_zone(tz)`` for another zone.
         """
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="thash_decode",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("thash_decode", self._expr)
 
     def neighbors(self) -> pl.Expr:
         """Takes Utf8 hash as input and returns a struct of the preceding and succeeding hash."""
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="thash_neighbors",
-            args=self._expr,
-            is_elementwise=True,
-        )
+        return _plugin("thash_neighbors", self._expr)
 
 
 class UUIDNamespace(str, Enum):
@@ -384,12 +279,7 @@ class UUIDHashNameSpace:
         Returns:
             Expression producing UUID5 strings.
         """
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            args=[self._expr, pl.lit(namespace)],
-            function_name="uuid5",
-            is_elementwise=True,
-        )
+        return _plugin("uuid5", [self._expr, pl.lit(namespace)])
 
     def uuid5_concat(self, other: pl.Expr, default: str | None = None) -> pl.Expr:
         """Concatenate two columns and generate UUID5 using DNS namespace.
@@ -402,19 +292,9 @@ class UUIDHashNameSpace:
             Expression producing UUID5 strings.
         """
         if default is not None:
-            return register_plugin_function(
-                plugin_path=Path(__file__).parent,
-                function_name="uuid5_concat_default",
-                args=[self._expr, other, pl.lit(default)],
-                is_elementwise=True,
-            )
+            return _plugin("uuid5_concat_default", [self._expr, other, pl.lit(default)])
 
-        return register_plugin_function(
-            plugin_path=Path(__file__).parent,
-            function_name="uuid5_concat",
-            args=[self._expr, other],
-            is_elementwise=True,
-        )
+        return _plugin("uuid5_concat", [self._expr, other])
 
 
 class HExpr(pl.Expr):

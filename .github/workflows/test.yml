@@ -61,3 +61,18 @@ jobs:
       # Type and lint checks are OS-independent; one leg is enough.
       - if: matrix.platform == 'linux-x86_64'
         run: make check
+
+      # uv.lock pins the newest polars, so the run above never exercises the floor
+      # pyproject.toml promises. Re-run the suite against exactly that floor, reading
+      # it from pyproject.toml so the two cannot drift. The wheel is not rebuilt: one
+      # build has to work across the whole supported range. Last, since it leaves an
+      # older polars in the environment.
+      - name: Test against the minimum supported polars
+        if: matrix.platform == 'linux-x86_64'
+        run: |
+          floor=$(grep -oE "polars >= [0-9]+\.[0-9]+\.[0-9]+" pyproject.toml | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          test -n "$floor" || { echo "no polars floor found in pyproject.toml"; exit 1; }
+          echo "::group::polars==$floor"
+          uv pip install "polars==$floor"
+          uv run --no-sync pytest tests/
+          echo "::endgroup::"
