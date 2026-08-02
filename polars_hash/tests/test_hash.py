@@ -855,6 +855,24 @@ def test_timehash_length_mismatch_is_rejected():
         df.select(pl.lit(timestamps).timehash.from_datetime("n"))
 
 
+def test_timehash_null_dtype_column():
+    """A scan that infers Null must behave like the same all-null data typed."""
+    df = pl.DataFrame({"t": pl.Series([None, None], dtype=pl.Null)})
+
+    assert df.select(plh.col("t").timehash.from_datetime(10)).to_series().to_list() == [
+        None,
+        None,
+    ]
+    assert df.select(plh.col("t").timehash.to_datetime()).to_series().to_list() == [
+        None,
+        None,
+    ]
+    assert df.select(plh.col("t").timehash.neighbors()).to_series().to_list() == [
+        {"before": None, "after": None},
+        {"before": None, "after": None},
+    ]
+
+
 def test_timehash_null():
     df = pl.DataFrame(
         {

@@ -4,7 +4,8 @@ use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
 use crate::timehashers::{
-    epoch_seconds, timehash_decoder, timehash_encoder, timehash_neighbors, validate_precision,
+    epoch_seconds, hash_column, timehash_decoder, timehash_encoder, timehash_neighbors,
+    validate_precision,
 };
 use crate::xxhash_hashers::*;
 use hmac::Mac;
@@ -413,9 +414,9 @@ pub fn timehash_decode_output(field: &[Field]) -> PolarsResult<Field> {
 
 #[polars_expr(output_type_func=timehash_decode_output)]
 fn thash_decode(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
+    let s = hash_column(&inputs[0])?;
 
-    timehash_decoder(ca)
+    timehash_decoder(s.str()?)
 }
 
 pub fn timehash_neighbors_output(field: &[Field]) -> PolarsResult<Field> {
@@ -428,9 +429,9 @@ pub fn timehash_neighbors_output(field: &[Field]) -> PolarsResult<Field> {
 
 #[polars_expr(output_type_func=timehash_neighbors_output)]
 fn thash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
+    let s = hash_column(&inputs[0])?;
 
-    Ok(timehash_neighbors(ca)?.into_series())
+    Ok(timehash_neighbors(s.str()?)?.into_series())
 }
 
 #[polars_expr(output_type=UInt32)]

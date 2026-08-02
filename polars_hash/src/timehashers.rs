@@ -26,11 +26,22 @@ fn validate_timehash(value: &str) -> PolarsResult<()> {
     }
 }
 
+/// A source with no non-null values infers `Null` rather than `String`, so treat it
+/// as an all-null hash column: whether a query runs should not depend on inference.
+pub fn hash_column(s: &Series) -> PolarsResult<Series> {
+    match s.dtype() {
+        DataType::Null => s.cast(&DataType::String),
+        _ => Ok(s.clone()),
+    }
+}
+
 /// Datetime and Date carry their unit in the dtype; other numerics are taken as
 /// epoch seconds as-is. Float32 is refused, not widened: near 1.5e9 it spaces
 /// values 128 seconds apart, far wider than the 3.8 second window at precision 10.
 pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
     match s.dtype() {
+        // Same reasoning as `hash_column`: all-null data must not depend on inference.
+        DataType::Null => Ok(Float64Chunked::full_null(s.name().clone(), s.len())),
         // Nanoseconds run past 2^53, so `v as f64` would round the instant before it
         // is scaled. Split first: whole seconds and remainder each convert exactly.
         DataType::Datetime(time_unit, _) => {
