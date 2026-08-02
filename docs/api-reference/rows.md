@@ -37,7 +37,7 @@ df.select(plh.encode_rows(pl.all()).chash.sha2_256())
 ```
 
 ```text
-233f69694365e098ff2f019ee4ba8bce0e035c0c684fe1bd0417068ca2d371df
+9055866af8d3c113e0a8fdb729ce8e6fa67ed5f6f51efa8235a588e88ea972f4
 ```
 
 The bytes themselves are a value you can keep, compare or store:
@@ -47,14 +47,14 @@ df.select(plh.encode_rows(pl.all()))
 ```
 
 ```text
-b'\r\x05\x0bhello_world\x03\x01*\x0c\x03\x03\x01\x01\x03\x01\x02\x03\x01\x03\r\x03\x01\x01'
+b'\r\x04\x05\x0bhello_world\x03\x01*\x0c\x03\x03\x01\x01\x03\x01\x02\x03\x01\x03\r\x01\x03\x01\x01'
 ```
 
 Naming the columns works as well, and fixes the order of the row:
 
 ```python
 df.select(plh.encode_rows("foo", "bar").nchash.xxh3_64())
-# 1727121123591980269
+# 9123089596710669414
 ```
 
 **Parameters:**
@@ -83,7 +83,7 @@ plh.hash_rows(df.select("foo", "bar"))
 │ ---         ┆ --- ┆ ---                 │
 │ str         ┆ i64 ┆ u64                 │
 ╞═════════════╪═════╪═════════════════════╡
-│ hello_world ┆ 42  ┆ 1727121123591980269 │
+│ hello_world ┆ 42  ┆ 9123089596710669414 │
 └─────────────┴─────┴─────────────────────┘
 ```
 
@@ -137,11 +137,11 @@ values need no separator between them and no row can be read two ways.
 | `0a` | Duration | nanoseconds, as an integer payload |
 | `0b` | Decimal | the unscaled value as an integer payload, then the scale as a varint |
 | `0c` | List | element count as a varint, then the elements |
-| `0d` | Struct | the fields, in order |
+| `0d` | Struct | field count as a varint, then the fields |
 
 A varint is base 128, least significant group first, with the high bit set on every
-group but the last. `Int64(1)` therefore reaches four bytes in a one-column frame:
-`0d` for the row, then `03 01 01`.
+group but the last. `Int64(1)` therefore reaches five bytes in a one-column frame:
+`0d 01` for the row and its one field, then `03 01 01`.
 
 ### What a value is read as
 
@@ -176,6 +176,6 @@ because order is what tells the values apart.
 **Chunking and slicing.** A frame read in one chunk, in ten, or sliced out of a larger
 one gives the same bytes for the same rows.
 
-**The schema beyond the row.** Two columns of `(Int, Int)` and one `Struct` of two
-`Int` fields reach the same bytes. Comparing hashes across schemas is outside what the
-encoding promises; comparing them within one schema is the whole point.
+**Nothing else.** Two columns of `(Int, Int)` and one `Struct` holding two `Int`
+fields are told apart by the field counts, so a schema change is visible in the hash
+even when the values do not move.

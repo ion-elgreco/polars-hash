@@ -1652,30 +1652,30 @@ def test_uuid5_concat_rejects_a_length_mismatch(default):
 # `encode_rows` writes version 1 of the encoding. These bytes are frozen: a stored
 # hash outlives the release that wrote it, so a change here needs a new version.
 _ENCODINGS = [
-    ("null", pl.Series([None], dtype=pl.Int64), "0d00"),
-    ("false", pl.Series([False]), "0d01"),
-    ("true", pl.Series([True]), "0d02"),
-    ("int_1", pl.Series([1], dtype=pl.Int64), "0d030101"),
-    ("int_minus_1", pl.Series([-1], dtype=pl.Int64), "0d030001"),
-    ("int_300", pl.Series([300], dtype=pl.Int64), "0d0301ac02"),
-    ("float_1_5", pl.Series([1.5]), "0d043ff8000000000000"),
-    ("string_ab", pl.Series(["ab"]), "0d05026162"),
-    ("binary_ff", pl.Series([b"\xff"]), "0d0601ff"),
-    ("date_day_1", pl.Series([date(1970, 1, 2)]), "0d070101"),
-    ("time_1ns", pl.Series([1], dtype=pl.Int64).cast(pl.Time), "0d080101"),
+    ("null", pl.Series([None], dtype=pl.Int64), "0d0100"),
+    ("false", pl.Series([False]), "0d0101"),
+    ("true", pl.Series([True]), "0d0102"),
+    ("int_1", pl.Series([1], dtype=pl.Int64), "0d01030101"),
+    ("int_minus_1", pl.Series([-1], dtype=pl.Int64), "0d01030001"),
+    ("int_300", pl.Series([300], dtype=pl.Int64), "0d010301ac02"),
+    ("float_1_5", pl.Series([1.5]), "0d01043ff8000000000000"),
+    ("string_ab", pl.Series(["ab"]), "0d0105026162"),
+    ("binary_ff", pl.Series([b"\xff"]), "0d010601ff"),
+    ("date_day_1", pl.Series([date(1970, 1, 2)]), "0d01070101"),
+    ("time_1ns", pl.Series([1], dtype=pl.Int64).cast(pl.Time), "0d01080101"),
     (
         "datetime_1000us",
         pl.Series([1000], dtype=pl.Int64).cast(pl.Datetime("us")),
-        "0d0901c0843d",
+        "0d010901c0843d",
     ),
-    ("duration_1us", pl.Series([timedelta(microseconds=1)]), "0d0a01e807"),
+    ("duration_1us", pl.Series([timedelta(microseconds=1)]), "0d010a01e807"),
     (
         "decimal_1_50",
         pl.Series([Decimal("1.50")], dtype=pl.Decimal(10, 2)),
-        "0d0b010f01",
+        "0d010b010f01",
     ),
-    ("list_1_2", pl.Series([[1, 2]]), "0d0c02030101030102"),
-    ("struct_a_1", pl.Series([{"a": 1}]), "0d0d030101"),
+    ("list_1_2", pl.Series([[1, 2]]), "0d010c02030101030102"),
+    ("struct_a_1", pl.Series([{"a": 1}]), "0d010d01030101"),
 ]
 
 
@@ -1717,7 +1717,7 @@ def test_encode_rows_hashes_a_row_holding_a_list_and_a_struct():
 
     assert (
         result.item()
-        == "64cde83c2d50d5750e619b300565542899ea0d5e6c170146b75a301d9cdb9bc6"
+        == "7e9187dade49806c0ae6ec85ecfad6f2f99751be1cc650a03f6f8de0b404aec4"
     )
 
 
@@ -1934,3 +1934,15 @@ def test_hash_rows_rejects_an_algorithm_it_has_no_hasher_for(algorithm):
 
     with pytest.raises(ValueError, match="unknown algorithm"):
         plh.hash_rows(df, algorithm=algorithm)
+
+
+def test_encode_rows_keeps_struct_shapes_apart():
+    """A struct writes its field count, as a list writes its element count.
+
+    Without it a struct field runs into the field beside it, and two rows with
+    different schemas reach the same bytes.
+    """
+    wide = pl.DataFrame({"a": [{"x": 1, "y": 2}]})
+    split = pl.DataFrame({"a": [{"x": 1}], "b": [2]})
+
+    assert _encode(wide) != _encode(split)

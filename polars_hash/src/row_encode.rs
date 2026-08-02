@@ -298,7 +298,11 @@ impl Column {
                 if !is_valid(valid, i) {
                     return out.push(TAG_NULL);
                 }
+                // The field count for the same reason a list writes its element
+                // count: without it the last field of a struct runs into whatever
+                // follows, and two rows of different shape reach the same bytes.
                 out.push(TAG_STRUCT);
+                push_varint(out, fields.len() as u128);
                 for field in fields {
                     field.encode(i, out);
                 }
