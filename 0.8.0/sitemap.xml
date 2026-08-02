@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/getting-started/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/cryptographic/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/non-cryptographic/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/geohash/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/h3/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/timehash/</loc>
+      </url>
+      <url>
+        <loc>https://ion-elgreco.github.io/polars-hash/0.8.0/api-reference/uuid/</loc>
+      </url>
+</urlset>
