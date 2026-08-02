@@ -511,7 +511,10 @@ def hash_rows(
     Returns:
         The frame with the hash column added.
     """
-    encoded = encode_rows(pl.all() if subset is None else subset, version=version)
+    # `pl.all()` would take in a hash column left by an earlier run and fold it into
+    # the encoding, so refreshing a stored fingerprint reported every row as changed.
+    default = pl.all().exclude(name)
+    encoded = encode_rows(default if subset is None else subset, version=version)
     return frame.with_columns(_hash_algorithm(encoded, algorithm, kwargs).alias(name))
 
 

@@ -105,9 +105,9 @@ hash belongs inside a larger expression.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `frame` | `pl.DataFrame \| pl.LazyFrame` | required | The frame to fingerprint. A `LazyFrame` stays lazy. |
-| `subset` | `IntoExpr \| Iterable[IntoExpr] \| None` | `None` | The columns that make up a row. `None` reads them all. |
+| `subset` | `IntoExpr \| Iterable[IntoExpr] \| None` | `None` | The columns that make up a row. `None` reads them all except `name`, so re-running over an earlier result gives the same hashes. |
 | `algorithm` | `str` | `"xxh3_64"` | Any hasher in the `chash`, `nchash` or `uuidhash` namespaces, by name. |
-| `name` | `str` | `"hash"` | The name of the column to add. An existing column of that name is replaced. |
+| `name` | `str` | `"hash"` | The name of the column to add. An existing column of that name is replaced, and the default `subset` leaves it out of the encoding. |
 | `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 is frozen. |
 | `**kwargs` | `Any` | — | Arguments for the hasher, such as `key` for `hmac_sha256`. |
 

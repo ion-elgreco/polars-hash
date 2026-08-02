@@ -1956,3 +1956,12 @@ def test_encode_rows_does_not_take_the_name_of_a_column_it_encodes():
 
     assert result.columns == ["foo", "bar", "row"]
     assert result["foo"].to_list() == ["a"]
+
+
+def test_hash_rows_does_not_read_the_column_it_writes():
+    """Re-running it over its own output reported every row as changed."""
+    df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+
+    once = plh.hash_rows(df)
+
+    assert_series_equal(plh.hash_rows(once)["hash"], once["hash"])
