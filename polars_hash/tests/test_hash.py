@@ -2024,3 +2024,21 @@ def test_a_zero_width_array_raises_rather_than_aborting(call):
 
     with pytest.raises(ComputeError, match="the plugin panicked"):
         call(df)
+
+
+@pytest.mark.parametrize("scale", range(37))
+def test_encode_rows_strips_every_decimal_scale_the_same_way(scale):
+    """The strip comes down by powers of ten, so each width has to land where a
+    digit-at-a-time strip would. 15 at scale s is 15 followed by s zeros unscaled."""
+    df = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, scale))})
+    fifteen = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, 0))})
+
+    assert _encode(df) == _encode(fifteen)
+
+
+@pytest.mark.parametrize("scale", [0, 1, 18, 37])
+def test_encode_rows_reads_a_decimal_zero_as_one_value(scale):
+    df = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, scale))})
+    zero = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, 0))})
+
+    assert _encode(df) == _encode(zero)

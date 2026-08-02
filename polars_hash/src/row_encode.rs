@@ -79,11 +79,23 @@ fn push_bytes(out: &mut Vec<u8>, tag: u8, value: &[u8]) {
 
 /// Trailing zeros of a decimal carry no value, so `1.50` and `1.500` reach the same
 /// bytes however wide the column that held them was declared.
+///
+/// The strip comes down by powers of ten rather than a digit at a time. `Decimal(38,
+/// 18)` is the ordinary shape for money, and one digit at a time made every row of
+/// such a column pay eighteen divisions — a zero worst of all, since `0 % 10` is
+/// always zero. Six divisions cover the whole `i128` range.
 fn push_decimal(out: &mut Vec<u8>, unscaled: i128, scale: usize) {
     let (mut unscaled, mut scale) = (unscaled, scale);
-    while scale > 0 && unscaled % 10 == 0 {
-        unscaled /= 10;
-        scale -= 1;
+    if unscaled == 0 {
+        scale = 0;
+    } else if scale > 0 && unscaled % 10 == 0 {
+        for step in [16usize, 8, 4, 2, 1] {
+            let power = 10i128.pow(step as u32);
+            while scale >= step && unscaled % power == 0 {
+                unscaled /= power;
+                scale -= step;
+            }
+        }
     }
     push_scalar(out, TAG_DECIMAL, unscaled);
     push_varint(out, scale as u128);
