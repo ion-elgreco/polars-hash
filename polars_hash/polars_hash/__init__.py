@@ -16,6 +16,19 @@ except ImportError:
 
 from polars_hash._internal import __version__ as __version__
 
+_U64_MAX = 2**64 - 1
+
+
+def _encode_u64_seed(seed: int) -> int:
+    """Map a `u64` seed onto the `i64` range that plugin kwargs travel in.
+
+    Kwargs reach the plugin as a pickle, whose integers are `i64`, so a seed
+    above `i64::MAX` has to cross as its two's-complement counterpart.
+    """
+    if not 0 <= seed <= _U64_MAX:
+        raise ValueError(f"seed must fit in a u64, got {seed}")
+    return seed - 2**64 if seed >= 2**63 else seed
+
 
 @pl.api.register_expr_namespace("chash")
 class CryptographicHashingNameSpace:
@@ -207,7 +220,7 @@ class NonCryptographicHashingNameSpace:
             function_name="xxhash64",
             args=self._expr,
             is_elementwise=True,
-            kwargs={"seed": seed},
+            kwargs={"seed": _encode_u64_seed(seed)},
         )
 
     def xxh3_64(self, *, seed: int = 0) -> pl.Expr:
@@ -217,7 +230,7 @@ class NonCryptographicHashingNameSpace:
             function_name="xxh3_64",
             args=self._expr,
             is_elementwise=True,
-            kwargs={"seed": seed},
+            kwargs={"seed": _encode_u64_seed(seed)},
         )
 
     def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
@@ -227,7 +240,7 @@ class NonCryptographicHashingNameSpace:
             function_name="xxh3_128",
             args=self._expr,
             is_elementwise=True,
-            kwargs={"seed": seed},
+            kwargs={"seed": _encode_u64_seed(seed)},
         )
 
     def farmhash32(self) -> pl.Expr:
@@ -268,7 +281,7 @@ class NonCryptographicHashingNameSpace:
             function_name="cityhash64",
             args=self._expr,
             is_elementwise=True,
-            kwargs={"seed": seed},
+            kwargs={"seed": None if seed is None else _encode_u64_seed(seed)},
         )
 
     def cityhash128(self) -> pl.Expr:

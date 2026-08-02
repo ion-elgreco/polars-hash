@@ -288,6 +288,35 @@ def test_cityhash64_seed_zero_is_not_unseeded():
     assert result["unseeded"].to_list() == [15605398435621216523]
 
 
+# Expected values come from the reference implementations: the `cityhash` and
+# `xxhash` packages on PyPI.
+@pytest.mark.parametrize(
+    ("hash_fn", "seed", "expected"),
+    [
+        ("cityhash64", 2**63 - 1, 813647477810708320),
+        ("cityhash64", 2**63, 14000826912671887845),
+        ("cityhash64", 2**64 - 1, 12146214194603664578),
+        ("xxhash64", 2**63, 2037080936879071958),
+        ("xxhash64", 2**64 - 1, 8264024218298755446),
+        ("xxh3_64", 2**63, 13487197773793219251),
+        ("xxh3_64", 2**64 - 1, 1513394910116877137),
+    ],
+)
+def test_seed_accepts_the_whole_u64_range(hash_fn, seed, expected):
+    """Seeds above `i64::MAX` reach the plugin, not just the lower half."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    expr = getattr(plh.col("literal").nchash, hash_fn)(seed=seed)
+
+    assert df.select(expr).item() == expected
+
+
+@pytest.mark.parametrize("hash_fn", ["cityhash64", "xxhash64", "xxh3_64", "xxh3_128"])
+@pytest.mark.parametrize("seed", [-1, 2**64, 2**70])
+def test_seed_outside_the_u64_range_errors(hash_fn, seed):
+    with pytest.raises(ValueError, match="seed must fit in a u64"):
+        getattr(plh.col("literal").nchash, hash_fn)(seed=seed)
+
+
 def test_cityhash128():
     df = pl.DataFrame({"literal": ["hello_world", None, ""]})
     result = df.select(plh.col("literal").nchash.cityhash128())
