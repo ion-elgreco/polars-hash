@@ -1,4 +1,3 @@
-use crate::cityhash_hashers::*;
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
@@ -14,6 +13,7 @@ use hmac::Mac;
 use polars::{
     chunked_array::ops::arity::{
         try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise, unary_elementwise,
+        unary_elementwise_values,
     },
     prelude::*,
 };
@@ -89,6 +89,30 @@ fn farmhash_fingerprint64(value: Option<&str>) -> Option<u64> {
     value.map(|v| farmhash::fingerprint64(v.as_bytes()))
 }
 
+// `cityhasher::hash` picks the algorithm from its return type alone, so the turbofish
+// is what makes these CityHash32 and CityHash64 rather than each other.
+//
+// The two crates name different CityHash releases — `cityhasher` says v1.1, and
+// `cityhash_110_128` is v1.1.0 — but the docs promise v1.1.1 for all three. That holds:
+// upstream NEWS for v1.1.1 reads "No changes to any of the functions, unless you had
+// been using CityHash32()", and that change was the signed-`char` fix which `cityhasher`
+// applies as `*v as i8`.
+fn cityhash_32(value: &str) -> u32 {
+    cityhasher::hash::<u32>(value.as_bytes())
+}
+
+fn cityhash_64(value: &str) -> u64 {
+    cityhasher::hash::<u64>(value.as_bytes())
+}
+
+fn cityhash_64_with_seed(value: &str, seed: u64) -> u64 {
+    cityhasher::hash_with_seed::<u64>(value.as_bytes(), seed)
+}
+
+fn cityhash_128(value: &str) -> u128 {
+    cityhash_rs::cityhash_110_128(value.as_bytes())
+}
+
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     let s = inputs.get(0).expect("no series received");
@@ -127,14 +151,14 @@ fn farmhash64(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type=UInt32)]
 fn cityhash32(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise(ca, cityhash_32);
+    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, cityhash_32);
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn cityhash64(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, cityhash_64);
+    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, cityhash_64);
     Ok(out.into_series())
 }
 
@@ -144,14 +168,15 @@ fn cityhash64(inputs: &[Series]) -> PolarsResult<Series> {
 fn cityhash64_with_seed(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
     let seed = kwargs.seed as u64;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, |v| cityhash_64_with_seed(v, seed));
+    let out: ChunkedArray<UInt64Type> =
+        unary_elementwise_values(ca, |v| cityhash_64_with_seed(v, seed));
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt128)]
 fn cityhash128(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt128Type> = unary_elementwise(ca, cityhash_128);
+    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, cityhash_128);
     Ok(out.into_series())
 }
 
