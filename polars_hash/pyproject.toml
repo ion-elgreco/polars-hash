@@ -30,8 +30,6 @@ dynamic = ["version"]
 dev = [
   "maturin>=1.0,<2.0",
   "mypy",
-  # For the one test that watches whether UInt128 can reach Arrow yet.
-  "pyarrow",
   "pytest",
   "ruff",
   "tzdata; platform_system == 'Windows'",

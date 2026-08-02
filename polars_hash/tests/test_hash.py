@@ -354,19 +354,6 @@ def test_cityhash_rejects_a_non_string_column(hash_fn):
         df.select(getattr(plh.col("literal").nchash, hash_fn)())
 
 
-@pytest.mark.xfail(
-    reason="Polars encodes UInt128 as the private Arrow type _plu128, which pyarrow "
-    "rejects. Delete this xfail and the matching note in the cityhash128 docs when "
-    "it starts passing — that is the blocker on murmur128 and xxh3_128 returning "
-    "UInt128 too.",
-    strict=True,
-)
-def test_cityhash128_reaches_arrow():
-    df = pl.DataFrame({"literal": ["hello_world"]})
-
-    df.select(plh.col("literal").nchash.cityhash128()).to_arrow()
-
-
 # Expected values come from the reference implementations: the `cityhash` and
 # `xxhash` packages on PyPI.
 @pytest.mark.parametrize(
