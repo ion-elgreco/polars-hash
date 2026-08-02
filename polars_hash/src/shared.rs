@@ -4,12 +4,11 @@ use polars::prelude::*;
 /// Run `op` over the bytes of every value, for either a String or a Binary column.
 ///
 /// A hash reads bytes, so the two dtypes differ only in how an element is reached.
-/// Keeping the match here lets each expression stay a single line, gives them all
-/// one error message, and is what lets `encode_rows` feed any of them.
+/// Keeping the match here lets each expression stay one line, gives them all one error
+/// message, and is what lets `encode_rows` feed any of them.
 ///
-/// The walk over a column that holds nulls skips them. The `_values` walk visits
-/// every slot, so a mostly-null column used to cost what a full one does and to throw
-/// away an allocation per null for the digests that return a `Vec`. It is still the
+/// A column holding nulls takes the walk that skips them. The `_values` walk visits
+/// every slot, so a mostly-null column cost what a full one does. It is still the
 /// faster of the two when there is nothing to skip, so both are here.
 pub fn hash_bytes<V, F, R>(s: &Series, op: F) -> PolarsResult<ChunkedArray<V>>
 where

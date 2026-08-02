@@ -400,28 +400,25 @@ def encode_rows(
         df.select(plh.encode_rows(pl.all()).chash.sha2_256())
 
     A value is encoded by what it means, not by how polars holds it, so an ``Int32``
-    hashes like the ``Int64`` beside it and a millisecond ``Datetime`` like the same
-    instant in nanoseconds. Column names never reach the bytes, so renaming a column
-    keeps its hash while reordering the columns does not. A null is a value the
-    encoding holds rather than an absent row, so a row containing one still hashes.
-    The reference lists every rule.
+    hashes like the ``Int64`` beside it. Column names never reach the bytes, so
+    renaming a column keeps its hash while reordering does not. A null is a value the
+    encoding holds, so a row containing one still hashes. The reference lists every
+    rule.
 
     Args:
         exprs: The columns to encode, in the order they make up the row.
         *more_exprs: More columns, as positional arguments.
-        version: The encoding to write. Version 1 is frozen; a later version, if one
-            is ever needed, has to be asked for by number.
+        version: The encoding to write. Version 1 is frozen; a later one would have
+            to be asked for by number.
 
     Returns:
         Expression producing Binary, one value per row and never null.
     """
     # A plugin cannot expand a wildcard the way `pl.concat_str` does: `pl.all()` would
     # clone the call once per column instead of passing them all to one. The struct is
-    # what carries a whole row across in a single input.
-    #
-    # It is named rather than left to inherit the first column's name: the output is
-    # the whole row, not that column, and in `with_columns` the inherited name replaced
-    # the very column it had just encoded.
+    # what carries a whole row across in a single input. It is named rather than left
+    # to inherit the first column's name, which in `with_columns` replaced the very
+    # column it had just encoded.
     row = pl.struct(exprs, *more_exprs).alias("row")
     return cast(HExpr, _plugin("encode_rows", row, version=version))
 
@@ -432,7 +429,7 @@ _HASH_NAMESPACES = (
     UUIDHashNameSpace,
 )
 
-# Reaching this one through `hash_rows` would file its DeprecationWarning against this
+# Reached through `hash_rows`, this one files its DeprecationWarning against this
 # module rather than the caller, where a filter could find it.
 _DEPRECATED_ALGORITHMS = {"sha256": "sha2_256"}
 
@@ -450,20 +447,20 @@ def _takes_no_arguments(member: Any) -> bool:
 def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> pl.Expr:
     """Find `algorithm` among the namespaces, so this stays one name behind them all.
 
-    Listing the algorithms here instead would be a second copy of an API that already
-    exists, and one that goes stale the next time a hasher lands.
+    A list here would be a second copy of an API that already exists, and would go
+    stale the next time a hasher lands.
     """
     # Read off the classes rather than off `encoded.chash` and its siblings: those go
-    # through the `pl.Expr` registry, where any package that claims one of these names
-    # last would be the one answering.
+    # through the `pl.Expr` registry, where whichever package claimed the name last
+    # would be the one answering.
     if not algorithm.startswith("_") and algorithm not in _DEPRECATED_ALGORITHMS:
         for namespace in _HASH_NAMESPACES:
             method = getattr(namespace(encoded), algorithm, None)
             if callable(method):
                 return method(**kwargs)
 
-    # Only the ones that need nothing else are listed. `hmac_sha256` and its kind still
-    # work when their argument comes too, but naming them here would send a reader to a
+    # Only the ones that need nothing else. `hmac_sha256` and its kind still work when
+    # their argument comes too, but naming them here would send a reader to a
     # `TypeError` raised inside a namespace class they never asked for.
     unaided = sorted(
         name
@@ -521,26 +518,25 @@ def hash_rows(
         plh.hash_rows(df)
         df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash"))
 
-    Reach for the expression instead when the hash belongs inside a larger one, and
-    for this when a whole frame needs a fingerprint column. The encoding rules are
-    the same either way, and [`encode_rows`][polars_hash.encode_rows] states them.
+    Reach for the expression when the hash belongs inside a larger one, and for this
+    when a frame needs a fingerprint column. The encoding rules are the same either
+    way, and [`encode_rows`][polars_hash.encode_rows] states them.
 
     Args:
         frame: The frame to fingerprint. A `LazyFrame` stays lazy.
-        subset: The columns that make up a row, all of them by default. Accepts
+        subset: The columns that make up a row, all but `name` by default. Accepts
             anything `pl.struct` does, selectors included.
         algorithm: Any hasher in the `chash`, `nchash` or `uuidhash` namespaces, by
             name.
-        name: The name of the column to add. An existing column of that name is
-            replaced.
+        name: The column to add, replacing one of that name.
         version: The encoding to write. Version 1 is frozen.
         **kwargs: Arguments for the hasher, such as `key` for `hmac_sha256`.
 
     Returns:
         The frame with the hash column added.
     """
-    # `pl.all()` would take in a hash column left by an earlier run and fold it into
-    # the encoding, so refreshing a stored fingerprint reported every row as changed.
+    # `pl.all()` would fold a hash column left by an earlier run into the encoding,
+    # so refreshing a stored fingerprint reported every row as changed.
     default = pl.all().exclude(name)
     encoded = encode_rows(default if subset is None else subset, version=version)
     return frame.with_columns(_hash_algorithm(encoded, algorithm, kwargs).alias(name))

@@ -1690,9 +1690,8 @@ _ENCODINGS = [
     ),
     ("list_1_2", pl.Series([[1, 2]]), "0d010c02030101030102"),
     ("struct_a_1", pl.Series([{"a": 1}]), "0d010d01030101"),
-    # One class per branch of the encoder, including the ones that agree with a
-    # vector above: a null column of Null dtype and an unsigned integer take their
-    # own path to the same bytes, and only `u128` above `i128::MAX` takes the last.
+    # One per branch of the encoder, including those that agree with a vector above:
+    # a Null column and an unsigned integer reach the same bytes by their own path.
     ("null_dtype", pl.Series([None], dtype=pl.Null), "0d0100"),
     ("uint_1", pl.Series([1], dtype=pl.UInt64), "0d01030101"),
     (
@@ -1971,11 +1970,8 @@ def test_hash_rows_rejects_an_algorithm_it_has_no_hasher_for(algorithm):
 
 
 def test_encode_rows_keeps_struct_shapes_apart():
-    """A struct writes its field count, as a list writes its element count.
-
-    Without it a struct field runs into the field beside it, and two rows with
-    different schemas reach the same bytes.
-    """
+    """A struct writes its field count, as a list writes its element count: without
+    it two rows of different shape reach the same bytes."""
     wide = pl.DataFrame({"a": [{"x": 1, "y": 2}]})
     split = pl.DataFrame({"a": [{"x": 1}], "b": [2]})
 
@@ -2025,9 +2021,8 @@ def test_hash_rows_uses_this_packages_hashers():
 
 
 def test_the_row_api_rejects_an_object_column():
-    """Polars hands a plugin an Object column as Binary, so a hasher cannot tell it
-    from real bytes and would digest CPython pointers. The struct that carries a row
-    is what refuses it — see the limitation noted in the reference."""
+    """Polars hands a plugin an Object column as Binary, so a hasher would digest
+    CPython pointers. The struct that carries a row is what refuses it."""
 
     class Opaque:
         pass
@@ -2051,9 +2046,7 @@ def test_the_row_api_rejects_an_object_column():
 )
 def test_a_zero_width_array_raises_rather_than_aborting(call):
     """`FixedSizeListArray::try_from_ffi` asserts when the child is empty, upstream of
-    anything this package runs. Reachable from `pl.col(...).list.to_array(0)`, so the
-    guarantee worth pinning is that it stays catchable rather than killing the process.
-    """
+    anything here. Reachable from `list.to_array(0)`, so pin that it stays catchable."""
     df = pl.DataFrame({"x": pl.Series([[], []], dtype=pl.Array(pl.Int64, 0))})
 
     with pytest.raises(ComputeError, match="the plugin panicked"):
@@ -2062,8 +2055,8 @@ def test_a_zero_width_array_raises_rather_than_aborting(call):
 
 @pytest.mark.parametrize("scale", range(37))
 def test_encode_rows_strips_every_decimal_scale_the_same_way(scale):
-    """The strip comes down by powers of ten, so each width has to land where a
-    digit-at-a-time strip would. 15 at scale s is 15 followed by s zeros unscaled."""
+    """Every width has to land where a digit-at-a-time strip would. 15 at scale s is
+    15 followed by s zeros unscaled."""
     df = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, scale))})
     fifteen = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, 0))})
 
