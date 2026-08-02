@@ -44,11 +44,7 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     }
     let ser_long = longitude.finish().into_series();
     let ser_lat = latitude.finish().into_series();
-    StructChunked::from_series(
-        ca.name().clone().into(),
-        ca.len(),
-        [ser_long, ser_lat].iter(),
-    )
+    StructChunked::from_series(ca.name().clone(), ca.len(), [ser_long, ser_lat].iter())
 }
 
 pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {

@@ -209,7 +209,7 @@ str_hash_expr!(
 
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
-    let s = inputs.get(0).expect("no series received");
+    let s = inputs.first().expect("no series received");
 
     match s.dtype() {
         DataType::String => {
@@ -230,7 +230,7 @@ fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
 
 #[polars_expr(output_type=String)]
 fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
-    let s = inputs.get(0).expect("no series received");
+    let s = inputs.first().expect("no series received");
 
     match s.dtype() {
         DataType::String => {
@@ -251,7 +251,7 @@ fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
 
 #[polars_expr(output_type=String)]
 fn md5(inputs: &[Series]) -> PolarsResult<Series> {
-    let s = inputs.get(0).expect("no series received");
+    let s = inputs.first().expect("no series received");
 
     match s.dtype() {
         DataType::String => {
