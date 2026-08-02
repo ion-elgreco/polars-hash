@@ -29,15 +29,19 @@ fn validate_timehash(value: &str) -> PolarsResult<()> {
 /// wider than every window up to precision 5, and the error is silent once widened.
 pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
     match s.dtype() {
+        // Split before converting: an i64 nanosecond count runs past 2^53, so
+        // `v as f64` would round the instant before it is ever scaled, and the same
+        // instant would hash differently per unit. Whole seconds and the sub-second
+        // remainder are both small enough to convert exactly.
         DataType::Datetime(time_unit, _) => {
-            let scale = match time_unit {
-                TimeUnit::Nanoseconds => 1e9,
-                TimeUnit::Microseconds => 1e6,
-                TimeUnit::Milliseconds => 1e3,
+            let scale: i64 = match time_unit {
+                TimeUnit::Nanoseconds => 1_000_000_000,
+                TimeUnit::Microseconds => 1_000_000,
+                TimeUnit::Milliseconds => 1_000,
             };
             let physical = s.cast(&DataType::Int64)?;
             Ok(unary_elementwise(physical.i64()?, |v| {
-                v.map(|v| v as f64 / scale)
+                v.map(|v| (v / scale) as f64 + (v % scale) as f64 / scale as f64)
             }))
         }
         DataType::Date => {

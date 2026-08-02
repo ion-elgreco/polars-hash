@@ -710,6 +710,21 @@ def test_timehash_input_dtypes(value, dtype):
     )
 
 
+def test_timehash_time_unit_does_not_change_the_hash():
+    """The same instant must hash the same whatever unit stores it. A nanosecond
+    count near 1.5e18 needs more than the 53 significant bits an f64 carries, so
+    casting it to f64 first rounds the instant to the nearest 256 nanoseconds."""
+    df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 14, 147738)]})
+
+    micros = df.with_columns(pl.col("t").cast(pl.Datetime("us")))
+    nanos = df.with_columns(pl.col("t").cast(pl.Datetime("ns")))
+
+    assert (
+        micros.select(plh.col("t").timehash.from_datetime(16)).to_series()[0]
+        == nanos.select(plh.col("t").timehash.from_datetime(16)).to_series()[0]
+    )
+
+
 def test_timehash_time_zone_is_normalized():
     df = pl.DataFrame(
         {"t": [datetime(2017, 2, 21, 20, 15, 13, tzinfo=timezone.utc)]}
