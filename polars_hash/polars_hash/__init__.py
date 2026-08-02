@@ -307,6 +307,60 @@ class H3NameSpace:
         )
 
 
+@pl.api.register_expr_namespace("timehash")
+class TimeHashingNameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+
+    def from_datetime(
+        self, precision: int | str | pl.Expr = 10, *, strict: bool = True
+    ) -> pl.Expr:
+        """Takes Datetime, Date or epoch seconds as input and returns utf8 hash using timehash.
+
+        Timestamps must fall between 1970-01-01 and 2098-01-01. Higher precision
+        means a shorter window: 10 covers about 4 seconds, 8 about 4 minutes.
+
+        Precision may be 1 to 32 and defaults to 10, but past about 18 the hash stops
+        changing for present-day timestamps and the extra characters are padding.
+
+        Epoch seconds may be Float64 or any integer type; Float32 cannot hold one
+        closely enough to land in the right window.
+
+        With ``strict=False`` a timestamp outside the range yields null instead of
+        raising. A ``when``/``then`` guard cannot do this, because polars evaluates
+        both branches over the whole column. Precision stays strict either way.
+        """
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            args=[self._expr, _length_expr(precision)],
+            function_name="thash_encode",
+            is_elementwise=True,
+            kwargs={"strict": strict},
+        )
+
+    def to_datetime(self) -> pl.Expr:
+        """Takes Utf8 hash as input and returns the midpoint of its window as Datetime.
+
+        The hash holds an instant, not a wall clock, so the zone is not recoverable.
+        The result is UTC; use ``.dt.convert_time_zone(tz)`` for another zone.
+        """
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="thash_decode",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def neighbors(self) -> pl.Expr:
+        """Takes Utf8 hash as input and returns a struct of the preceding and succeeding hash."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="thash_neighbors",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+
 class UUIDNamespace(str, Enum):
     """Standard namespace for UUID(v5) generation"""
 
@@ -381,6 +435,10 @@ class HExpr(pl.Expr):
         return H3NameSpace(self)
 
     @property
+    def timehash(self) -> TimeHashingNameSpace:
+        return TimeHashingNameSpace(self)
+
+    @property
     def uuidhash(self) -> UUIDHashNameSpace:
         return UUIDHashNameSpace(self)
 
@@ -402,6 +460,9 @@ class HashColumn(Protocol):
 
     @property
     def geohash(self) -> GeoHashingNameSpace: ...
+
+    @property
+    def timehash(self) -> TimeHashingNameSpace: ...
 
     @property
     def uuidhash(self) -> UUIDHashNameSpace: ...
