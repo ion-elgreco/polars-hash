@@ -1,0 +1,44 @@
+# Majors stay out of the groups so they get reviewed individually — they're
+# the ones likely to break the build.
+version: 2
+
+updates:
+  # Dependabot bumps the pinned SHA and its `# vX.Y.Z` comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: cargo
+    directory: /polars_hash
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      cargo-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: uv
+    directory: /polars_hash
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      uv-minor-and-patch:
+        update-types:
+          - minor
+          - patch
