@@ -826,6 +826,16 @@ def test_timehash_invalid_input_dtype():
         df.select(plh.col("t").timehash.from_datetime(10))
 
 
+def test_timehash_float32_is_rejected():
+    """A 32-bit float cannot carry epoch seconds. Near 1.5 billion it can only
+    store values 128 seconds apart, so 1487708113 is held as 1487708160 and bins
+    ~12 windows away from the 3.8 second window at precision 10."""
+    df = pl.DataFrame({"t": pl.Series([1487708113.0], dtype=pl.Float32)})
+
+    with pytest.raises(ComputeError, match="Float32 cannot hold epoch seconds"):
+        df.select(plh.col("t").timehash.from_datetime(10))
+
+
 @pytest.mark.parametrize("value", ["", "zzz", "AFCC", "afcc "])
 def test_timehash_invalid_hash(value):
     df = pl.DataFrame({"h": [value]})

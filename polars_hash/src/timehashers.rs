@@ -24,7 +24,9 @@ fn validate_timehash(value: &str) -> PolarsResult<()> {
 }
 
 /// Datetime and Date carry their unit in the dtype; other numerics are taken as
-/// epoch seconds as-is.
+/// epoch seconds as-is. Float32 is refused rather than widened: it keeps about 7
+/// significant digits, so near 1.5e9 it can only space values 128 seconds apart --
+/// wider than every window up to precision 5, and the error is silent once widened.
 pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
     match s.dtype() {
         DataType::Datetime(time_unit, _) => {
@@ -44,7 +46,21 @@ pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
                 v.map(|v| v as f64 * 86_400.0)
             }))
         }
-        dtype if dtype.is_numeric() => Ok(s.cast(&DataType::Float64)?.f64()?.clone()),
+        DataType::Float32 => {
+            polars_bail!(
+                InvalidOperation:
+                "Float32 cannot hold epoch seconds precisely enough for timehash, cast to Float64"
+            )
+        }
+        DataType::Float64
+        | DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64 => Ok(s.cast(&DataType::Float64)?.f64()?.clone()),
         dtype => {
             polars_bail!(
                 InvalidOperation:

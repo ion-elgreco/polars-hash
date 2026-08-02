@@ -317,6 +317,9 @@ class TimeHashingNameSpace:
 
         Timestamps must fall between 1970-01-01 and 2098-01-01. Higher precision
         means a shorter window: 10 covers about 4 seconds, 8 about 4 minutes.
+
+        Epoch seconds may be Float64 or any integer type. Float32 is rejected: it
+        cannot hold a modern epoch second closely enough to land in the right window.
         """
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
