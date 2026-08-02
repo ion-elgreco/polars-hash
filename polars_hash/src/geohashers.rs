@@ -27,7 +27,7 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
     let mut latitude: PrimitiveChunkedBuilder<Float64Type> =
         PrimitiveChunkedBuilder::new("latitude".into(), ca.len());
 
-    for value in ca.into_iter() {
+    for value in ca.iter() {
         match value {
             Some(value) => {
                 let (cords, _, _) =

@@ -46,7 +46,7 @@ pub fn string_struct<const N: usize>(
     let mut builders: [StringChunkedBuilder; N] =
         std::array::from_fn(|i| StringChunkedBuilder::new(names[i].into(), ca.len()));
 
-    for value in ca.into_iter() {
+    for value in ca.iter() {
         match value {
             Some(value) => {
                 for (builder, field) in builders.iter_mut().zip(f(value)?) {

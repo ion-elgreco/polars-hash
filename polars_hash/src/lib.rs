@@ -1,3 +1,4 @@
+mod cityhash_hashers;
 mod expressions;
 mod geohashers;
 mod h3;

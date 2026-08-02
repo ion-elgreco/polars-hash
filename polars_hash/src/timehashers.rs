@@ -159,7 +159,7 @@ pub fn timehash_decoder(ca: &StringChunked) -> PolarsResult<Series> {
 
     out.into_series().cast(&DataType::Datetime(
         TimeUnit::Microseconds,
-        Some("UTC".into()),
+        Some(TimeZone::UTC),
     ))
 }
 

@@ -7,7 +7,7 @@ pip install polars-hash
 ```
 
 polars-hash supplies prebuilt wheels for Linux, macOS, and Windows. It requires
-`polars >= 1.32.0` and Python 3.10 or later. `plh.__version__` gives the installed
+`polars >= 1.34.0` and Python 3.10 or later. `plh.__version__` gives the installed
 version.
 
 ## Your first hash

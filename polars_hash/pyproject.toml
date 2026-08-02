@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "polars-hash"
 requires-python = ">=3.10"
 dependencies = [
-  'polars >= 1.32.0'
+  'polars >= 1.34.0'
 ]
 classifiers = [
   "Programming Language :: Rust",

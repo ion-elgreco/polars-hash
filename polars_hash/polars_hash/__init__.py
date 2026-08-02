@@ -248,6 +248,38 @@ class NonCryptographicHashingNameSpace:
             is_elementwise=True,
         )
 
+    def cityhash32(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with CityHash32."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="cityhash32",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
+    def cityhash64(self, *, seed: int | None = None) -> pl.Expr:
+        """Takes Utf8 as input and returns uint64 hash with CityHash64.
+
+        Without a seed this is `CityHash64`, with one `CityHash64WithSeed` — a
+        different value even for `seed=0`.
+        """
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="cityhash64",
+            args=self._expr,
+            is_elementwise=True,
+            kwargs={"seed": seed},
+        )
+
+    def cityhash128(self) -> pl.Expr:
+        """Takes Utf8 as input and returns uint128 hash with CityHash128."""
+        return register_plugin_function(
+            plugin_path=Path(__file__).parent,
+            function_name="cityhash128",
+            args=self._expr,
+            is_elementwise=True,
+        )
+
 
 def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
     if isinstance(length, str):

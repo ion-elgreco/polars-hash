@@ -23,6 +23,9 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | [`murmur128(seed)`](#murmur128) | Utf8 | Binary | `u32` |
 | [`farmhash32()`](#farmhash32) | Utf8 | UInt32 | — |
 | [`farmhash64()`](#farmhash64) | Utf8 | UInt64 | — |
+| [`cityhash32()`](#cityhash32) | Utf8 | UInt32 | — |
+| [`cityhash64(seed)`](#cityhash64) | Utf8 | UInt64 | `u64`, optional |
+| [`cityhash128()`](#cityhash128) | Utf8 | UInt128 | — |
 | [`md5()`](#md5) | Utf8, Binary | Utf8 | — |
 | [`sha1()`](#sha1) | Utf8 | Utf8 | — |
 
@@ -131,8 +134,9 @@ df.select(plh.col("foo").nchash.xxh3_64(seed=42))
 
 ## `xxh3_128(seed)` { #xxh3_128 }
 
-XXH3 with 128-bit output. The output type is `Binary`, because no integer data type in
-Polars holds 128 bits.
+XXH3 with 128-bit output. The output type is `Binary`, unlike
+[`cityhash128()`](#cityhash128), which returns a `UInt128`. Changing this one would
+change the type of a value that is already in use, so it is left as it is for now.
 
 ```python
 df.select(plh.col("foo").nchash.xxh3_128())
@@ -244,6 +248,80 @@ pl.DataFrame({"foo": ["hello world"]}).select(plh.col("foo").nchash.farmhash64()
     The `FARM_FINGERPRINT` function in BigQuery gives the same 64 bits as a signed
     `INT64`. To compare the two results, use `.cast(pl.Int64)` on the polars-hash
     output.
+
+---
+
+## `cityhash32()` { #cityhash32 }
+
+Google CityHash `CityHash32`, from CityHash v1.1.1. FarmHash replaced CityHash, so use
+[`farmhash32()`](#farmhash32) for new work. Use `cityhash32()` when you must get the
+same values as a different system. This expression has no seed; `CityHash32` takes none.
+
+```python
+pl.DataFrame({"foo": ["hello_world"]}).select(plh.col("foo").nchash.cityhash32())
+# 1719156559
+```
+
+**Returns:** UInt32
+
+!!! note "CityHash and FarmHash agree on short input"
+    FarmHash reuses CityHash for short input, so `cityhash32()` and
+    [`farmhash32()`](#farmhash32) give the same value up to 8 bytes, as do
+    [`cityhash64()`](#cityhash64) and [`farmhash64()`](#farmhash64) up to 32 bytes.
+    They part above those lengths. The equal values are not a bug.
+
+---
+
+## `cityhash64(seed)` { #cityhash64 }
+
+Google CityHash `CityHash64`, from CityHash v1.1.1.
+
+```python
+df.select(plh.col("foo").nchash.cityhash64())
+# 15605398435621216523
+
+df.select(plh.col("foo").nchash.cityhash64(seed=42))
+# 10175920941468920074
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seed` | `int \| None` | `None` | Keyword-only. The value must be in the range of a `u64`. |
+
+**Returns:** UInt64
+
+!!! warning "A seed of 0 is not the same as no seed"
+    Without a seed this expression is `CityHash64`. With one it is
+    `CityHash64WithSeed`, a separate function that gives a different value for every
+    seed, `0` included. This is why the seed defaults to `None` and not to `0` as it
+    does for [`xxhash64()`](#xxhash64) and the other seeded expressions.
+
+!!! warning "Older CityHash releases give other values"
+    Every CityHash expression gives the values of v1.1.1, the last release Google
+    published. `CityHash64` changed during the v1.0 series, so a system built on an
+    earlier release gives a different value for the same input. Check which version
+    the other system uses before you compare.
+
+---
+
+## `cityhash128()` { #cityhash128 }
+
+Google CityHash `CityHash128`, from CityHash v1.1.1. The output is a `UInt128`, so the
+whole hash is one integer and needs no decoding. This expression has no seed.
+
+```python
+df.select(plh.col("foo").nchash.cityhash128())
+# 133423608296839006301901834072762183026
+```
+
+**Returns:** UInt128
+
+!!! warning "`CityHash128` changed after v1.0.3"
+    This expression gives the v1.1.1 value. CityHash v1.0.2 and v1.0.3 give a
+    different one for the same input, and a system built on either will not agree
+    with this expression.
 
 ---
 

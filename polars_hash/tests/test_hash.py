@@ -213,6 +213,102 @@ def test_farmhash64():
     assert_frame_equal(result, expected)
 
 
+def test_cityhash32():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.cityhash32())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    1719156559,
+                    None,
+                    3696677242,
+                ],
+                dtype=pl.UInt32,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_cityhash64():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.cityhash64())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    15605398435621216523,
+                    None,
+                    11160318154034397263,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_cityhash64_seeded():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.cityhash64(seed=42))
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    10175920941468920074,
+                    None,
+                    12207790695972129833,
+                ],
+                dtype=pl.UInt64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
+def test_cityhash64_seed_zero_is_not_unseeded():
+    """`CityHash64WithSeed(v, 0)` is its own hash, not `CityHash64(v)`."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    result = df.select(
+        seeded=plh.col("literal").nchash.cityhash64(seed=0),
+        unseeded=plh.col("literal").nchash.cityhash64(),
+    )
+
+    assert result["seeded"].to_list() == [14430004998761670210]
+    assert result["unseeded"].to_list() == [15605398435621216523]
+
+
+def test_cityhash128():
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(plh.col("literal").nchash.cityhash128())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [
+                    133423608296839006301901834072762183026,
+                    None,
+                    82332263323914296566372529678324145705,
+                ],
+                dtype=pl.UInt128,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result, expected)
+
+
 def test_geohash():
     df = pl.DataFrame(
         {"coord": [{"longitude": -120.6623, "latitude": 35.3003}]},

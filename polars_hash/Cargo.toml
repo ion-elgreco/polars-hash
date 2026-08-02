@@ -8,17 +8,18 @@ name = "polars_hash"
 crate-type = ["cdylib"]
 
 [dependencies]
-polars = { version = "0.45", features = [
+polars = { version = "0.54.4", features = [
     "dtype-struct",
     "timezones",
     "dtype-i8",
     "dtype-i16",
     "dtype-u8",
     "dtype-u16",
+    "dtype-u128",
 ] }
-polars-arrow = { version = "0.45" }
-pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38"] }
-pyo3-polars = { version = "0.19", features = ["derive", "dtype-struct", "dtype-decimal"] }
+polars-arrow = { version = "0.54.4" }
+pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
+pyo3-polars = { version = "0.27", features = ["derive", "dtype-struct", "dtype-decimal"] }
 serde = { version = "1", features = ["derive"] }
 wyhash = { version = "0.5.0" }
 geohash = { version = "0.13.1" }
@@ -33,6 +34,8 @@ mur3 = { version = "0.1.0" }
 hex = {version = "0.4"}
 uuid = { version = "1.19.0", features = ["v5"] }
 farmhash = { version = "1.1.5" }
+cityhasher = { version = "0.1.0", default-features = false }
+cityhash-rs = { version = "1.0.1" }
 hmac = { version = "0.12.1" }
 timeharsh = { version = "=1.0.0" }
 
