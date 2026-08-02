@@ -27,6 +27,9 @@
 //! vectors in the tests make sure that they do not change.
 
 use polars::prelude::*;
+// polars-core is not a direct dependency. `pyo3_polars` re-exports it, and this is
+// the same pool that polars uses for its own row hashes.
+use pyo3_polars::export::polars_core::runtime::RAYON;
 
 /// The encoding version that this module writes. A user can keep a hash for longer
 /// than the release that made it. Therefore do not change the bytes below. Add a new
@@ -374,14 +377,51 @@ pub fn encode_rows(inputs: &[Series], version: u64) -> PolarsResult<BinaryChunke
         .map(Column::prepare)
         .collect::<PolarsResult<_>>()?;
 
-    let mut builder = BinaryChunkedBuilder::new(inputs[0].name().clone(), rows);
+    Ok(encode_range(&columns, inputs[0].name(), 0, rows))
+}
+
+/// The number of rows for one task. A task must be long enough to pay for the work to
+/// start it, and short enough to let a free thread take some of the remaining rows.
+const ROWS_FOR_ONE_TASK: usize = 16_384;
+
+/// Encodes the rows from `start` to `end`, and gives the work to more than one thread
+/// if there are sufficient rows.
+///
+/// The split uses the polars thread pool. That pool refuses a new thread when the
+/// caller is a thread of the streaming engine, and this function then encodes the rows
+/// in the caller. Therefore it is safe in each engine.
+fn encode_range(columns: &[Column], name: &PlSmallStr, start: usize, end: usize) -> BinaryChunked {
+    if end - start <= ROWS_FOR_ONE_TASK {
+        return encode_rows_of_one_task(columns, name.clone(), start, end);
+    }
+
+    let middle = start + (end - start) / 2;
+    let (mut first, second) = RAYON.join(
+        || encode_range(columns, name, start, middle),
+        || encode_range(columns, name, middle, end),
+    );
+    // Each half is a chunk of the result. `append` moves the chunks of the second half
+    // and copies no bytes.
+    first
+        .append(&second)
+        .expect("the two halves have one dtype");
+    first
+}
+
+fn encode_rows_of_one_task(
+    columns: &[Column],
+    name: PlSmallStr,
+    start: usize,
+    end: usize,
+) -> BinaryChunked {
+    let mut builder = BinaryChunkedBuilder::new(name, end - start);
     let mut row = Vec::with_capacity(64);
-    for i in 0..rows {
+    for i in start..end {
         row.clear();
-        for column in &columns {
+        for column in columns {
             column.encode(i, &mut row);
         }
         builder.append_value(&row);
     }
-    Ok(builder.finish())
+    builder.finish()
 }

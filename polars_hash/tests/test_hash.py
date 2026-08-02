@@ -2006,3 +2006,35 @@ def test_hash_rows_widens_every_float_to_f64(dtype):
     f64 = pl.DataFrame({"x": pl.Series([1.5], dtype=pl.Float64)})
 
     assert _encode(df) == _encode(f64)
+
+
+def test_hash_rows_splits_the_rows_without_changing_them():
+    """Above 16384 rows the encoder gives the rows to more than one thread. Each row
+    must keep the bytes that one thread gives it, and the split points are the risk."""
+    rows = 40_000
+    df = pl.DataFrame(
+        {
+            "i": range(rows),
+            "s": [f"row {i}" for i in range(rows)],
+            "l": [[1, 2]] * rows,
+        }
+    )
+
+    split = df.select(plh.hash_rows(pl.all()).alias("e"))["e"]
+
+    assert len(split) == rows
+    for at in (0, 16_383, 16_384, 16_385, 20_000, rows - 1):
+        one_row = df.slice(at, 1).select(plh.hash_rows(pl.all()).alias("e"))["e"]
+        assert split[at] == one_row[0], f"row {at}"
+
+
+@pytest.mark.parametrize("rows", [16_383, 16_384, 16_385, 32_769])
+def test_hash_rows_gives_the_same_bytes_at_each_size(rows):
+    """A frame of any length has to agree with the first rows of a longer one."""
+    long = pl.DataFrame({"i": range(50_000)})
+    short = pl.DataFrame({"i": range(rows)})
+
+    assert (
+        short.select(plh.hash_rows(pl.all()).alias("e"))["e"].to_list()
+        == long.select(plh.hash_rows(pl.all()).alias("e"))["e"].to_list()[:rows]
+    )
