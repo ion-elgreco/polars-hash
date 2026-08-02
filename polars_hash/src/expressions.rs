@@ -46,6 +46,11 @@ struct HmacKwargs {
     key: string::String,
 }
 
+#[derive(Deserialize)]
+struct StrictKwargs {
+    strict: bool,
+}
+
 pub fn blake3_hash_str(value: &str, output: &mut string::String) {
     let hash = blake3::hash(value.as_bytes());
     write!(output, "{}", hash).unwrap()
@@ -366,7 +371,7 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 #[polars_expr(output_type=String)]
-fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
+fn thash_encode(inputs: &[Series], kwargs: StrictKwargs) -> PolarsResult<Series> {
     let seconds = epoch_seconds(&inputs[0])?;
     let precision = match inputs[1].dtype() {
         dtype if dtype.is_integer() => inputs[1].cast(&DataType::Int64)?,
@@ -379,7 +384,7 @@ fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
             Some(precision) => {
                 validate_precision(precision)?;
                 try_unary_elementwise(&seconds, |seconds_opt| {
-                    timehash_encoder(seconds_opt, Some(precision))
+                    timehash_encoder(seconds_opt, Some(precision), kwargs.strict)
                 })
             }
             _ => Err(PolarsError::ComputeError(
@@ -389,12 +394,14 @@ fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
         (1, _) => {
             let seconds = unsafe { seconds.get_unchecked(0) };
             try_unary_elementwise(precision, |precision_opt| {
-                timehash_encoder(seconds, precision_opt)
+                timehash_encoder(seconds, precision_opt, kwargs.strict)
             })
             .map(|out| out.with_name(inputs[0].name().clone()))
         }
         (timestamps, precisions) if timestamps == precisions => {
-            try_binary_elementwise(&seconds, precision, timehash_encoder)
+            try_binary_elementwise(&seconds, precision, |seconds_opt, precision_opt| {
+                timehash_encoder(seconds_opt, precision_opt, kwargs.strict)
+            })
         }
         (timestamps, precisions) => polars_bail!(
             ShapeMismatch:

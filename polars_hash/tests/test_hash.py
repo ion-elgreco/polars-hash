@@ -941,6 +941,47 @@ def test_timehash_out_of_range(seconds):
         df.select(plh.col("t").timehash.from_datetime(10))
 
 
+@pytest.mark.parametrize(
+    "seconds", [-1.0, 4039372801.0, float("nan"), float("inf"), float("-inf")]
+)
+def test_timehash_out_of_range_not_strict(seconds):
+    """strict=False nulls an out-of-range row, matching polars' cast and str.to_date."""
+    df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})
+
+    result = df.select(plh.col("t").timehash.from_datetime(10, strict=False))
+
+    assert result.to_series().to_list() == [None]
+
+
+def test_timehash_not_strict_keeps_the_valid_rows():
+    df = pl.DataFrame({"t": pl.Series([1487708113.0, -1.0], dtype=pl.Float64)})
+
+    result = df.select(plh.col("t").timehash.from_datetime(10, strict=False))
+
+    assert result.to_series().to_list() == ["afcccc0e1b", None]
+
+
+def test_timehash_not_strict_survives_when_then():
+    """when/then evaluates both branches, so a guard alone cannot exclude bad rows."""
+    df = pl.DataFrame({"t": [1.0e9, -5.0]})
+
+    result = df.with_columns(
+        h=pl.when(pl.col("t") >= 0).then(
+            plh.col("t").timehash.from_datetime(10, strict=False)
+        )
+    )
+
+    assert result["h"].to_list() == ["1fee011d0a", None]
+
+
+def test_timehash_not_strict_still_rejects_invalid_precision():
+    """Precision is a static argument, not per-row data, so strict does not soften it."""
+    df = pl.DataFrame({"t": pl.Series([1487708113.0], dtype=pl.Float64)})
+
+    with pytest.raises(ComputeError, match="expected precision between 1 and 32"):
+        df.select(plh.col("t").timehash.from_datetime(99, strict=False))
+
+
 @pytest.mark.parametrize("seconds", [0.0, 4039372800.0])
 def test_timehash_range_bounds_are_encodable(seconds):
     df = pl.DataFrame({"t": pl.Series([seconds], dtype=pl.Float64)})

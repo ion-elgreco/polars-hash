@@ -98,15 +98,23 @@ pub fn validate_precision(precision: i64) -> PolarsResult<()> {
     Ok(())
 }
 
+/// `strict` softens the per-row range check only, the way polars' own `cast` and
+/// `str.to_date` do. Precision is a static argument rather than row data, so it stays
+/// strict -- and a `when`/`then` guard cannot help, because polars evaluates both
+/// branches over the whole column before selecting.
 pub fn timehash_encoder(
     seconds: Option<f64>,
     precision: Option<i64>,
+    strict: bool,
 ) -> PolarsResult<Option<String>> {
     match seconds {
         Some(seconds) => match precision {
             Some(precision) => {
                 validate_precision(precision)?;
                 if !(0.0..=MAX_EPOCH_SECONDS).contains(&seconds) {
+                    if !strict {
+                        return Ok(None);
+                    }
                     polars_bail!(
                         ComputeError:
                         "invalid timestamp range: {} epoch seconds is outside 0 (1970-01-01) to {} (2098-01-01)",

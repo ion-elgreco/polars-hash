@@ -312,7 +312,9 @@ class TimeHashingNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
 
-    def from_datetime(self, precision: int | str | pl.Expr = 10) -> pl.Expr:
+    def from_datetime(
+        self, precision: int | str | pl.Expr = 10, *, strict: bool = True
+    ) -> pl.Expr:
         """Takes Datetime, Date or epoch seconds as input and returns utf8 hash using timehash.
 
         Timestamps must fall between 1970-01-01 and 2098-01-01. Higher precision
@@ -323,12 +325,17 @@ class TimeHashingNameSpace:
 
         Epoch seconds may be Float64 or any integer type; Float32 cannot hold one
         closely enough to land in the right window.
+
+        With ``strict=False`` a timestamp outside the range yields null instead of
+        raising. A ``when``/``then`` guard cannot do this, because polars evaluates
+        both branches over the whole column. Precision stays strict either way.
         """
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             args=[self._expr, _length_expr(precision)],
             function_name="thash_encode",
             is_elementwise=True,
+            kwargs={"strict": strict},
         )
 
     def to_datetime(self) -> pl.Expr:
