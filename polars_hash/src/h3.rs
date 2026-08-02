@@ -49,13 +49,6 @@ pub fn h3_encoder(
                 "Length may not be null".to_string().into(),
             )),
         },
-        _ => Err(PolarsError::ComputeError(
-            format!(
-                "Coordinates cannot be null. 
-        Provided latitude: {:?}, longitude: {:?}",
-                lat, long
-            )
-            .into(),
-        )),
+        _ => Ok(None),
     }
 }

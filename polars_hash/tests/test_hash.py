@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import polars as pl
 import pytest
 from polars.exceptions import ComputeError
+from polars.plugins import register_plugin_function
 from polars.testing import assert_frame_equal
 
 import polars_hash as plh
@@ -275,6 +278,58 @@ def test_h3_invalid_coords(latitude, longitude):
 
     with pytest.raises(ComputeError, match="invalid coordinate range"):
         df.select(pl.col("coord").h3.from_coords(5))  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "dtype",
+    [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64],
+)
+def test_from_coords_length_dtypes(dtype):
+    df = pl.DataFrame(
+        {"latitude": [35.3003], "longitude": [-120.6623]},
+    ).with_columns(coord=pl.struct(["latitude", "longitude"]), n=pl.lit(5, dtype=dtype))
+
+    assert df.select(pl.col("coord").geohash.from_coords("n")).to_series()[0] == "9q60y"  # type: ignore
+    assert (
+        df.select(pl.col("coord").h3.from_coords("n")).to_series()[0]  # type: ignore
+        == "8529adc7fffffff"
+    )
+
+
+def test_from_coords_null_coords():
+    df = pl.DataFrame(
+        {
+            "latitude": pl.Series([35.3003, None], dtype=pl.Float64),
+            "longitude": pl.Series([-120.6623, None], dtype=pl.Float64),
+        }
+    ).with_columns(coord=pl.struct(["latitude", "longitude"]))
+
+    result = df.select(
+        geohash=pl.col("coord").geohash.from_coords(5),  # type: ignore
+        h3=pl.col("coord").h3.from_coords(5),  # type: ignore
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("geohash", ["9q60y", None], dtype=pl.Utf8),
+            pl.Series("h3", ["8529adc7fffffff", None], dtype=pl.Utf8),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_uuid5_concat_null_default():
+    df = pl.DataFrame({"id": ["abc-123"], "side": pl.Series([None], dtype=pl.Utf8)})
+
+    expr = register_plugin_function(
+        plugin_path=Path(plh.__file__).parent,
+        function_name="uuid5_concat_default",
+        args=[pl.col("id"), pl.col("side"), pl.lit(None, dtype=pl.Utf8)],
+        is_elementwise=True,
+    )
+
+    with pytest.raises(ComputeError, match="Default value may not be null"):
+        df.select(expr)
 
 
 def test_lazy_name():

@@ -249,6 +249,16 @@ class NonCryptographicHashingNameSpace:
         )
 
 
+def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
+    if isinstance(length, str):
+        expr = pl.col(length)
+    elif isinstance(length, pl.Expr):
+        expr = length
+    else:
+        expr = pl.lit(length)
+    return expr.cast(pl.Int64)
+
+
 @pl.api.register_expr_namespace("geohash")
 class GeoHashingNameSpace:
     def __init__(self, expr: pl.Expr):
@@ -267,7 +277,7 @@ class GeoHashingNameSpace:
         """Takes Struct with latitude, longitude as input and returns utf8 hash using geohash."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
-            args=[self._expr, len],
+            args=[self._expr, _length_expr(len)],
             function_name="ghash_encode",
             is_elementwise=True,
         )
@@ -291,7 +301,7 @@ class H3NameSpace:
         """Takes Struct with latitude, longitude as input and returns utf8 H3 spatial index."""
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
-            args=[self._expr, len],
+            args=[self._expr, _length_expr(len)],
             function_name="h3_encode",
             is_elementwise=True,
         )
