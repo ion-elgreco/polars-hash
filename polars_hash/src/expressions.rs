@@ -3,7 +3,9 @@ use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
-use crate::timehashers::{epoch_seconds, timehash_decoder, timehash_encoder, timehash_neighbors};
+use crate::timehashers::{
+    epoch_seconds, timehash_decoder, timehash_encoder, timehash_neighbors, validate_precision,
+};
 use crate::xxhash_hashers::*;
 use hmac::Mac;
 use polars::{
@@ -373,9 +375,12 @@ fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
 
     let out: StringChunked = match (seconds.len(), precision.len()) {
         (_, 1) => match unsafe { precision.get_unchecked(0) } {
-            Some(precision) => try_unary_elementwise(&seconds, |seconds_opt| {
-                timehash_encoder(seconds_opt, Some(precision))
-            }),
+            Some(precision) => {
+                validate_precision(precision)?;
+                try_unary_elementwise(&seconds, |seconds_opt| {
+                    timehash_encoder(seconds_opt, Some(precision))
+                })
+            }
             _ => Err(PolarsError::ComputeError(
                 "Precision may not be null".to_string().into(),
             )),

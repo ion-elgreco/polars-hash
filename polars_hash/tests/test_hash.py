@@ -900,6 +900,18 @@ def test_timehash_invalid_precision(precision):
         df.select(plh.col("t").timehash.from_datetime(precision))
 
 
+@pytest.mark.parametrize("precision", [-1, 0, 33])
+@pytest.mark.parametrize(
+    "values", [pytest.param([None, None], id="all-null"), pytest.param([], id="empty")]
+)
+def test_timehash_invalid_precision_without_a_non_null_row(values, precision):
+    """Precision is a static argument, so rejecting it must not depend on the data."""
+    df = pl.DataFrame({"t": pl.Series(values, dtype=pl.Datetime("us"))})
+
+    with pytest.raises(ComputeError, match="expected precision between 1 and 32"):
+        df.select(plh.col("t").timehash.from_datetime(precision))
+
+
 @pytest.mark.parametrize(
     "seconds",
     [-1.0, 4039372801.0, float("nan"), float("inf"), float("-inf")],

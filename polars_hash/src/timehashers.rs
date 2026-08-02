@@ -74,6 +74,19 @@ pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
     }
 }
 
+/// A scalar precision is checked once by `thash_encode` before any row is touched:
+/// left to the per-row path it would go unchecked on an all-null or empty column,
+/// so the same argument would be rejected or accepted depending on the data.
+pub fn validate_precision(precision: i64) -> PolarsResult<()> {
+    if !(1..=MAX_PRECISION).contains(&precision) {
+        polars_bail!(
+            InvalidOperation:
+            "expected precision between 1 and {}, got {}", MAX_PRECISION, precision
+        )
+    }
+    Ok(())
+}
+
 pub fn timehash_encoder(
     seconds: Option<f64>,
     precision: Option<i64>,
@@ -81,12 +94,7 @@ pub fn timehash_encoder(
     match seconds {
         Some(seconds) => match precision {
             Some(precision) => {
-                if !(1..=MAX_PRECISION).contains(&precision) {
-                    polars_bail!(
-                        InvalidOperation:
-                        "expected precision between 1 and {}, got {}", MAX_PRECISION, precision
-                    )
-                }
+                validate_precision(precision)?;
                 if !(0.0..=MAX_EPOCH_SECONDS).contains(&seconds) {
                     polars_bail!(
                         ComputeError:
