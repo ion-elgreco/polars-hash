@@ -1676,6 +1676,26 @@ _ENCODINGS = [
     ),
     ("list_1_2", pl.Series([[1, 2]]), "0d010c02030101030102"),
     ("struct_a_1", pl.Series([{"a": 1}]), "0d010d01030101"),
+    # One class per branch of the encoder, including the ones that agree with a
+    # vector above: a null column of Null dtype and an unsigned integer take their
+    # own path to the same bytes, and only `u128` above `i128::MAX` takes the last.
+    ("null_dtype", pl.Series([None], dtype=pl.Null), "0d0100"),
+    ("uint_1", pl.Series([1], dtype=pl.UInt64), "0d01030101"),
+    (
+        "int128_min",
+        pl.Series([-(2**127)], dtype=pl.Int128),
+        "0d01030080808080808080808080808080808080808002",
+    ),
+    (
+        "uint128_above_i128_max",
+        pl.Series([2**127], dtype=pl.UInt128),
+        "0d01030180808080808080808080808080808080808002",
+    ),
+    (
+        "uint128_max",
+        pl.Series([2**128 - 1], dtype=pl.UInt128),
+        "0d010301ffffffffffffffffffffffffffffffffffff03",
+    ),
 ]
 
 
@@ -2042,3 +2062,11 @@ def test_encode_rows_reads_a_decimal_zero_as_one_value(scale):
     zero = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, 0))})
 
     assert _encode(df) == _encode(zero)
+
+
+def test_encode_rows_keeps_the_widest_integers_apart():
+    """`u128` above `i128::MAX` and `i128::MIN` share a magnitude and differ by sign."""
+    biggest = pl.DataFrame({"x": pl.Series([2**127], dtype=pl.UInt128)})
+    smallest = pl.DataFrame({"x": pl.Series([-(2**127)], dtype=pl.Int128)})
+
+    assert _encode(biggest) != _encode(smallest)
