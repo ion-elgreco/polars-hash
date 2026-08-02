@@ -1,3 +1,4 @@
+use crate::shared::string_struct;
 use geohash::{decode, encode, neighbors, Coord};
 use polars::prelude::*;
 
@@ -51,63 +52,17 @@ pub fn geohash_decoder(ca: &StringChunked) -> PolarsResult<StructChunked> {
 }
 
 pub fn geohash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
-    let mut n_ca = StringChunkedBuilder::new("n".into(), ca.len());
-    let mut ne_ca = StringChunkedBuilder::new("ne".into(), ca.len());
-    let mut e_ca = StringChunkedBuilder::new("e".into(), ca.len());
-    let mut se_ca = StringChunkedBuilder::new("se".into(), ca.len());
-    let mut s_ca = StringChunkedBuilder::new("s".into(), ca.len());
-    let mut sw_ca = StringChunkedBuilder::new("sw".into(), ca.len());
-    let mut w_ca = StringChunkedBuilder::new("w".into(), ca.len());
-    let mut nw_ca = StringChunkedBuilder::new("nw".into(), ca.len());
-
-    for value in ca.into_iter() {
-        match value {
-            Some(value) => {
-                let neighbors_result = neighbors(value)
-                    .map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
-                n_ca.append_value(neighbors_result.n);
-                ne_ca.append_value(neighbors_result.ne);
-                e_ca.append_value(neighbors_result.e);
-                se_ca.append_value(neighbors_result.se);
-                s_ca.append_value(neighbors_result.s);
-                sw_ca.append_value(neighbors_result.sw);
-                w_ca.append_value(neighbors_result.w);
-                nw_ca.append_value(neighbors_result.nw);
-            }
-            _ => {
-                n_ca.append_null();
-                ne_ca.append_null();
-                e_ca.append_null();
-                se_ca.append_null();
-                s_ca.append_null();
-                sw_ca.append_null();
-                w_ca.append_null();
-                nw_ca.append_null();
-            }
-        }
-    }
-    let ser_north = n_ca.finish().into_series();
-    let ser_north_east = ne_ca.finish().into_series();
-    let ser_east = e_ca.finish().into_series();
-    let ser_south_east = se_ca.finish().into_series();
-    let ser_south = s_ca.finish().into_series();
-    let ser_south_west = sw_ca.finish().into_series();
-    let ser_west = w_ca.finish().into_series();
-    let ser_north_west = nw_ca.finish().into_series();
-
-    StructChunked::from_series(
-        ca.name().clone().into(),
-        ca.len(),
-        [
-            ser_north,
-            ser_north_east,
-            ser_east,
-            ser_south_east,
-            ser_south,
-            ser_south_west,
-            ser_west,
-            ser_north_west,
-        ]
-        .iter(),
-    )
+    string_struct(ca, ["n", "ne", "e", "se", "s", "sw", "w", "nw"], |value| {
+        let n = neighbors(value).map_err(|e| PolarsError::ComputeError(e.to_string().into()))?;
+        Ok([
+            Some(n.n),
+            Some(n.ne),
+            Some(n.e),
+            Some(n.se),
+            Some(n.s),
+            Some(n.sw),
+            Some(n.w),
+            Some(n.nw),
+        ])
+    })
 }

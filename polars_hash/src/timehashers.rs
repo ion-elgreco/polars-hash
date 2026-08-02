@@ -1,3 +1,4 @@
+use crate::shared::string_struct;
 use polars::chunked_array::ops::arity::{try_unary_elementwise, unary_elementwise};
 use polars::prelude::*;
 use timeharsh::timehash;
@@ -18,12 +19,21 @@ fn validate_timehash(value: &str) -> PolarsResult<()> {
     if value.is_empty() {
         polars_bail!(ComputeError: "timehash may not be empty")
     }
-    match value.chars().find(|c| !matches!(c, '0' | '1' | 'a'..='f')) {
-        Some(c) => {
-            polars_bail!(ComputeError: "invalid timehash character {:?} in {:?}", c, value)
-        }
-        None => Ok(()),
+    // Scan bytes, not chars: the alphabet is ASCII, so any byte over 0x7f fails here
+    // anyway, and a byte scan vectorizes where char decoding does not. The failing
+    // byte is always a leading byte, so the cold path can still name the real
+    // character rather than a fragment of one.
+    if let Some(pos) = value
+        .bytes()
+        .position(|b| !matches!(b, b'0' | b'1' | b'a'..=b'f'))
+    {
+        let c = value[pos..]
+            .chars()
+            .next()
+            .unwrap_or(char::REPLACEMENT_CHARACTER);
+        polars_bail!(ComputeError: "invalid timehash character {:?} in {:?}", c, value)
     }
+    Ok(())
 }
 
 /// A source with no non-null values infers `Null` rather than `String`, so treat it
@@ -55,12 +65,11 @@ pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
                 v.map(|v| (v / scale) as f64 + (v % scale) as f64 / scale as f64)
             }))
         }
-        DataType::Date => {
-            let physical = s.cast(&DataType::Int64)?;
-            Ok(unary_elementwise(physical.i64()?, |v| {
-                v.map(|v| v as f64 * 86_400.0)
-            }))
-        }
+        // `physical()` borrows the i32 days; casting to Int64 first would widen the
+        // whole column into a fresh buffer for no gain.
+        DataType::Date => Ok(unary_elementwise(s.date()?.physical(), |v| {
+            v.map(|v| v as f64 * 86_400.0)
+        })),
         DataType::Float32 => {
             polars_bail!(
                 InvalidOperation:
@@ -155,38 +164,14 @@ pub fn timehash_decoder(ca: &StringChunked) -> PolarsResult<Series> {
 }
 
 pub fn timehash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {
-    let mut before_ca = StringChunkedBuilder::new("before".into(), ca.len());
-    let mut after_ca = StringChunkedBuilder::new("after".into(), ca.len());
-
-    for value in ca.into_iter() {
-        match value {
-            Some(value) => {
-                validate_timehash(value)?;
-                let (before, after) =
-                    timehash::neighbors(value).map_err(|e| PolarsError::ComputeError(e.into()))?;
-                // The first and last window have no neighbor; upstream returns
-                // an empty hash for it.
-                match before.is_empty() {
-                    true => before_ca.append_null(),
-                    false => before_ca.append_value(before),
-                }
-                match after.is_empty() {
-                    true => after_ca.append_null(),
-                    false => after_ca.append_value(after),
-                }
-            }
-            _ => {
-                before_ca.append_null();
-                after_ca.append_null();
-            }
-        }
-    }
-    let ser_before = before_ca.finish().into_series();
-    let ser_after = after_ca.finish().into_series();
-
-    StructChunked::from_series(
-        ca.name().clone().into(),
-        ca.len(),
-        [ser_before, ser_after].iter(),
-    )
+    string_struct(ca, ["before", "after"], |value| {
+        validate_timehash(value)?;
+        let (before, after) =
+            timehash::neighbors(value).map_err(|e| PolarsError::ComputeError(e.into()))?;
+        // The first and last window have no neighbor; upstream returns an empty hash.
+        Ok([
+            (!before.is_empty()).then_some(before),
+            (!after.is_empty()).then_some(after),
+        ])
+    })
 }

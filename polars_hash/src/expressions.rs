@@ -3,6 +3,7 @@ use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
+use crate::shared::{float_arg, integer_arg, scalar_arg};
 use crate::timehashers::{
     epoch_seconds, hash_column, timehash_decoder, timehash_encoder, timehash_neighbors,
     validate_precision,
@@ -251,42 +252,17 @@ fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
 #[polars_expr(output_type=String)]
 fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].struct_()?;
-    let len = match inputs[1].dtype() {
-        DataType::Int64 => inputs[1].clone(),
-        DataType::Int32 => inputs[1].cast(&DataType::Int64)?,
-        DataType::Int16 => inputs[1].cast(&DataType::Int64)?,
-        DataType::Int8 => inputs[1].cast(&DataType::Int64)?,
-        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
-    };
+    let len = integer_arg(&inputs[1], "Length")?;
     let len = len.i64()?;
+    let lat = float_arg(&ca.field_by_name("latitude")?, "Latitude")?;
+    let long = float_arg(&ca.field_by_name("longitude")?, "Longitude")?;
+    let (ca_lat, ca_long) = (lat.f64()?, long.f64()?);
 
-    let lat = ca.field_by_name("latitude")?;
-    let long = ca.field_by_name("longitude")?;
-    let lat = match lat.dtype() {
-        DataType::Float32 => lat.cast(&DataType::Float64)?,
-        DataType::Float64 => lat,
-        _ => polars_bail!(InvalidOperation:"Latitude input needs to be float"),
-    };
-
-    let long = match long.dtype() {
-        DataType::Float32 => long.cast(&DataType::Float64)?,
-        DataType::Float64 => long,
-        _ => polars_bail!(InvalidOperation:"Longitude input needs to be float"),
-    };
-
-    let ca_lat = lat.f64()?;
-    let ca_long = long.f64()?;
-
-    let out: StringChunked = match len.len() {
-        1 => match unsafe { len.get_unchecked(0) } {
-            Some(len) => try_binary_elementwise(ca_lat, ca_long, |ca_lat_opt, ca_long_opt| {
-                geohash_encoder(ca_lat_opt, ca_long_opt, Some(len))
-            }),
-            _ => Err(PolarsError::ComputeError(
-                "Length may not be null".to_string().into(),
-            )),
-        },
-        _ => try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder),
+    let out: StringChunked = match scalar_arg(len, "Length")? {
+        Some(len) => try_binary_elementwise(ca_lat, ca_long, |lat, long| {
+            geohash_encoder(lat, long, Some(len))
+        }),
+        None => try_ternary_elementwise(ca_lat, ca_long, len, geohash_encoder),
     }?;
     Ok(out.into_series())
 }
@@ -294,42 +270,17 @@ fn ghash_encode(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type=String)]
 fn h3_encode(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].struct_()?;
-    let len = match inputs[1].dtype() {
-        DataType::Int64 => inputs[1].clone(),
-        DataType::Int32 => inputs[1].cast(&DataType::Int64)?,
-        DataType::Int16 => inputs[1].cast(&DataType::Int64)?,
-        DataType::Int8 => inputs[1].cast(&DataType::Int64)?,
-        _ => polars_bail!(InvalidOperation:"Length input needs to be integer"),
-    };
+    let len = integer_arg(&inputs[1], "Length")?;
     let len = len.i64()?;
+    let lat = float_arg(&ca.field_by_name("latitude")?, "Latitude")?;
+    let long = float_arg(&ca.field_by_name("longitude")?, "Longitude")?;
+    let (ca_lat, ca_long) = (lat.f64()?, long.f64()?);
 
-    let lat = ca.field_by_name("latitude")?;
-    let long = ca.field_by_name("longitude")?;
-    let lat = match lat.dtype() {
-        DataType::Float32 => lat.cast(&DataType::Float64)?,
-        DataType::Float64 => lat,
-        _ => polars_bail!(InvalidOperation:"Latitude input needs to be float"),
-    };
-
-    let long = match long.dtype() {
-        DataType::Float32 => long.cast(&DataType::Float64)?,
-        DataType::Float64 => long,
-        _ => polars_bail!(InvalidOperation:"Longitude input needs to be float"),
-    };
-
-    let ca_lat = lat.f64()?;
-    let ca_long = long.f64()?;
-
-    let out: StringChunked = match len.len() {
-        1 => match unsafe { len.get_unchecked(0) } {
-            Some(len) => try_binary_elementwise(ca_lat, ca_long, |ca_lat_opt, ca_long_opt| {
-                h3_encoder(ca_lat_opt, ca_long_opt, Some(len))
-            }),
-            _ => Err(PolarsError::ComputeError(
-                "Length may not be null".to_string().into(),
-            )),
-        },
-        _ => try_ternary_elementwise(ca_lat, ca_long, len, h3_encoder),
+    let out: StringChunked = match scalar_arg(len, "Length")? {
+        Some(len) => try_binary_elementwise(ca_lat, ca_long, |lat, long| {
+            h3_encoder(lat, long, Some(len))
+        }),
+        None => try_ternary_elementwise(ca_lat, ca_long, len, h3_encoder),
     }?;
     Ok(out.into_series())
 }
@@ -373,40 +324,33 @@ fn ghash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type=String)]
 fn thash_encode(inputs: &[Series], kwargs: StrictKwargs) -> PolarsResult<Series> {
     let seconds = epoch_seconds(&inputs[0])?;
-    let precision = match inputs[1].dtype() {
-        dtype if dtype.is_integer() => inputs[1].cast(&DataType::Int64)?,
-        _ => polars_bail!(InvalidOperation:"Precision input needs to be integer"),
-    };
+    let precision = integer_arg(&inputs[1], "Precision")?;
     let precision = precision.i64()?;
+    let strict = kwargs.strict;
 
-    let out: StringChunked = match (seconds.len(), precision.len()) {
-        (_, 1) => match unsafe { precision.get_unchecked(0) } {
-            Some(precision) => {
-                validate_precision(precision)?;
-                try_unary_elementwise(&seconds, |seconds_opt| {
-                    timehash_encoder(seconds_opt, Some(precision), kwargs.strict)
-                })
-            }
-            _ => Err(PolarsError::ComputeError(
-                "Precision may not be null".to_string().into(),
-            )),
-        },
-        (1, _) => {
+    let out: StringChunked = match scalar_arg(precision, "Precision")? {
+        Some(precision) => {
+            validate_precision(precision)?;
+            try_unary_elementwise(&seconds, |seconds_opt| {
+                timehash_encoder(seconds_opt, Some(precision), strict)
+            })
+        }
+        None if seconds.len() == 1 => {
             let seconds = unsafe { seconds.get_unchecked(0) };
             try_unary_elementwise(precision, |precision_opt| {
-                timehash_encoder(seconds, precision_opt, kwargs.strict)
+                timehash_encoder(seconds, precision_opt, strict)
             })
             .map(|out| out.with_name(inputs[0].name().clone()))
         }
-        (timestamps, precisions) if timestamps == precisions => {
+        None if seconds.len() == precision.len() => {
             try_binary_elementwise(&seconds, precision, |seconds_opt, precision_opt| {
-                timehash_encoder(seconds_opt, precision_opt, kwargs.strict)
+                timehash_encoder(seconds_opt, precision_opt, strict)
             })
         }
-        (timestamps, precisions) => polars_bail!(
+        None => polars_bail!(
             ShapeMismatch:
             "timestamp column has length {} and precision has length {}, expected equal lengths or a scalar",
-            timestamps, precisions
+            seconds.len(), precision.len()
         ),
     }?;
     Ok(out.into_series())
