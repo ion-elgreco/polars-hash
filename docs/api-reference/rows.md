@@ -76,31 +76,95 @@ This is version 1. These bytes do not change. A user can keep a hash for longer 
 the release that made it. Therefore a new format takes a new version number, and
 `version=1` always gives these bytes.
 
-A row is a struct value. It contains each column in order, and nothing more. Each
-value has a tag byte and a payload. A payload has a fixed width, or it starts with its
-own length. Therefore the values need no separator, and a row has only one reading.
+A row is a struct value. It contains each column in order, and nothing more.
+
+### An example
+
+```python
+pl.DataFrame({"id": [7], "name": ["ok"]}).select(plh.hash_rows(pl.all()))
+```
+
+```text
+0d 02 03 01 07 05 02 6f 6b
+```
+
+Read the bytes from the left:
+
+| Bytes | Meaning |
+|-------|---------|
+| `0d` | The row is a struct. |
+| `02` | The struct has two fields. |
+| `03` | The first field is an integer. |
+| `01` | The integer is zero or more. |
+| `07` | Its magnitude is 7. |
+| `05` | The second field is a string. |
+| `02` | The string has two bytes. |
+| `6f 6b` | Those two bytes are `ok`. |
+
+Each value starts with one tag byte, which gives the class of the value. The bytes
+after the tag are the payload. A payload has a fixed width, or it starts with its own
+length or count. Therefore the values need no separator, and a row has only one
+reading.
+
+A null value is only its tag. A List and a Struct contain their values in the same
+form, one after the other. This row has a null and a list of 1 and 300:
+
+```python
+pl.DataFrame({"id": pl.Series([None], dtype=pl.Int64), "tags": [[1, 300]]}).select(
+    plh.hash_rows(pl.all())
+)
+```
+
+```text
+0d 02 00 0c 02 03 01 01 03 01 ac 02
+```
+
+| Bytes | Meaning |
+|-------|---------|
+| `0d 02` | A struct with two fields. |
+| `00` | The first field is null. |
+| `0c` | The second field is a list. |
+| `02` | The list has two elements. |
+| `03 01 01` | The first element is the integer 1. |
+| `03 01 ac 02` | The second element is the integer 300. |
+
+### Numbers with a variable length
+
+A count, a length, and the magnitude of an integer all use a varint. A varint takes
+one byte for a value below 128, and one more byte for each 7 bits after that.
+
+Each byte of a varint holds 7 bits of the value, and the least significant 7 bits come
+first. Each byte has the high bit set, but the last byte does not:
+
+| Value | Varint |
+|-------|--------|
+| 1 | `01` |
+| 127 | `7f` |
+| 128 | `80 01` |
+| 300 | `ac 02` |
+
+An integer payload is a sign byte and then a varint of the magnitude. The sign byte is
+`01` for zero and more, and `00` for less than zero. Therefore 300 is `01 ac 02`, and
+-300 is `00 ac 02`.
+
+### The tags
 
 | Tag | Class | Payload |
 |-----|-------|---------|
 | `00` | Null | none |
 | `01` | False | none |
 | `02` | True | none |
-| `03` | Integer | sign byte, `1` for zero and above, then the magnitude as a varint |
+| `03` | Integer | an integer payload |
 | `04` | Float | 8 bytes, `f64` big-endian |
-| `05` | String | length as a varint, then the UTF-8 bytes |
-| `06` | Binary | length as a varint, then the bytes |
-| `07` | Date | days from the epoch, as an integer payload |
-| `08` | Time | nanoseconds from midnight, as an integer payload |
-| `09` | Datetime | nanoseconds from the epoch, as an integer payload |
-| `0a` | Duration | nanoseconds, as an integer payload |
+| `05` | String | the length as a varint, then the UTF-8 bytes |
+| `06` | Binary | the length as a varint, then the bytes |
+| `07` | Date | the days from 1970-01-01, as an integer payload |
+| `08` | Time | the nanoseconds from midnight, as an integer payload |
+| `09` | Datetime | the nanoseconds from 1970-01-01, as an integer payload |
+| `0a` | Duration | the nanoseconds, as an integer payload |
 | `0b` | Decimal | the unscaled value as an integer payload, then the scale as a varint |
-| `0c` | List | element count as a varint, then the elements |
-| `0d` | Struct | field count as a varint, then the fields |
-
-A varint is an integer in base 128. The least significant group is first. Each group
-has the high bit set, but the last group does not. Therefore `Int64(1)` takes five
-bytes in a frame with one column: `0d 01` for the row and its one field, and then
-`03 01 01`.
+| `0c` | List | the element count as a varint, then the elements |
+| `0d` | Struct | the field count as a varint, then the fields |
 
 ### How the encoder reads a value
 
