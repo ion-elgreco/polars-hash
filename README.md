@@ -211,3 +211,36 @@ df = pl.DataFrame({"foo": ["hello_world"], "bar": ["today"]})
 
 result = df.select(plh.concat_str("foo", "bar").chash.sha256())
 ```
+
+## Hash a whole row
+
+`concat_str` runs the columns together, so `("ab", "c")` and `("a", "bc")` reach the
+same digest, one null makes the whole row null, and a `List` or a `Struct` has no
+string form at all. `encode_rows` gives each row bytes no other row can produce, and
+any hasher takes them from there.
+
+```python
+df = pl.DataFrame(
+    {"foo": ["hello_world"], "bar": [42], "baz": [[1, 2, 3]], "qux": [{"a": 1}]}
+)
+
+df.select(plh.encode_rows(pl.all()).chash.sha2_256())
+shape: (1, 1)
+┌──────────────────────────────────────────────────────────────────┐
+│ foo                                                              │
+│ ---                                                              │
+│ str                                                              │
+╞══════════════════════════════════════════════════════════════════╡
+│ 233f69694365e098ff2f019ee4ba8bce0e035c0c684fe1bd0417068ca2d371df │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+`plh.hash_rows(frame)` is the same thing for a whole `DataFrame` or `LazyFrame`, and
+adds the result as a column.
+
+A value is hashed for what it means, not for how polars holds it: an `Int32` hashes
+like the `Int64` beside it, a millisecond `Datetime` like the same instant in
+nanoseconds, and a `Categorical` like the string it stands for. Column names are not
+hashed, so renaming is free while reordering is not. The
+[reference](https://ion-elgreco.github.io/polars-hash/latest/api-reference/rows/)
+states every rule and the byte layout, which is frozen at version 1.

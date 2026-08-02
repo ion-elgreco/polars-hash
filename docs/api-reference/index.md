@@ -1,6 +1,6 @@
 # API Reference
 
-This page lists all public expressions in polars-hash. One import registers the six
+This page lists everything public in polars-hash. One import registers the six
 namespaces on `pl.Expr`:
 
 ```python
@@ -89,8 +89,18 @@ Full page: [uuidhash](uuid.md).
 
 | Expression | Input | Output | Description |
 |------------|-------|--------|-------------|
-| [`uuidhash.uuid5(namespace)`](uuid.md#uuid5) | Utf8 | Utf8 | Makes a UUID v5 in a standard or a custom namespace. |
+| [`uuidhash.uuid5(namespace)`](uuid.md#uuid5) | Utf8, Binary | Utf8 | Makes a UUID v5 in a standard or a custom namespace. |
 | [`uuidhash.uuid5_concat(other, default)`](uuid.md#uuid5_concat) | Utf8 | Utf8 | Concatenates two columns and makes a UUID v5 in the DNS namespace. |
+
+## Rows — whole-row hashing
+
+These are functions on `plh`, not expressions in a namespace. They hash a whole row,
+which concatenating the columns cannot do. Full page: [rows](rows.md).
+
+| Function | Input | Output | Description |
+|----------|-------|--------|-------------|
+| [`plh.encode_rows(exprs, version)`](rows.md#encode_rows) | Any columns | Binary | Encodes each row to bytes that no other row can produce, ready for any hasher above. |
+| [`plh.hash_rows(frame, subset, ...)`](rows.md#hash_rows) | DataFrame or LazyFrame | The frame, plus a column | Adds a column holding the hash of each row. |
 
 ## Conventions
 
@@ -100,7 +110,9 @@ These rules apply to all the expressions above.
   `select`, in `with_columns`, in `group_by(...).agg`, and in streaming mode. Polars
   can also divide the data into chunks and change the order of operations.
 - **Null values.** A null input gives a null output. The expression does not hash a
-  substitute value. The scalar arguments are different: `length`, `key`, `namespace`,
+  substitute value. [`encode_rows`](rows.md#encode_rows) is the exception: a null is
+  one of the values a row can hold, so a row holding one still has a hash. The scalar
+  arguments are different again: `length`, `key`, `namespace`,
   `default`, `len` and `precision` must not be null, and neither may `seed` — except
   on [`cityhash64()`](non-cryptographic.md#cityhash64), where `seed=None` is how you
   ask for the unseeded algorithm.
