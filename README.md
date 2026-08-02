@@ -1,5 +1,8 @@
 This plugin provides stable hashing functionality across different polars versions.
 
+📖 **[Documentation](https://ion-elgreco.github.io/polars-hash/)** — every expression,
+its input and output types, and its arguments.
+
 ## Examples
 ### Cryptographic Hashers
 
@@ -76,13 +79,13 @@ df.with_columns(
     plh.col('coord').geohash.from_coords().alias('geohash')
 )
 shape: (1, 2)
-┌─────────────────────┬────────────┐
-│ coord               ┆ geohash    │
-│ ---                 ┆ ---        │
-│ struct[2]           ┆ str        │
-╞═════════════════════╪════════════╡
-│ {-120.6623,35.3003} ┆ 9q60y60rhs │
-└─────────────────────┴────────────┘
+┌─────────────────────┬──────────────┐
+│ coord               ┆ geohash      │
+│ ---                 ┆ ---          │
+│ struct[2]           ┆ str          │
+╞═════════════════════╪══════════════╡
+│ {-120.6623,35.3003} ┆ 9q60y60rhsgg │
+└─────────────────────┴──────────────┘
 
 
 pl.select(pl.lit('9q60y60rhs').geohash.to_coords().alias('coordinates'))

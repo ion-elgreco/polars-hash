@@ -74,6 +74,9 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# mkdocs documentation
+/site
+
 # Translations
 *.mo
 *.pot

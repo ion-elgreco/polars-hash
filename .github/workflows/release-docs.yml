@@ -1,0 +1,83 @@
+name: release-docs
+
+# Publishes the docs to GitHub Pages on tag push. `mike` keeps every release in
+# its own subdirectory (/0.6.1/) on the `gh-pages` branch and repoints `latest`.
+#
+# One-time setup outside this workflow: Settings → Pages → "Deploy from a
+# branch" → `gh-pages` / `(root)`. The first run creates the branch.
+
+on:
+  push:
+    tags: ['*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to deploy, e.g. 0.6.1. Required when dispatching off a tag.
+        type: string
+        required: false
+
+concurrency:
+  group: release-docs-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release:
+    name: Build and publish versioned docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write  # mike pushes the rendered site to gh-pages
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # mike inspects the existing versions on gh-pages.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure git for mike push
+        env:
+          ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          git config user.name "${ACTOR}"
+          git config user.email "${ACTOR}@users.noreply.github.com"
+          # Gives mike a working `git push` without persist-credentials at
+          # checkout, which zizmor's `artipacked` lint rejects.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          uv: 'true'
+          cache: 'false'
+
+      # Tags are bare `x.y.z`; the `#v` strip accepts a `vx.y.z` tag too.
+      - name: Resolve version
+        id: ver
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="${INPUT_VERSION:-${REF_NAME#v}}"
+          case "${version}" in
+            *.*.*) ;;
+            *)
+              echo "::error::expected an x.y.z version, got '${version}'." \
+                   "Dispatch with the 'version' input when not running off a tag."
+              exit 1
+              ;;
+          esac
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      # Both mike calls live in the Makefile so local runs and CI stay identical.
+      - name: Deploy versioned docs
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: make -C polars_hash docs-deploy VERSION="${VERSION}"
+
+      - name: Set 'latest' as the default
+        run: make -C polars_hash docs-set-default
