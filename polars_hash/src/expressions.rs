@@ -41,11 +41,6 @@ struct SeedKwargs64bit {
 }
 
 #[derive(Deserialize)]
-struct OptionalSeedKwargs64bit {
-    seed: Option<i64>,
-}
-
-#[derive(Deserialize)]
 struct LengthKwargs {
     length: usize,
 }
@@ -137,13 +132,19 @@ fn cityhash32(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 #[polars_expr(output_type=UInt64)]
-fn cityhash64(inputs: &[Series], kwargs: OptionalSeedKwargs64bit) -> PolarsResult<Series> {
+fn cityhash64(inputs: &[Series]) -> PolarsResult<Series> {
     let ca = inputs[0].str()?;
-    // `CityHash64WithSeed(v, 0)` is not `CityHash64(v)`, so None cannot default to 0.
-    let out: ChunkedArray<UInt64Type> = match kwargs.seed {
-        Some(seed) => unary_elementwise(ca, |v| cityhash_64_with_seed(v, seed as u64)),
-        None => unary_elementwise(ca, cityhash_64),
-    };
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, cityhash_64);
+    Ok(out.into_series())
+}
+
+/// Its own expression rather than a seed defaulting to 0, because
+/// `CityHash64WithSeed(v, 0)` is a different hash from `CityHash64(v)`.
+#[polars_expr(output_type=UInt64)]
+fn cityhash64_with_seed(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+    let ca = inputs[0].str()?;
+    let seed = kwargs.seed as u64;
+    let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, |v| cityhash_64_with_seed(v, seed));
     Ok(out.into_series())
 }
 

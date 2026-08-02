@@ -276,12 +276,20 @@ class NonCryptographicHashingNameSpace:
         Without a seed this is `CityHash64`, with one `CityHash64WithSeed` — a
         different value even for `seed=0`.
         """
+        if seed is None:
+            return register_plugin_function(
+                plugin_path=Path(__file__).parent,
+                function_name="cityhash64",
+                args=self._expr,
+                is_elementwise=True,
+            )
+
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
-            function_name="cityhash64",
+            function_name="cityhash64_with_seed",
             args=self._expr,
             is_elementwise=True,
-            kwargs={"seed": None if seed is None else _encode_u64_seed(seed)},
+            kwargs={"seed": _encode_u64_seed(seed)},
         )
 
     def cityhash128(self) -> pl.Expr:
