@@ -402,7 +402,7 @@ fn thash_encode(inputs: &[Series]) -> PolarsResult<Series> {
 pub fn timehash_decode_output(field: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new(
         field[0].name().clone(),
-        Datetime(TimeUnit::Microseconds, None),
+        Datetime(TimeUnit::Microseconds, Some("UTC".into())),
     ))
 }
 

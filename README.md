@@ -151,13 +151,13 @@ shape: (1, 2)
 
 pl.select(pl.lit('afcccc0e1b').timehash.to_datetime().alias('datetime'))
 shape: (1, 1)
-┌────────────────────────────┐
-│ datetime                   │
-│ ---                        │
-│ datetime[μs]               │
-╞════════════════════════════╡
-│ 2017-02-21 20:15:11.292315 │
-└────────────────────────────┘
+┌────────────────────────────────┐
+│ datetime                       │
+│ ---                            │
+│ datetime[μs, UTC]              │
+╞════════════════════════════════╡
+│ 2017-02-21 20:15:11.292315 UTC │
+└────────────────────────────────┘
 
 
 pl.select(pl.lit('afcccc0e1b').timehash.neighbors().alias('neighbors'))

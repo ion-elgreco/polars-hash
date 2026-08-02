@@ -650,12 +650,35 @@ def test_timehash_to_datetime():
         [
             pl.Series(
                 "literal",
-                [datetime(2017, 2, 21, 20, 15, 11, 292315)],
-                dtype=pl.Datetime("us"),
+                [datetime(2017, 2, 21, 20, 15, 11, 292315, tzinfo=timezone.utc)],
+                dtype=pl.Datetime("us", "UTC"),
             ),
         ]
     )
     assert_frame_equal(result, expected)
+
+
+def test_timehash_to_datetime_is_utc():
+    """Declared naive, the UTC instant reads as local time and compares wrong."""
+    result = pl.select(pl.lit("afcccc0e1b").timehash.to_datetime())  # type: ignore
+
+    assert result.schema["literal"] == pl.Datetime("us", "UTC")
+
+
+def test_timehash_to_datetime_recovers_the_original_time_zone():
+    """The zone cannot come from the hash, so UTC output makes the one step correct."""
+    df = pl.DataFrame(
+        {"t": [datetime(2017, 2, 21, 20, 15, 13, tzinfo=timezone.utc)]}
+    ).with_columns(pl.col("t").dt.convert_time_zone("America/New_York"))
+
+    hashed = df.select(plh.col("t").timehash.from_datetime(10))
+    decoded = hashed.select(
+        plh.col("t").timehash.to_datetime().dt.convert_time_zone("America/New_York")
+    )
+
+    assert decoded.schema["t"] == pl.Datetime("us", "America/New_York")
+    # decode returns the window midpoint, so allow half a window (~1.9s at precision 10)
+    assert abs((decoded["t"][0] - df["t"][0]).total_seconds()) < 2
 
 
 def test_timehash_neighbors():
@@ -711,9 +734,7 @@ def test_timehash_input_dtypes(value, dtype):
 
 
 def test_timehash_time_unit_does_not_change_the_hash():
-    """The same instant must hash the same whatever unit stores it. A nanosecond
-    count near 1.5e18 needs more than the 53 significant bits an f64 carries, so
-    casting it to f64 first rounds the instant to the nearest 256 nanoseconds."""
+    """Nanoseconds run past 2^53, so converting to f64 first rounds to 256ns steps."""
     df = pl.DataFrame({"t": [datetime(2017, 2, 21, 20, 15, 14, 147738)]})
 
     micros = df.with_columns(pl.col("t").cast(pl.Datetime("us")))
@@ -793,8 +814,7 @@ def test_timehash_scalar_timestamp_broadcasts_in_with_columns():
 
 
 def test_timehash_scalar_timestamp_broadcasts_across_chunks():
-    """Chunk layout must not change the result. Zipping operands of unequal length
-    panics inside polars' chunk alignment rather than broadcasting."""
+    """Zipping unequal lengths panics in chunk alignment instead of broadcasting."""
     df = pl.concat(
         [pl.DataFrame({"n": [4, 8]}), pl.DataFrame({"n": [10]})], rechunk=False
     )
@@ -818,8 +838,7 @@ def test_timehash_null_scalar_timestamp_broadcasts():
 
 
 def test_timehash_length_mismatch_is_rejected():
-    """Neither operand is a scalar, so there is nothing to broadcast: erroring beats
-    zipping down to the shorter one and silently dropping rows."""
+    """Neither operand is a scalar, so erroring beats zipping down to the shorter."""
     df = pl.DataFrame({"n": [4, 8, 10]})
     timestamps = pl.Series([datetime(2017, 2, 21, 20, 15, 13)] * 2)
 
@@ -848,8 +867,8 @@ def test_timehash_null():
             pl.Series("encoded", ["afcccc0e1b", None], dtype=pl.Utf8),
             pl.Series(
                 "decoded",
-                [datetime(2017, 2, 21, 20, 15, 11, 292315), None],
-                dtype=pl.Datetime("us"),
+                [datetime(2017, 2, 21, 20, 15, 11, 292315, tzinfo=timezone.utc), None],
+                dtype=pl.Datetime("us", "UTC"),
             ),
             pl.Series(
                 "neighbors",
@@ -901,9 +920,7 @@ def test_timehash_invalid_input_dtype():
 
 
 def test_timehash_float32_is_rejected():
-    """A 32-bit float cannot carry epoch seconds. Near 1.5 billion it can only
-    store values 128 seconds apart, so 1487708113 is held as 1487708160 and bins
-    ~12 windows away from the 3.8 second window at precision 10."""
+    """f32 spaces values 128s apart here, so 1487708113 is held as 1487708160."""
     df = pl.DataFrame({"t": pl.Series([1487708113.0], dtype=pl.Float32)})
 
     with pytest.raises(ComputeError, match="Float32 cannot hold epoch seconds"):

@@ -24,15 +24,12 @@ fn validate_timehash(value: &str) -> PolarsResult<()> {
 }
 
 /// Datetime and Date carry their unit in the dtype; other numerics are taken as
-/// epoch seconds as-is. Float32 is refused rather than widened: it keeps about 7
-/// significant digits, so near 1.5e9 it can only space values 128 seconds apart --
-/// wider than every window up to precision 5, and the error is silent once widened.
+/// epoch seconds as-is. Float32 is refused, not widened: near 1.5e9 it spaces
+/// values 128 seconds apart, far wider than the 3.8 second window at precision 10.
 pub fn epoch_seconds(s: &Series) -> PolarsResult<Float64Chunked> {
     match s.dtype() {
-        // Split before converting: an i64 nanosecond count runs past 2^53, so
-        // `v as f64` would round the instant before it is ever scaled, and the same
-        // instant would hash differently per unit. Whole seconds and the sub-second
-        // remainder are both small enough to convert exactly.
+        // Nanoseconds run past 2^53, so `v as f64` would round the instant before it
+        // is scaled. Split first: whole seconds and remainder each convert exactly.
         DataType::Datetime(time_unit, _) => {
             let scale: i64 = match time_unit {
                 TimeUnit::Nanoseconds => 1_000_000_000,
@@ -106,7 +103,8 @@ pub fn timehash_encoder(
     }
 }
 
-/// Decodes to the midpoint of the hashed window.
+/// Decodes to the midpoint of the hashed window. The hash holds an instant, not a
+/// wall clock, so the output is UTC and the caller converts to their own zone.
 pub fn timehash_decoder(ca: &StringChunked) -> PolarsResult<Series> {
     let out: Int64Chunked = try_unary_elementwise(ca, |value| -> PolarsResult<Option<i64>> {
         match value {
@@ -120,8 +118,10 @@ pub fn timehash_decoder(ca: &StringChunked) -> PolarsResult<Series> {
         }
     })?;
 
-    out.into_series()
-        .cast(&DataType::Datetime(TimeUnit::Microseconds, None))
+    out.into_series().cast(&DataType::Datetime(
+        TimeUnit::Microseconds,
+        Some("UTC".into()),
+    ))
 }
 
 pub fn timehash_neighbors(ca: &StringChunked) -> PolarsResult<StructChunked> {

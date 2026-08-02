@@ -318,8 +318,8 @@ class TimeHashingNameSpace:
         Timestamps must fall between 1970-01-01 and 2098-01-01. Higher precision
         means a shorter window: 10 covers about 4 seconds, 8 about 4 minutes.
 
-        Epoch seconds may be Float64 or any integer type. Float32 is rejected: it
-        cannot hold a modern epoch second closely enough to land in the right window.
+        Epoch seconds may be Float64 or any integer type; Float32 cannot hold one
+        closely enough to land in the right window.
         """
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
@@ -329,7 +329,11 @@ class TimeHashingNameSpace:
         )
 
     def to_datetime(self) -> pl.Expr:
-        """Takes Utf8 hash as input and returns the midpoint of its window as Datetime."""
+        """Takes Utf8 hash as input and returns the midpoint of its window as Datetime.
+
+        The hash holds an instant, not a wall clock, so the zone is not recoverable.
+        The result is UTC; use ``.dt.convert_time_zone(tz)`` for another zone.
+        """
         return register_plugin_function(
             plugin_path=Path(__file__).parent,
             function_name="thash_decode",
