@@ -1,4 +1,5 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import polars as pl
@@ -658,6 +659,14 @@ def test_timehash_to_datetime():
     assert_frame_equal(result, expected)
 
 
+@pytest.mark.parametrize("dtype", [pl.Int8, pl.Int16, pl.UInt8, pl.UInt16])
+def test_timehash_small_integer_input_dtypes(dtype):
+    """These panic at the FFI boundary unless polars carries their dtype-* feature."""
+    df = pl.DataFrame({"t": pl.Series([100], dtype=dtype)})
+
+    assert df.select(plh.col("t").timehash.from_datetime(4)).to_series()[0] == "0000"
+
+
 def test_timehash_to_datetime_is_utc():
     """Declared naive, the UTC instant reads as local time and compares wrong."""
     result = pl.select(pl.lit("afcccc0e1b").timehash.to_datetime())  # type: ignore
@@ -912,8 +921,21 @@ def test_timehash_range_bounds_are_encodable(seconds):
     )
 
 
-def test_timehash_invalid_input_dtype():
-    df = pl.DataFrame({"t": ["not a timestamp"]})
+@pytest.mark.parametrize(
+    "series",
+    [
+        pytest.param(pl.Series(["not a timestamp"]), id="String"),
+        pytest.param(
+            pl.Series([Decimal(1487708113)], dtype=pl.Decimal(20, 0)), id="Decimal"
+        ),
+        pytest.param(pl.Series([True]), id="Boolean"),
+        pytest.param(pl.Series([timedelta(seconds=1)]), id="Duration"),
+        pytest.param(pl.Series([time(12, 0)]), id="Time"),
+        pytest.param(pl.Series([b"x"]), id="Binary"),
+    ],
+)
+def test_timehash_invalid_input_dtype(series):
+    df = pl.DataFrame({"t": series})
 
     with pytest.raises(ComputeError, match="timehash input needs to be"):
         df.select(plh.col("t").timehash.from_datetime(10))
@@ -941,6 +963,17 @@ def test_timehash_multi_byte_hash_is_rejected():
     """Upstream panics on a multi-byte character instead of erroring."""
     df = pl.DataFrame({"h": ["é0"]})
 
+    with pytest.raises(ComputeError, match="invalid timehash character"):
+        df.select(plh.col("h").timehash.neighbors())
+
+
+@pytest.mark.parametrize("value", ["a\x00b", "\x00"])
+def test_timehash_nul_byte_hash_is_rejected(value):
+    """A NUL reaches pyo3-polars inside the error text, which panics building it."""
+    df = pl.DataFrame({"h": [value]})
+
+    with pytest.raises(ComputeError, match="invalid timehash character"):
+        df.select(plh.col("h").timehash.to_datetime())
     with pytest.raises(ComputeError, match="invalid timehash character"):
         df.select(plh.col("h").timehash.neighbors())
 

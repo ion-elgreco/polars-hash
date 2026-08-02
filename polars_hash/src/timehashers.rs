@@ -12,14 +12,15 @@ const MAX_EPOCH_SECONDS: f64 = 4_039_372_800.0;
 const MAX_PRECISION: i64 = 32;
 
 /// `before`/`after` index the hash by byte but walk it by character, so a
-/// multi-byte character panics there before it is ever rejected.
+/// multi-byte character panics there before it is ever rejected. Both values are
+/// debug-formatted: a raw NUL would panic pyo3-polars as it builds the CString.
 fn validate_timehash(value: &str) -> PolarsResult<()> {
     if value.is_empty() {
         polars_bail!(ComputeError: "timehash may not be empty")
     }
     match value.chars().find(|c| !matches!(c, '0' | '1' | 'a'..='f')) {
         Some(c) => {
-            polars_bail!(ComputeError: "invalid timehash character '{}' in '{}'", c, value)
+            polars_bail!(ComputeError: "invalid timehash character {:?} in {:?}", c, value)
         }
         None => Ok(()),
     }
