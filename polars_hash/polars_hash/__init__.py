@@ -177,6 +177,18 @@ class NonCryptographicHashingNameSpace:
         """Takes Utf8 as input and returns uint128 hash with CityHash128."""
         return _plugin("cityhash128", self._expr)
 
+    def gxhash32(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint32 hash with GxHash."""
+        return _plugin("gxhash32", self._expr, seed=_encode_u64_seed(seed))
+
+    def gxhash64(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint64 hash with GxHash."""
+        return _plugin("gxhash64", self._expr, seed=_encode_u64_seed(seed))
+
+    def gxhash128(self, *, seed: int = 0) -> pl.Expr:
+        """Takes Utf8 as input and returns uint128 hash with GxHash."""
+        return _plugin("gxhash128", self._expr, seed=_encode_u64_seed(seed))
+
 
 def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
     if isinstance(length, str):

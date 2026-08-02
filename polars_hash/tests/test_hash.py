@@ -354,7 +354,158 @@ def test_cityhash_rejects_a_non_string_column(hash_fn):
         df.select(getattr(plh.col("literal").nchash, hash_fn)())
 
 
-# Expected values come from the reference implementations: the `cityhash` and
+# Reference values from the `gxhash` package on PyPI, which binds the same upstream
+# crate through its own layer, so these pin the wiring rather than the algorithm. The
+# lengths straddle every branch `compress_all` takes, up to its wide loop above 64 bytes.
+GXHASH_VECTORS = [
+    # value, gxhash32, gxhash64, gxhash128, gxhash64(seed=42)
+    (
+        "hello_world",
+        2751540945,
+        2180020304351407825,
+        56218077491375249900279963678916292305,
+        15254170022685821676,
+    ),
+    (
+        "0123456789abcdef",
+        1570350261,
+        2930507594094716085,
+        41598245394210107925662921412237173941,
+        14005003272224318756,
+    ),
+    (
+        "0123456789abcdefg",
+        238226515,
+        7750332876019928147,
+        285233948970283975186386669336525999187,
+        3032895827694623696,
+    ),
+    (
+        "the quick brown fox jumps over th",
+        4022630390,
+        2551299749957629942,
+        278207565320499808743461372539676424182,
+        895124801849494436,
+    ),
+    (
+        "0123456789" * 5 + "abcdefghijklm",
+        469949192,
+        7716185691520162568,
+        336065415150536231499290114686378498824,
+        3460190292077382754,
+    ),
+    (
+        "0123456789" * 10,
+        1184804170,
+        2204170311184592202,
+        159737905367241229606696689146798189898,
+        2167010504938637199,
+    ),
+    (
+        "0123456789" * 12 + "abcdefgh",
+        29132972,
+        16624339216108390572,
+        144076341491644785736749709244136982700,
+        14855682399770243763,
+    ),
+    (
+        "polars-hash gxhash coverage row " * 5 + "0123456789" * 3,
+        1826346443,
+        333135472238515659,
+        225759949245592036298123883189167183307,
+        15651006582957085576,
+    ),
+    # Hashed as its 22 UTF-8 bytes, not as 12 code points.
+    (
+        "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
+        "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
+        "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}",
+        4087074997,
+        9898532851104338101,
+        81447829809662801153156452411172966581,
+        17129501535291329433,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("value", "g32", "g64", "g128", "g64_seeded"),
+    GXHASH_VECTORS,
+    ids=lambda v: None if not isinstance(v, str) else f"len{len(v.encode())}",
+)
+def test_gxhash_matches_the_reference(value, g32, g64, g128, g64_seeded):
+    df = pl.DataFrame({"literal": [value]})
+    result = df.select(
+        g32=plh.col("literal").nchash.gxhash32(),
+        g64=plh.col("literal").nchash.gxhash64(),
+        g128=plh.col("literal").nchash.gxhash128(),
+        g64_seeded=plh.col("literal").nchash.gxhash64(seed=42),
+    )
+
+    assert result.row(0) == (g32, g64, g128, g64_seeded)
+
+
+@pytest.mark.parametrize(
+    ("expr", "dtype", "empty"),
+    [
+        (plh.col("literal").nchash.gxhash32(), pl.UInt32, 2533353535),
+        (plh.col("literal").nchash.gxhash64(), pl.UInt64, 17210906488525023295),
+        (
+            plh.col("literal").nchash.gxhash128(),
+            pl.UInt128,
+            302767221070957831171542222971961600063,
+        ),
+        (
+            plh.col("literal").nchash.gxhash64(seed=42),
+            pl.UInt64,
+            1387850744621952556,
+        ),
+    ],
+    ids=["gxhash32", "gxhash64", "gxhash128", "gxhash64_seeded"],
+)
+def test_gxhash_null_and_empty(expr, dtype, empty):
+    df = pl.DataFrame({"literal": [None, ""]})
+    result = df.select(expr)
+
+    assert_frame_equal(result, pl.DataFrame(pl.Series("literal", [None, empty], dtype)))
+
+
+@pytest.mark.parametrize("value", ["", "hello_world", "0123456789" * 12 + "abcdefgh"])
+def test_gxhash_widths_truncate_one_state(value):
+    """All three widths read the same finalized state, so each is the next one's tail."""
+    df = pl.DataFrame({"literal": [value]})
+    g32, g64, g128 = df.select(
+        g32=plh.col("literal").nchash.gxhash32(),
+        g64=plh.col("literal").nchash.gxhash64(),
+        g128=plh.col("literal").nchash.gxhash128(),
+    ).row(0)
+
+    assert g32 == g64 % 2**32
+    assert g64 == g128 % 2**64
+
+
+def test_gxhash_seed_changes_the_hash():
+    """Unlike CityHash, gxhash has no unseeded form: seed 0 is the default, not a mode."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    result = df.select(
+        default=plh.col("literal").nchash.gxhash64(),
+        zero=plh.col("literal").nchash.gxhash64(seed=0),
+        other=plh.col("literal").nchash.gxhash64(seed=1),
+    )
+
+    assert result["default"].item() == result["zero"].item()
+    assert result["other"].item() != result["zero"].item()
+
+
+@pytest.mark.parametrize("hash_fn", ["gxhash32", "gxhash64", "gxhash128"])
+def test_gxhash_rejects_a_non_string_column(hash_fn):
+    df = pl.DataFrame({"literal": [1, 2, 3]})
+
+    with pytest.raises(ComputeError, match="expected `String`"):
+        df.select(getattr(plh.col("literal").nchash, hash_fn)())
+
+
+# Expected values come from the reference implementations: the `cityhash`, `gxhash` and
 # `xxhash` packages on PyPI.
 @pytest.mark.parametrize(
     ("hash_fn", "seed", "expected"),
@@ -366,6 +517,10 @@ def test_cityhash_rejects_a_non_string_column(hash_fn):
         ("xxhash64", 2**64 - 1, 8264024218298755446),
         ("xxh3_64", 2**63, 13487197773793219251),
         ("xxh3_64", 2**64 - 1, 1513394910116877137),
+        # gxhash seeds are `i64` upstream: -1, `i64::MIN` and `i64::MAX`.
+        ("gxhash64", 2**64 - 1, 4810392188550196786),
+        ("gxhash64", 2**63, 5168275476899811548),
+        ("gxhash64", 2**63 - 1, 4596807014130615183),
     ],
 )
 def test_seed_accepts_the_whole_u64_range(hash_fn, seed, expected):
@@ -376,7 +531,18 @@ def test_seed_accepts_the_whole_u64_range(hash_fn, seed, expected):
     assert df.select(expr).item() == expected
 
 
-@pytest.mark.parametrize("hash_fn", ["cityhash64", "xxhash64", "xxh3_64", "xxh3_128"])
+@pytest.mark.parametrize(
+    "hash_fn",
+    [
+        "cityhash64",
+        "xxhash64",
+        "xxh3_64",
+        "xxh3_128",
+        "gxhash32",
+        "gxhash64",
+        "gxhash128",
+    ],
+)
 @pytest.mark.parametrize("seed", [-1, 2**64, 2**70])
 def test_seed_outside_the_u64_range_errors(hash_fn, seed):
     with pytest.raises(ValueError, match="seed must fit in a u64"):

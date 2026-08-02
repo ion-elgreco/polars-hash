@@ -1,6 +1,6 @@
 [package]
 name = "polars_hash"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 
 [lib]
@@ -39,6 +39,7 @@ cityhasher = { version = "=0.1.0", default-features = false }
 cityhash-rs = { version = "=1.0.1" }
 hmac = { version = "0.13.0" }
 timeharsh = { version = "=1.0.0" }
+gxhash = { version = "=3.5.0", default-features = false }
 
 
 [target.'cfg(target_os = "linux")'.dependencies]
