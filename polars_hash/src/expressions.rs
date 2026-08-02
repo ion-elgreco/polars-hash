@@ -188,8 +188,8 @@ str_hash_expr!(
 );
 
 // TODO: return `UInt128` from these two, as `cityhash128` already does. It changes the
-// type of an already released output, so it belongs in its own release with a
-// deprecation cycle — see the "Planned" entry in CHANGELOG.md.
+// type of an already released output, so it needs its own release with a deprecation
+// cycle, using the `DeprecationWarning` path `chash.sha256` already takes.
 str_hash_expr!(
     murmur128,
     Binary,

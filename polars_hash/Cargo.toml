@@ -1,6 +1,6 @@
 [package]
 name = "polars_hash"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 
 [lib]
@@ -42,9 +42,6 @@ timeharsh = { version = "=1.0.0" }
 [target.'cfg(target_os = "linux")'.dependencies]
 jemallocator = { version = "0.5", features = ["disable_initial_exec_tls"] }
 
-# The whole crate is per-element kernels, and cargo's defaults (no LTO, 16 codegen
-# units) keep the hash inner loops behind out-of-line calls. Costs a minute or two
-# of build time per wheel.
 [profile.release]
 lto = "thin"
 codegen-units = 1
