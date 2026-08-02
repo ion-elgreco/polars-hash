@@ -30,8 +30,7 @@ dynamic = ["version"]
 dev = [
   "maturin>=1.0,<2.0",
   "mypy",
-  # Hash outputs are only useful if they leave Polars, so the suite exports them.
-  "numpy",
+  # For the one test that watches whether UInt128 can reach Arrow yet.
   "pyarrow",
   "pytest",
   "ruff",
