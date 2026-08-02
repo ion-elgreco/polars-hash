@@ -131,7 +131,7 @@ class NonCryptographicHashingNameSpace:
         return _plugin("murmur32", self._expr, seed=seed)
 
     def murmur128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns binary hash with murmur128."""
+        """Takes Utf8 as input and returns uint128 hash with murmur128."""
         return _plugin("murmur128", self._expr, seed=seed)
 
     def xxhash32(self, *, seed: int = 0) -> pl.Expr:
@@ -143,11 +143,11 @@ class NonCryptographicHashingNameSpace:
         return _plugin("xxhash64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with XXH3 64bit."""
+        """Takes Utf8 as input and returns uint64 hash with XXH3 64bit."""
         return _plugin("xxh3_64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns binary hash with XXH3 128bit."""
+        """Takes Utf8 as input and returns uint128 hash with XXH3 128bit."""
         return _plugin("xxh3_128", self._expr, seed=_encode_u64_seed(seed))
 
     def farmhash32(self) -> pl.Expr:

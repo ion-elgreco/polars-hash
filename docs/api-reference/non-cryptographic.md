@@ -18,9 +18,9 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | [`xxhash32(seed)`](#xxhash32) | Utf8 | UInt32 | `u32` |
 | [`xxhash64(seed)`](#xxhash64) | Utf8 | UInt64 | `u64` |
 | [`xxh3_64(seed)`](#xxh3_64) | Utf8 | UInt64 | `u64` |
-| [`xxh3_128(seed)`](#xxh3_128) | Utf8 | Binary | `u64` |
+| [`xxh3_128(seed)`](#xxh3_128) | Utf8 | UInt128 | `u64` |
 | [`murmur32(seed)`](#murmur32) | Utf8 | UInt32 | `u32` |
-| [`murmur128(seed)`](#murmur128) | Utf8 | Binary | `u32` |
+| [`murmur128(seed)`](#murmur128) | Utf8 | UInt128 | `u32` |
 | [`farmhash32()`](#farmhash32) | Utf8 | UInt32 | — |
 | [`farmhash64()`](#farmhash64) | Utf8 | UInt64 | — |
 | [`cityhash32()`](#cityhash32) | Utf8 | UInt32 | — |
@@ -137,29 +137,34 @@ df.select(plh.col("foo").nchash.xxh3_64(seed=42))
 
 ## `xxh3_128(seed)` { #xxh3_128 }
 
-XXH3 with 128-bit output. The output type is `Binary`, unlike
-[`cityhash128()`](#cityhash128), which returns a `UInt128`.
+XXH3 with 128-bit output.
 
 ```python
 df.select(plh.col("foo").nchash.xxh3_128())
+# 253649469245435599925940275794906345219
+
+df.select(plh.col("foo").nchash.xxh3_128(seed=42))
+# 314735830047873782861649874643137875266
 ```
 
-```text
-┌────────────────────────────────────────────────┐
-│ foo                                            │
-│ ---                                            │
-│ binary                                         │
-╞════════════════════════════════════════════════╡
-│ b"\x03o\xfe!^\x18\xfbg"\xc6=\xaf^\x1c\xd3\xbe" │
-└────────────────────────────────────────────────┘
-```
-
-To get a hex string, encode the output:
+The value matches `xxhash.xxh128_intdigest()`, and formatting it as 32 hex digits
+gives the canonical XXH128 digest, the same string as `xxh128_hexdigest()`:
 
 ```python
-df.select(plh.col("foo").nchash.xxh3_128().bin.encode("hex"))
-# 036ffe215e18fb6722c63daf5e1cd3be
+f"{253649469245435599925940275794906345219:032x}"
+# bed31c5eaf3dc62267fb185e21fe6f03
 ```
+
+!!! warning "0.8.0 changed this output from `Binary` to `UInt128`"
+    Up to 0.7.0 this expression returned 16 bytes. The bytes held the value in the
+    reverse of the canonical order, so `.bin.encode("hex")` gave
+    `036ffe215e18fb6722c63daf5e1cd3be` where the reference gives
+    `bed31c5eaf3dc62267fb185e21fe6f03`. The integer now agrees with the reference, and
+    `f"{value:032x}"` replaces `.bin.encode("hex")`. To read data hashed by an older
+    release, reverse the old bytes: `int.from_bytes(old, "little")`.
+
+    A `UInt128` column also cannot reach pandas or NumPy, which the old `Binary` one
+    could. [`cityhash128()`](#cityhash128) describes that limitation.
 
 **Parameters:**
 
@@ -167,7 +172,7 @@ df.select(plh.col("foo").nchash.xxh3_128().bin.encode("hex"))
 |-----------|------|---------|-------------|
 | `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u64`. |
 
-**Returns:** Binary (16 bytes)
+**Returns:** UInt128
 
 ---
 
@@ -200,13 +205,22 @@ a null value in the output.
 
 ## `murmur128(seed)` { #murmur128 }
 
-MurmurHash3, x64 128-bit variant. The output type is `Binary`.
+MurmurHash3, x64 128-bit variant.
 
 ```python
 df.select(plh.col("foo").nchash.murmur128())
-# b"\x98,\xf3\x9e\x1c\x1a\xa5]\x1b\x07\x97\x16\x07l\x8de"
+# 134986332493155497415370161450594282648
 
-df.select(plh.col("foo").nchash.murmur128().bin.encode("hex"))
+df.select(plh.col("foo").nchash.murmur128(seed=42))
+# 128378975539535818103252123378652633995
+```
+
+The value matches `mmh3.hash128(..., signed=False)`. MurmurHash3 writes its digest as
+two little-endian halves, so the canonical bytes come back the other way round from
+[`xxh3_128()`](#xxh3_128):
+
+```python
+(134986332493155497415370161450594282648).to_bytes(16, "little").hex()
 # 982cf39e1c1aa55d1b079716076c8d65
 ```
 
@@ -216,7 +230,15 @@ df.select(plh.col("foo").nchash.murmur128().bin.encode("hex"))
 |-----------|------|---------|-------------|
 | `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u32`. The 128-bit variant also uses a 32-bit seed. |
 
-**Returns:** Binary (16 bytes)
+**Returns:** UInt128
+
+!!! warning "0.8.0 changed this output from `Binary` to `UInt128`"
+    Up to 0.7.0 this expression returned the 16 digest bytes, so `.bin.encode("hex")`
+    gave the string above. The bytes were the canonical ones; only the container
+    changed. `int.from_bytes(old, "little")` converts a stored value.
+
+    A `UInt128` column also cannot reach pandas or NumPy, which the old `Binary` one
+    could. [`cityhash128()`](#cityhash128) describes that limitation.
 
 ---
 
@@ -447,9 +469,8 @@ df.select(plh.col("foo").nchash.gxhash128(seed=42))
     wide one.
 
 !!! warning "`UInt128` does not leave Polars yet"
-    Polars encodes `UInt128` as a private Arrow type, so `to_arrow()` and
-    `to_pandas()` raise `ArrowInvalid` and `to_numpy()` fails on this column. Cast to
-    `pl.Binary` or split the halves if the column has to reach pandas or NumPy.
+    The same limitation [`cityhash128()`](#cityhash128) describes applies here: the
+    column cannot reach pandas or NumPy without a cast.
 
 ---
 

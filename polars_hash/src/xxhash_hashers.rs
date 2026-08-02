@@ -15,8 +15,6 @@ pub fn xxhash3_64(value: &str, seed: u64) -> u64 {
     xxh3_64_with_seed(value.as_bytes(), seed)
 }
 
-pub fn xxhash3_128(value: &str, seed: u64) -> Vec<u8> {
+pub fn xxhash3_128(value: &str, seed: u64) -> u128 {
     xxh3_128_with_seed(value.as_bytes(), seed)
-        .to_le_bytes()
-        .to_vec()
 }

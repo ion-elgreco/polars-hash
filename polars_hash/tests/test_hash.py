@@ -762,6 +762,9 @@ def test_murmurhash32_seeded():
     assert_frame_equal(result, expected)
 
 
+# Expected value from `mmh3.hash128` on PyPI. 0.8.0 changed this expression from
+# Binary to UInt128, and the two halves are packed so the integer matches that
+# reference; see `test_the_128_bit_digests_round_trip`.
 def test_murmurhash128():
     df = pl.DataFrame({"literal": ["hello_world", None, ""]})
     result = df.select(plh.col("literal").nchash.murmur128())
@@ -770,12 +773,8 @@ def test_murmurhash128():
         [
             pl.Series(
                 "literal",
-                [
-                    b"\x98,\xf3\x9e\x1c\x1a\xa5]\x1b\x07\x97\x16\x07l\x8de",
-                    None,
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-                ],
-                dtype=pl.Binary,
+                [134986332493155497415370161450594282648, None, 0],
+                dtype=pl.UInt128,
             ),
         ]
     )
@@ -940,11 +939,11 @@ def test_xxh3_128():
             pl.Series(
                 "literal",
                 [
-                    b'\x03o\xfe!^\x18\xfbg"\xc6=\xaf^\x1c\xd3\xbe',
+                    253649469245435599925940275794906345219,
                     None,
-                    b"\x7fI\x8dF$\xc3\x01`\xd8\x98G\x01\xd3\x06\xaa\x99",
+                    204254712233039002205064565430793619839,
                 ],
-                dtype=pl.Binary,
+                dtype=pl.UInt128,
             ),
         ]
     )
@@ -961,16 +960,36 @@ def test_xxh3_128_seeded():
             pl.Series(
                 "literal",
                 [
-                    b"BM\xd8\x9d\x8dX]|k\xd9\xb9\xc0|\xea\xc7\xec",
+                    314735830047873782861649874643137875266,
                     None,
-                    b"d\x91$\xfe\xe9\t\x1d</\xaf\xf73\xcd\n\xc2\x16",
+                    30250540579776425168508632643632664932,
                 ],
-                dtype=pl.Binary,
+                dtype=pl.UInt128,
             ),
         ]
     )
 
     assert_frame_equal(result, expected)
+
+
+def test_the_128_bit_digests_round_trip():
+    """The two algorithms canonicalise their digest to bytes in opposite orders.
+
+    MurmurHash3 writes two little-endian halves and XXH128 writes one big-endian
+    value, so the integers here recover each digest through a different call. Both
+    match their reference implementation; before 0.8.0 `xxh3_128()` returned the
+    canonical bytes reversed.
+    """
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    murmur, xxh3 = df.select(
+        murmur=plh.col("literal").nchash.murmur128(),
+        xxh3=plh.col("literal").nchash.xxh3_128(),
+    ).row(0)
+
+    # mmh3.hash_bytes("hello_world", 0)
+    assert murmur.to_bytes(16, "little").hex() == "982cf39e1c1aa55d1b079716076c8d65"
+    # xxhash.xxh128_hexdigest("hello_world")
+    assert f"{xxh3:032x}" == "bed31c5eaf3dc62267fb185e21fe6f03"
 
 
 def test_timehash():
