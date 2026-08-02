@@ -24,6 +24,16 @@ dynamic = ["version"]
 "Homepage" = "https://github.com/ion-elgreco/polars-hash"
 "Bug Tracker" = "https://github.com/ion-elgreco/polars-hash/issues"
 
+# Exact versions are pinned by uv.lock; these are the constraints it resolves
+# against. `polars` is not repeated here — it is already a runtime dependency.
+[dependency-groups]
+dev = [
+  "maturin>=1.0,<2.0",
+  "mypy",
+  "pytest",
+  "ruff",
+]
+
 [tool.maturin]
 module-name = "polars_hash._internal"
 
