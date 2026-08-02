@@ -62,42 +62,17 @@ jobs:
       - if: matrix.platform == 'linux-x86_64'
         run: make check
 
-  # uv.lock pins the newest polars, so `make test` never exercises the floor that
-  # pyproject.toml promises. This leg installs exactly that floor and runs the suite,
-  # so a post-floor API sneaking in fails here rather than in a user's install.
-  minimum-polars:
-    name: tests against the minimum polars
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: polars_hash
-    env:
-      RUSTC_WRAPPER: ${{ inputs.cache && 'sccache' || '' }}
-      SCCACHE_GHA_ENABLED: 'true'
-      UV_LOCKED: '1'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
-        with:
-          cache: ${{ inputs.cache }}
-          uv: 'true'
-          rust-toolchain: 'true'
-
-      - run: make install
-
-      # Read the floor from pyproject.toml so it cannot drift from the promise.
-      - name: Downgrade to the declared polars floor
+      # uv.lock pins the newest polars, so the run above never exercises the floor
+      # pyproject.toml promises. Re-run the suite against exactly that floor, reading
+      # it from pyproject.toml so the two cannot drift. The wheel is not rebuilt: one
+      # build has to work across the whole supported range. Last, since it leaves an
+      # older polars in the environment.
+      - name: Test against the minimum supported polars
+        if: matrix.platform == 'linux-x86_64'
         run: |
           floor=$(grep -oE "polars >= [0-9]+\.[0-9]+\.[0-9]+" pyproject.toml | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
           test -n "$floor" || { echo "no polars floor found in pyproject.toml"; exit 1; }
-          echo "Testing against polars==$floor"
+          echo "::group::polars==$floor"
           uv pip install "polars==$floor"
-
-      - run: uv run --no-sync pytest tests/
+          uv run --no-sync pytest tests/
+          echo "::endgroup::"
