@@ -505,6 +505,25 @@ def test_gxhash_rejects_a_non_string_column(hash_fn):
         df.select(getattr(plh.col("literal").nchash, hash_fn)())
 
 
+@pytest.mark.parametrize(
+    "series",
+    [
+        pytest.param(pl.Series([[1, 2]], dtype=pl.Array(pl.Int64, 2)), id="Array"),
+        pytest.param(
+            pl.Series([[[1.5, 2.5]]], dtype=pl.Array(pl.Array(pl.Float64, 2), 1)),
+            id="nested_Array",
+        ),
+    ],
+)
+def test_a_rejected_dtype_raises_rather_than_aborting(series):
+    """Polars panics while reading an arrow type whose dtype feature is off, and a
+    panic across the plugin's C boundary aborts the process instead of raising."""
+    df = pl.DataFrame({"literal": series})
+
+    with pytest.raises(ComputeError, match="expected `String`"):
+        df.select(plh.col("literal").chash.sha2_256())
+
+
 # Expected values come from the reference implementations: the `cityhash`, `gxhash` and
 # `xxhash` packages on PyPI.
 @pytest.mark.parametrize(

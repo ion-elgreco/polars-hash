@@ -8,8 +8,12 @@ name = "polars_hash"
 crate-type = ["cdylib"]
 
 [dependencies]
+# A dtype feature left off here is not merely unsupported: polars panics while
+# reading the arrow type, and a panic across the plugin's C boundary aborts the
+# process rather than raising. Every dtype that can reach an expression needs one.
 polars = { version = "0.54.4", features = [
     "dtype-struct",
+    "dtype-array",
     "timezones",
     "dtype-i8",
     "dtype-i16",
@@ -18,7 +22,12 @@ polars = { version = "0.54.4", features = [
     "dtype-u128",
 ] }
 pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
-pyo3-polars = { version = "0.27", features = ["derive", "dtype-struct", "dtype-decimal"] }
+pyo3-polars = { version = "0.27", features = [
+    "derive",
+    "dtype-struct",
+    "dtype-decimal",
+    "dtype-array",
+] }
 serde = { version = "1", features = ["derive"] }
 wyhash = { version = "0.6.0" }
 geohash = { version = "0.13.2" }
