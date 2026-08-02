@@ -354,6 +354,42 @@ def test_cityhash_rejects_a_non_string_column(hash_fn):
         df.select(getattr(plh.col("literal").nchash, hash_fn)())
 
 
+# A hash column is only useful once it reaches the tool that consumes it, so every
+# output dtype has to survive the Arrow and NumPy boundary.
+_EXPORTABLE = [
+    "wyhash",
+    "md5",
+    "sha1",
+    "murmur32",
+    "murmur128",
+    "xxhash32",
+    "xxhash64",
+    "xxh3_64",
+    "xxh3_128",
+    "farmhash32",
+    "farmhash64",
+    "cityhash32",
+    "cityhash64",
+    pytest.param(
+        "cityhash128",
+        marks=pytest.mark.xfail(
+            reason="Polars writes UInt128 as the private Arrow type _plu128, which "
+            "pyarrow rejects and the NumPy interop panics on",
+            strict=True,
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("hash_fn", _EXPORTABLE)
+@pytest.mark.parametrize("export", ["to_arrow", "to_numpy"])
+def test_hash_output_leaves_polars(hash_fn, export):
+    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
+    result = df.select(getattr(plh.col("literal").nchash, hash_fn)())
+
+    assert len(getattr(result, export)()) == 3
+
+
 # Expected values come from the reference implementations: the `cityhash` and
 # `xxhash` packages on PyPI.
 @pytest.mark.parametrize(
