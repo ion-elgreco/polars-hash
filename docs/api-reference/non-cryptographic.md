@@ -1,7 +1,8 @@
 # `nchash` — Non-cryptographic hash functions
 
 polars-hash registers these expressions on `pl.Expr` as `.nchash`. They are fast and
-their output is stable. A null input gives a null output.
+their output is stable. Each expression accepts Utf8 or Binary: a hash reads bytes, so
+the dtype holding them never changes the digest. A null input gives a null output.
 
 All the examples on this page use this data:
 
@@ -53,15 +54,14 @@ df.select(plh.col("foo").nchash.wyhash())
 └──────────────────────┘
 ```
 
-This expression also accepts a `Binary` column and hashes the bytes:
+A `Binary` column hashes its bytes, as it does for every expression on this page:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
 # 5112362246832359110
 ```
 
-**Input:** Utf8 or Binary. A different type raises `ComputeError`:
-`wyhash only works on strings or binary data`.
+A dtype that is neither raises ``ComputeError: expected `String` or `Binary` input``.
 
 **Returns:** UInt64
 
@@ -483,15 +483,12 @@ df.select(plh.col("foo").nchash.md5())
 # 99b1ff8f11781541f7f89f9bd41c4a17
 ```
 
-This expression also accepts a `Binary` column:
+A `Binary` column hashes its bytes:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.md5())  # type: ignore
 # 4445d78d11baa258c5f4ac1b8d33b8ba
 ```
-
-**Input:** Utf8 or Binary. A different type raises `ComputeError`:
-`md5 only works on strings or binary data`.
 
 **Returns:** Utf8 with 32 characters
 
@@ -505,9 +502,5 @@ SHA-1, hex-encoded.
 df.select(plh.col("foo").nchash.sha1())
 # e4ecd6fc11898565af24977e992cea0c9c7b7025
 ```
-
-**Input:** Utf8 only. A Binary column raises `ComputeError: invalid series dtype:
-expected String, got binary`. This expression has no path for bytes, but
-[`md5()`](#md5) has one.
 
 **Returns:** Utf8 with 40 characters

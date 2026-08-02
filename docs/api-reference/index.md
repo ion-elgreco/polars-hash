@@ -13,23 +13,23 @@ They declare these namespaces. Refer to
 
 ## `chash` — cryptographic
 
-Each expression accepts Utf8 and gives hex-encoded Utf8, unless the table shows a
-different type. Full page: [chash](cryptographic.md).
+Each expression accepts Utf8 or Binary and gives hex-encoded Utf8, unless the table
+shows a different type. Full page: [chash](cryptographic.md).
 
 | Expression | Input | Output | Description |
 |------------|-------|--------|-------------|
-| [`chash.sha2_224()`](cryptographic.md#sha2_224) | Utf8 | Utf8 | SHA-224 from the SHA-2 family. |
-| [`chash.sha2_256()`](cryptographic.md#sha2_256) | Utf8 | Utf8 | SHA-256 from the SHA-2 family. |
-| [`chash.sha2_384()`](cryptographic.md#sha2_384) | Utf8 | Utf8 | SHA-384 from the SHA-2 family. |
-| [`chash.sha2_512()`](cryptographic.md#sha2_512) | Utf8 | Utf8 | SHA-512 from the SHA-2 family. |
-| [`chash.sha3_224()`](cryptographic.md#sha3_224) | Utf8 | Utf8 | SHA3-224 from the SHA-3 family. |
-| [`chash.sha3_256()`](cryptographic.md#sha3_256) | Utf8 | Utf8 | SHA3-256 from the SHA-3 family. |
-| [`chash.sha3_384()`](cryptographic.md#sha3_384) | Utf8 | Utf8 | SHA3-384 from the SHA-3 family. |
-| [`chash.sha3_512()`](cryptographic.md#sha3_512) | Utf8 | Utf8 | SHA3-512 from the SHA-3 family. |
-| [`chash.sha3_shake128(length)`](cryptographic.md#sha3_shake128) | Utf8 | Utf8 | SHAKE128 extendable-output function. Gives `length` bytes. |
-| [`chash.blake3()`](cryptographic.md#blake3) | Utf8, Binary | Utf8 | BLAKE3 with 256-bit output. |
-| [`chash.hmac_sha256(key)`](cryptographic.md#hmac_sha256) | Utf8 | Utf8 | Keyed HMAC-SHA256. |
-| [`chash.sha256()`](cryptographic.md#sha256) | Utf8 | Utf8 | **Deprecated.** Alias of `sha2_256()`. |
+| [`chash.sha2_224()`](cryptographic.md#sha2_224) | Utf8, Binary | Utf8 | SHA-224 from the SHA-2 family. |
+| [`chash.sha2_256()`](cryptographic.md#sha2_256) | Utf8, Binary | Utf8 | SHA-256 from the SHA-2 family. |
+| [`chash.sha2_384()`](cryptographic.md#sha2_384) | Utf8, Binary | Utf8 | SHA-384 from the SHA-2 family. |
+| [`chash.sha2_512()`](cryptographic.md#sha2_512) | Utf8, Binary | Utf8 | SHA-512 from the SHA-2 family. |
+| [`chash.sha3_224()`](cryptographic.md#sha3_224) | Utf8, Binary | Utf8 | SHA3-224 from the SHA-3 family. |
+| [`chash.sha3_256()`](cryptographic.md#sha3_256) | Utf8, Binary | Utf8 | SHA3-256 from the SHA-3 family. |
+| [`chash.sha3_384()`](cryptographic.md#sha3_384) | Utf8, Binary | Utf8 | SHA3-384 from the SHA-3 family. |
+| [`chash.sha3_512()`](cryptographic.md#sha3_512) | Utf8, Binary | Utf8 | SHA3-512 from the SHA-3 family. |
+| [`chash.sha3_shake128(length)`](cryptographic.md#sha3_shake128) | Utf8, Binary | Utf8 | SHAKE128 extendable-output function. Gives `length` bytes. |
+| [`chash.blake3()`](cryptographic.md#blake3) | Utf8, Binary | Utf8, Binary | BLAKE3 with 256-bit output. |
+| [`chash.hmac_sha256(key)`](cryptographic.md#hmac_sha256) | Utf8, Binary | Utf8 | Keyed HMAC-SHA256. |
+| [`chash.sha256()`](cryptographic.md#sha256) | Utf8, Binary | Utf8 | **Deprecated.** Alias of `sha2_256()`. |
 
 ## `nchash` — non-cryptographic
 
@@ -38,22 +38,22 @@ Full page: [nchash](non-cryptographic.md).
 | Expression | Input | Output | Description |
 |------------|-------|--------|-------------|
 | [`nchash.wyhash()`](non-cryptographic.md#wyhash) | Utf8, Binary | UInt64 | wyhash. The seed is always 0. |
-| [`nchash.xxhash32(seed)`](non-cryptographic.md#xxhash32) | Utf8 | UInt32 | XXH32. |
-| [`nchash.xxhash64(seed)`](non-cryptographic.md#xxhash64) | Utf8 | UInt64 | XXH64. |
-| [`nchash.xxh3_64(seed)`](non-cryptographic.md#xxh3_64) | Utf8 | UInt64 | XXH3 with 64-bit output. |
-| [`nchash.xxh3_128(seed)`](non-cryptographic.md#xxh3_128) | Utf8 | UInt128 | XXH3 with 128-bit output. |
-| [`nchash.murmur32(seed)`](non-cryptographic.md#murmur32) | Utf8 | UInt32 | MurmurHash3, x86 32-bit variant. |
-| [`nchash.murmur128(seed)`](non-cryptographic.md#murmur128) | Utf8 | UInt128 | MurmurHash3, x64 128-bit variant. |
-| [`nchash.farmhash32()`](non-cryptographic.md#farmhash32) | Utf8 | UInt32 | FarmHash `fingerprint32`. |
-| [`nchash.farmhash64()`](non-cryptographic.md#farmhash64) | Utf8 | UInt64 | FarmHash `fingerprint64`. |
-| [`nchash.cityhash32()`](non-cryptographic.md#cityhash32) | Utf8 | UInt32 | CityHash `CityHash32`. |
-| [`nchash.cityhash64(seed)`](non-cryptographic.md#cityhash64) | Utf8 | UInt64 | CityHash `CityHash64`, or `CityHash64WithSeed` when given a seed. |
-| [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8 | UInt128 | CityHash `CityHash128`. |
-| [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8 | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
-| [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8 | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
-| [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8 | UInt128 | GxHash with 128-bit output. Needs a CPU with AES instructions. |
-| [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
-| [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8 | Utf8 | SHA-1. |
+| [`nchash.xxhash32(seed)`](non-cryptographic.md#xxhash32) | Utf8, Binary | UInt32 | XXH32. |
+| [`nchash.xxhash64(seed)`](non-cryptographic.md#xxhash64) | Utf8, Binary | UInt64 | XXH64. |
+| [`nchash.xxh3_64(seed)`](non-cryptographic.md#xxh3_64) | Utf8, Binary | UInt64 | XXH3 with 64-bit output. |
+| [`nchash.xxh3_128(seed)`](non-cryptographic.md#xxh3_128) | Utf8, Binary | UInt128 | XXH3 with 128-bit output. |
+| [`nchash.murmur32(seed)`](non-cryptographic.md#murmur32) | Utf8, Binary | UInt32 | MurmurHash3, x86 32-bit variant. |
+| [`nchash.murmur128(seed)`](non-cryptographic.md#murmur128) | Utf8, Binary | UInt128 | MurmurHash3, x64 128-bit variant. |
+| [`nchash.farmhash32()`](non-cryptographic.md#farmhash32) | Utf8, Binary | UInt32 | FarmHash `fingerprint32`. |
+| [`nchash.farmhash64()`](non-cryptographic.md#farmhash64) | Utf8, Binary | UInt64 | FarmHash `fingerprint64`. |
+| [`nchash.cityhash32()`](non-cryptographic.md#cityhash32) | Utf8, Binary | UInt32 | CityHash `CityHash32`. |
+| [`nchash.cityhash64(seed)`](non-cryptographic.md#cityhash64) | Utf8, Binary | UInt64 | CityHash `CityHash64`, or `CityHash64WithSeed` when given a seed. |
+| [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8, Binary | UInt128 | CityHash `CityHash128`. |
+| [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8, Binary | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
+| [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8, Binary | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
+| [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 | GxHash with 128-bit output. Needs a CPU with AES instructions. |
+| [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8, Binary | MD5. |
+| [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8, Binary | Utf8 | SHA-1. |
 
 ## `geohash` — geohash
 

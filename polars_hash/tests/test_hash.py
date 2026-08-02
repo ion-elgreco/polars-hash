@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -428,6 +429,41 @@ GXHASH_VECTORS = [
 ]
 
 
+_BYTE_HASHERS = [
+    ("chash", "sha2_224", {}),
+    ("chash", "sha2_256", {}),
+    ("chash", "sha2_384", {}),
+    ("chash", "sha2_512", {}),
+    ("chash", "sha3_224", {}),
+    ("chash", "sha3_256", {}),
+    ("chash", "sha3_384", {}),
+    ("chash", "sha3_512", {}),
+    ("chash", "sha3_shake128", {"length": 8}),
+    ("chash", "blake3", {}),
+    ("chash", "hmac_sha256", {"key": "secret"}),
+    ("nchash", "sha1", {}),
+    ("nchash", "md5", {}),
+    ("nchash", "wyhash", {}),
+    ("nchash", "murmur32", {}),
+    ("nchash", "murmur128", {}),
+    ("nchash", "xxhash32", {}),
+    ("nchash", "xxhash64", {}),
+    ("nchash", "xxh3_64", {}),
+    ("nchash", "xxh3_128", {}),
+    ("nchash", "farmhash32", {}),
+    ("nchash", "farmhash64", {}),
+    ("nchash", "cityhash32", {}),
+    ("nchash", "cityhash64", {}),
+    ("nchash", "cityhash64", {"seed": 7}),
+    ("nchash", "cityhash128", {}),
+    ("nchash", "gxhash32", {}),
+    ("nchash", "gxhash64", {}),
+    ("nchash", "gxhash128", {}),
+    ("nchash", "gxhash64", {"seed": 7}),
+    ("uuidhash", "uuid5", {}),
+]
+
+
 @pytest.mark.parametrize(
     ("value", "g32", "g64", "g128", "g64_seeded"),
     GXHASH_VECTORS,
@@ -503,6 +539,39 @@ def test_gxhash_rejects_a_non_string_column(hash_fn):
 
     with pytest.raises(ComputeError, match="expected `String`"):
         df.select(getattr(plh.col("literal").nchash, hash_fn)())
+
+
+@pytest.mark.parametrize(
+    ("namespace", "method", "kwargs"),
+    _BYTE_HASHERS,
+    ids=[f"{m}{sorted(k)}" for _, m, k in _BYTE_HASHERS],
+)
+def test_binary_input_hashes_like_the_same_utf8_bytes(namespace, method, kwargs):
+    """A hash reads bytes, so the dtype holding them may not change the digest."""
+    df = pl.DataFrame({"s": ["hello_world", None], "b": [b"hello_world", None]})
+
+    result = df.select(
+        s=getattr(getattr(plh.col("s"), namespace), method)(**kwargs),
+        b=getattr(getattr(plh.col("b"), namespace), method)(**kwargs),
+    )
+
+    assert_series_equal(result["s"], result["b"], check_names=False)
+
+
+def test_binary_input_takes_bytes_that_are_not_utf8():
+    """The reason Binary is worth accepting: these bytes have no string to stand in."""
+    df = pl.DataFrame({"b": [b"\xff\xfe\x00"]})
+
+    result = df.select(plh.col("b").chash.sha2_256())
+
+    assert result.item() == hashlib.sha256(b"\xff\xfe\x00").hexdigest()
+
+
+def test_a_hasher_names_both_dtypes_it_accepts():
+    df = pl.DataFrame({"literal": [1, 2, 3]})
+
+    with pytest.raises(ComputeError, match="expected `String` or `Binary` input"):
+        df.select(plh.col("literal").chash.sha2_256())
 
 
 @pytest.mark.parametrize(
