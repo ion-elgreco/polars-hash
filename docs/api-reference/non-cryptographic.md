@@ -135,8 +135,7 @@ df.select(plh.col("foo").nchash.xxh3_64(seed=42))
 ## `xxh3_128(seed)` { #xxh3_128 }
 
 XXH3 with 128-bit output. The output type is `Binary`, unlike
-[`cityhash128()`](#cityhash128), which returns a `UInt128`. Changing this one would
-change the type of a value that is already in use, so it is left as it is for now.
+[`cityhash128()`](#cityhash128), which returns a `UInt128`.
 
 ```python
 df.select(plh.col("foo").nchash.xxh3_128())
@@ -257,6 +256,12 @@ Google CityHash `CityHash32`, from CityHash v1.1.1. FarmHash replaced CityHash, 
 [`farmhash32()`](#farmhash32) for new work. Use `cityhash32()` when you must get the
 same values as a different system. This expression has no seed; `CityHash32` takes none.
 
+!!! warning "Older CityHash releases give other values"
+    Every CityHash expression here gives the values of v1.1.1, the last release Google
+    published. `CityHash64` changed during the v1.0 series and `CityHash128` changed
+    after v1.0.3, so a system built on an earlier release gives a different value for
+    the same input. Check which release the other system uses before you compare.
+
 ```python
 pl.DataFrame({"foo": ["hello_world"]}).select(plh.col("foo").nchash.cityhash32())
 # 1719156559
@@ -266,9 +271,15 @@ pl.DataFrame({"foo": ["hello_world"]}).select(plh.col("foo").nchash.cityhash32()
 
 !!! note "CityHash and FarmHash agree on short input"
     FarmHash reuses CityHash for short input, so `cityhash32()` and
-    [`farmhash32()`](#farmhash32) give the same value up to 8 bytes, as do
-    [`cityhash64()`](#cityhash64) and [`farmhash64()`](#farmhash64) up to 32 bytes.
-    They part above those lengths. The equal values are not a bug.
+    [`farmhash32()`](#farmhash32) give the same value for input up to 12 bytes — the
+    example above is 11 — as do [`cityhash64()`](#cityhash64) and
+    [`farmhash64()`](#farmhash64) up to 32 bytes. They part above those lengths. The
+    equal values are not a bug.
+
+!!! note "The input is hashed as UTF-8"
+    These expressions take Utf8 and hash the UTF-8 encoding of it, so `"élève"` hashes
+    as 7 bytes, not 5 characters. A system that feeds UTF-16 or Latin-1 bytes to
+    CityHash agrees on ASCII input and disagrees on everything else.
 
 ---
 
@@ -293,23 +304,17 @@ df.select(plh.col("foo").nchash.cityhash64(seed=42))
 **Returns:** UInt64
 
 !!! warning "A seed of 0 is not the same as no seed"
-    Without a seed this expression is `CityHash64`. With one it is
+    Without a seed this expression is `CityHash64`; with one it is
     `CityHash64WithSeed`, a separate function that gives a different value for every
-    seed, `0` included. This is why the seed defaults to `None` and not to `0` as it
-    does for [`xxhash64()`](#xxhash64) and the other seeded expressions.
-
-!!! warning "Older CityHash releases give other values"
-    Every CityHash expression gives the values of v1.1.1, the last release Google
-    published. `CityHash64` changed during the v1.0 series, so a system built on an
-    earlier release gives a different value for the same input. Check which version
-    the other system uses before you compare.
+    seed, `0` included. This is why the seed defaults to `None`.
 
 ---
 
 ## `cityhash128()` { #cityhash128 }
 
 Google CityHash `CityHash128`, from CityHash v1.1.1. The output is a `UInt128`, so the
-whole hash is one integer and needs no decoding. This expression has no seed.
+whole hash is one integer and needs no decoding. `CityHash128WithSeed` is not wrapped,
+so this expression has no seed.
 
 ```python
 df.select(plh.col("foo").nchash.cityhash128())
@@ -318,10 +323,18 @@ df.select(plh.col("foo").nchash.cityhash128())
 
 **Returns:** UInt128
 
-!!! warning "`CityHash128` changed after v1.0.3"
-    This expression gives the v1.1.1 value. CityHash v1.0.2 and v1.0.3 give a
-    different one for the same input, and a system built on either will not agree
-    with this expression.
+!!! note "How the two 64-bit halves are packed"
+    C++ returns `CityHash128` as a pair. This expression packs it the way
+    `python-cityhash` does — `Uint128Low64(h) << 64 | Uint128High64(h)`, so the C++
+    *low* word is the *high* half of the integer. A system that composes the halves
+    the other way round, or that stores the raw 16 bytes, needs a word swap before
+    the values compare equal.
+
+!!! warning "`UInt128` does not leave Polars yet"
+    Polars encodes `UInt128` as a private Arrow type, so `to_arrow()` and
+    `to_pandas()` raise `ArrowInvalid` and `to_numpy()` fails on this column.
+    `write_parquet`, `write_ipc`, joins, `group_by` and sorting all work. Cast to
+    `pl.Binary` or split the halves if the column has to reach pandas or NumPy.
 
 ---
 

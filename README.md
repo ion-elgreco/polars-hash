@@ -62,7 +62,22 @@ print(result)
 ╞════════════╡
 │ 1719156559 │
 └────────────┘
+
+result = df.select(plh.col('foo').nchash.cityhash128())
+print(result)
+┌─────────────────────────────────────────┐
+│ foo                                     │
+│ ---                                     │
+│ u128                                    │
+╞═════════════════════════════════════════╡
+│ 133423608296839006301901834072762183026 │
+└─────────────────────────────────────────┘
 ```
+
+`cityhash32()` and `cityhash64()` return the values printed above for `farmhash32()`
+and `farmhash64()`. That is expected: FarmHash reuses CityHash for short input, and
+`hello_world` is 11 bytes. See
+[the CityHash reference](https://ion-elgreco.github.io/polars-hash/latest/api-reference/non-cryptographic/#cityhash32).
 
 ### Geo Hashers
 ```python
