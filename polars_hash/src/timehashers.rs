@@ -6,7 +6,9 @@ use timeharsh::timehash;
 /// the same hash, so encoding errors rather than bin to the wrong window.
 const MAX_EPOCH_SECONDS: f64 = 4_039_372_800.0;
 
-/// Past ~18 characters the f64 interval stops splitting and adds no information.
+/// Allocation guard: upstream emits one character per unit of precision, per row.
+/// The useful limit is lower and depends on the date -- the f64 interval stops
+/// splitting past ~18 characters for present-day timestamps, ~21 close to 1970.
 const MAX_PRECISION: i64 = 32;
 
 /// `before`/`after` index the hash by byte but walk it by character, so a

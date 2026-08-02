@@ -131,6 +131,10 @@ fall in the same window share a hash. Timestamps must lie between 1970-01-01 and
 2098-01-01. A higher precision means a shorter window: 10 covers about 4 seconds,
 8 about 4 minutes.
 
+Precision may be 1 to 32, but past about 18 the hash stops changing for present-day
+timestamps and the extra characters are padding. The exact point depends on the date:
+timestamps close to 1970 keep splitting to about 21, far-future ones run out sooner.
+
 ```python
 from datetime import datetime
 

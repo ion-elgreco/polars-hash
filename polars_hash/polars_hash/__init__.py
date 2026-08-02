@@ -318,6 +318,9 @@ class TimeHashingNameSpace:
         Timestamps must fall between 1970-01-01 and 2098-01-01. Higher precision
         means a shorter window: 10 covers about 4 seconds, 8 about 4 minutes.
 
+        Precision may be 1 to 32 and defaults to 10, but past about 18 the hash stops
+        changing for present-day timestamps and the extra characters are padding.
+
         Epoch seconds may be Float64 or any integer type; Float32 cannot hold one
         closely enough to land in the right window.
         """
