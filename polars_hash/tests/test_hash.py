@@ -1870,3 +1870,67 @@ def test_encode_rows_feeds_any_hasher(namespace, method):
 
     assert result[0] == result[1]
     assert result[0] != result[2]
+
+
+def test_hash_rows_adds_a_fingerprint_column():
+    df = pl.DataFrame({"a": [1, 1, 2], "b": [[1], [1], [2]]})
+
+    result = plh.hash_rows(df)
+
+    assert result.columns == ["a", "b", "hash"]
+    assert result["hash"][0] == result["hash"][1] != result["hash"][2]
+
+
+def test_hash_rows_is_the_expression_it_says_it_is():
+    df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+
+    assert_frame_equal(
+        plh.hash_rows(df),
+        df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash")),
+    )
+
+
+def test_hash_rows_keeps_a_lazyframe_lazy():
+    frame = plh.hash_rows(pl.LazyFrame({"a": [1]}))
+
+    assert isinstance(frame, pl.LazyFrame)
+    assert frame.collect()["hash"].dtype == pl.UInt64
+
+
+def test_hash_rows_reads_only_the_subset():
+    df = pl.DataFrame({"a": [1, 1], "b": ["x", "y"]})
+
+    result = plh.hash_rows(df, "a")
+
+    assert result["hash"][0] == result["hash"][1]
+
+
+@pytest.mark.parametrize(
+    ("algorithm", "kwargs", "dtype"),
+    [
+        ("sha2_256", {}, pl.Utf8),
+        ("hmac_sha256", {"key": "secret"}, pl.Utf8),
+        ("cityhash128", {}, pl.UInt128),
+        ("uuid5", {}, pl.Utf8),
+    ],
+)
+def test_hash_rows_reaches_every_namespace(algorithm, kwargs, dtype):
+    df = pl.DataFrame({"a": [1]})
+
+    result = plh.hash_rows(df, algorithm=algorithm, name="h", **kwargs)
+
+    assert result["h"].dtype == dtype
+
+
+def test_hash_rows_names_the_column():
+    df = pl.DataFrame({"a": [1]})
+
+    assert plh.hash_rows(df, name="row_id").columns == ["a", "row_id"]
+
+
+@pytest.mark.parametrize("algorithm", ["nope", "_expr"])
+def test_hash_rows_rejects_an_algorithm_it_has_no_hasher_for(algorithm):
+    df = pl.DataFrame({"a": [1]})
+
+    with pytest.raises(ValueError, match="unknown algorithm"):
+        plh.hash_rows(df, algorithm=algorithm)

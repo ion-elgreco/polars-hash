@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, cast, overload
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -422,4 +422,101 @@ def encode_rows(
     )
 
 
-__all__ = ["UUIDNamespace", "__version__", "col", "concat_str", "encode_rows"]
+_HASH_NAMESPACES = {
+    "chash": CryptographicHashingNameSpace,
+    "nchash": NonCryptographicHashingNameSpace,
+    "uuidhash": UUIDHashNameSpace,
+}
+
+
+def _hash_algorithm(encoded: HExpr, algorithm: str, kwargs: dict[str, Any]) -> pl.Expr:
+    """Find `algorithm` among the namespaces, so this stays one name behind them all.
+
+    Listing the algorithms here instead would be a second copy of an API that already
+    exists, and one that goes stale the next time a hasher lands.
+    """
+    if not algorithm.startswith("_"):
+        for namespace in _HASH_NAMESPACES:
+            method = getattr(getattr(encoded, namespace), algorithm, None)
+            if callable(method):
+                return method(**kwargs)
+
+    known = sorted(
+        name
+        for namespace in _HASH_NAMESPACES.values()
+        for name, member in vars(namespace).items()
+        if callable(member) and not name.startswith("_")
+    )
+    raise ValueError(f"unknown algorithm {algorithm!r}, expected one of {known}")
+
+
+@overload
+def hash_rows(
+    frame: pl.DataFrame,
+    subset: IntoExpr | Iterable[IntoExpr] | None = ...,
+    *,
+    algorithm: str = ...,
+    name: str = ...,
+    version: int = ...,
+    **kwargs: Any,
+) -> pl.DataFrame: ...
+
+
+@overload
+def hash_rows(
+    frame: pl.LazyFrame,
+    subset: IntoExpr | Iterable[IntoExpr] | None = ...,
+    *,
+    algorithm: str = ...,
+    name: str = ...,
+    version: int = ...,
+    **kwargs: Any,
+) -> pl.LazyFrame: ...
+
+
+def hash_rows(
+    frame: pl.DataFrame | pl.LazyFrame,
+    subset: IntoExpr | Iterable[IntoExpr] | None = None,
+    *,
+    algorithm: str = "xxh3_64",
+    name: str = "hash",
+    version: int = 1,
+    **kwargs: Any,
+) -> pl.DataFrame | pl.LazyFrame:
+    """Add a column holding the hash of each row.
+
+    A shorthand for [`encode_rows`][polars_hash.encode_rows] followed by a hasher::
+
+        plh.hash_rows(df)
+        df.with_columns(plh.encode_rows(pl.all()).nchash.xxh3_64().alias("hash"))
+
+    Reach for the expression instead when the hash belongs inside a larger one, and
+    for this when a whole frame needs a fingerprint column. The encoding rules are
+    the same either way, and [`encode_rows`][polars_hash.encode_rows] states them.
+
+    Args:
+        frame: The frame to fingerprint. A `LazyFrame` stays lazy.
+        subset: The columns that make up a row, all of them by default. Accepts
+            anything `pl.struct` does, selectors included.
+        algorithm: Any hasher in the `chash`, `nchash` or `uuidhash` namespaces, by
+            name.
+        name: The name of the column to add. An existing column of that name is
+            replaced.
+        version: The encoding to write. Version 1 is frozen.
+        **kwargs: Arguments for the hasher, such as `key` for `hmac_sha256`.
+
+    Returns:
+        The frame with the hash column added.
+    """
+    encoded = encode_rows(pl.all() if subset is None else subset, version=version)
+    return frame.with_columns(_hash_algorithm(encoded, algorithm, kwargs).alias(name))
+
+
+__all__ = [
+    "UUIDNamespace",
+    "__version__",
+    "col",
+    "concat_str",
+    "encode_rows",
+    "hash_rows",
+]
