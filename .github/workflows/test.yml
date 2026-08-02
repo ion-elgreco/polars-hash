@@ -52,12 +52,10 @@ jobs:
           uv: 'true'
           rust-toolchain: 'true'
 
-      # The Windows runner image ships Bash and MSYS2 but no make.
       - name: Install make
         if: runner.os == 'Windows'
-        run: choco install make --no-progress -y
+        run: choco install make --version=4.4.1 --no-progress -y
 
-      - run: make install
       - run: make test
 
       # Type and lint checks are OS-independent; one leg is enough.
