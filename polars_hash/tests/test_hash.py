@@ -213,67 +213,116 @@ def test_farmhash64():
     assert_frame_equal(result, expected)
 
 
-def test_cityhash32():
-    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
-    result = df.select(plh.col("literal").nchash.cityhash32())
+# Reference values from the `cityhash` package on PyPI, which wraps the C++
+# implementation. The lengths straddle every dispatch branch, and the range where
+# CityHash and FarmHash still return the same value (<= 12 bytes for the 32-bit
+# pair, <= 32 for the 64-bit pair).
+CITYHASH_VECTORS = [
+    # value, cityhash32, cityhash64, cityhash64(seed=42), cityhash128
+    (
+        "hello_world",
+        1719156559,
+        15605398435621216523,
+        10175920941468920074,
+        133423608296839006301901834072762183026,
+    ),
+    (
+        "abcdefghijklm",
+        2011858552,
+        8550978237989882775,
+        5922989375063028602,
+        24191345147165086804460642396259579660,
+    ),
+    (
+        "the quick brown fox jumps over th",
+        1180637772,
+        16856596542782860373,
+        2679240623542055829,
+        336604998673075951095544934565492753941,
+    ),
+    (
+        "0123456789" * 10,
+        2906309322,
+        15263031703162308175,
+        4920090847931360695,
+        66910926801977979717489458583538888857,
+    ),
+    (
+        "polars-hash cityhash coverage row " * 5 + "0123456789" * 3,
+        1390292832,
+        6019340673294074119,
+        1791122867898158287,
+        246668851854637870664640075271962112941,
+    ),
+    # Hashed as its 22 UTF-8 bytes, not as 12 code points.
+    (
+        "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
+        "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
+        "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}",
+        1470863098,
+        17522264240893443485,
+        9690003126991708700,
+        20224271564307957976476495106258650914,
+    ),
+]
 
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "literal",
-                [
-                    1719156559,
-                    None,
-                    3696677242,
-                ],
-                dtype=pl.UInt32,
-            ),
-        ]
+
+@pytest.mark.parametrize(
+    ("value", "c32", "c64", "c64_seeded", "c128"),
+    CITYHASH_VECTORS,
+    ids=lambda v: None if not isinstance(v, str) else f"len{len(v.encode())}",
+)
+def test_cityhash_matches_the_reference(value, c32, c64, c64_seeded, c128):
+    df = pl.DataFrame({"literal": [value]})
+    result = df.select(
+        c32=plh.col("literal").nchash.cityhash32(),
+        c64=plh.col("literal").nchash.cityhash64(),
+        c64_seeded=plh.col("literal").nchash.cityhash64(seed=42),
+        c128=plh.col("literal").nchash.cityhash128(),
     )
 
-    assert_frame_equal(result, expected)
+    assert result.row(0) == (c32, c64, c64_seeded, c128)
 
 
-def test_cityhash64():
-    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
-    result = df.select(plh.col("literal").nchash.cityhash64())
+@pytest.mark.parametrize(
+    ("expr", "dtype", "empty"),
+    [
+        (plh.col("literal").nchash.cityhash32(), pl.UInt32, 3696677242),
+        (plh.col("literal").nchash.cityhash64(), pl.UInt64, 11160318154034397263),
+        (
+            plh.col("literal").nchash.cityhash64(seed=42),
+            pl.UInt64,
+            12207790695972129833,
+        ),
+        (
+            plh.col("literal").nchash.cityhash128(),
+            pl.UInt128,
+            82332263323914296566372529678324145705,
+        ),
+    ],
+    ids=["cityhash32", "cityhash64", "cityhash64_seeded", "cityhash128"],
+)
+def test_cityhash_null_and_empty(expr, dtype, empty):
+    df = pl.DataFrame({"literal": [None, ""]})
+    result = df.select(expr)
 
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "literal",
-                [
-                    15605398435621216523,
-                    None,
-                    11160318154034397263,
-                ],
-                dtype=pl.UInt64,
-            ),
-        ]
+    assert_frame_equal(result, pl.DataFrame(pl.Series("literal", [None, empty], dtype)))
+
+
+@pytest.mark.parametrize(
+    ("city", "farm", "shared"),
+    [("cityhash32", "farmhash32", 12), ("cityhash64", "farmhash64", 32)],
+)
+def test_cityhash_leaves_farmhash_above_the_shared_range(city, farm, shared):
+    """FarmHash reuses CityHash on short input, so only longer input tells them apart."""
+    df = pl.DataFrame({"literal": ["a" * shared, "a" * (shared + 1)]})
+    result = df.select(
+        city=getattr(plh.col("literal").nchash, city)(),
+        farm=getattr(plh.col("literal").nchash, farm)(),
     )
 
-    assert_frame_equal(result, expected)
-
-
-def test_cityhash64_seeded():
-    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
-    result = df.select(plh.col("literal").nchash.cityhash64(seed=42))
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "literal",
-                [
-                    10175920941468920074,
-                    None,
-                    12207790695972129833,
-                ],
-                dtype=pl.UInt64,
-            ),
-        ]
-    )
-
-    assert_frame_equal(result, expected)
+    assert result["city"][0] == result["farm"][0]
+    assert result["city"][1] != result["farm"][1]
 
 
 def test_cityhash64_seed_zero_is_not_unseeded():
@@ -286,6 +335,23 @@ def test_cityhash64_seed_zero_is_not_unseeded():
 
     assert result["seeded"].to_list() == [14430004998761670210]
     assert result["unseeded"].to_list() == [15605398435621216523]
+
+
+def test_cityhash64_seed_zero_on_an_empty_string_is_zero():
+    """`CityHash64("") == k2`, so `HashLen16(k2 - k2, 0)` really is 0."""
+    df = pl.DataFrame({"literal": [""]})
+
+    assert df.select(plh.col("literal").nchash.cityhash64(seed=0)).item() == 0
+
+
+@pytest.mark.parametrize(
+    "hash_fn", ["cityhash32", "cityhash64", "cityhash128", "farmhash32", "farmhash64"]
+)
+def test_cityhash_rejects_a_non_string_column(hash_fn):
+    df = pl.DataFrame({"literal": [1, 2, 3]})
+
+    with pytest.raises(ComputeError, match="expected `String`"):
+        df.select(getattr(plh.col("literal").nchash, hash_fn)())
 
 
 # Expected values come from the reference implementations: the `cityhash` and
@@ -315,27 +381,6 @@ def test_seed_accepts_the_whole_u64_range(hash_fn, seed, expected):
 def test_seed_outside_the_u64_range_errors(hash_fn, seed):
     with pytest.raises(ValueError, match="seed must fit in a u64"):
         getattr(plh.col("literal").nchash, hash_fn)(seed=seed)
-
-
-def test_cityhash128():
-    df = pl.DataFrame({"literal": ["hello_world", None, ""]})
-    result = df.select(plh.col("literal").nchash.cityhash128())
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "literal",
-                [
-                    133423608296839006301901834072762183026,
-                    None,
-                    82332263323914296566372529678324145705,
-                ],
-                dtype=pl.UInt128,
-            ),
-        ]
-    )
-
-    assert_frame_equal(result, expected)
 
 
 def test_geohash():
