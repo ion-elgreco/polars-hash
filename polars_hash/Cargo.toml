@@ -17,7 +17,6 @@ polars = { version = "0.54.4", features = [
     "dtype-u16",
     "dtype-u128",
 ] }
-polars-arrow = { version = "0.54.4" }
 pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
 pyo3-polars = { version = "0.27", features = ["derive", "dtype-struct", "dtype-decimal"] }
 serde = { version = "1", features = ["derive"] }
