@@ -51,12 +51,14 @@ runs:
         python-version: ${{ inputs.python-version }}
         architecture: ${{ inputs.python-architecture }}
 
-    # Run from polars_hash so rustup picks up its rust-toolchain file.
+    # Run from polars_hash so rustup picks up its rust-toolchain file. The file
+    # pins an exact version, which the runner image does not always preinstall,
+    # so install it — `rustup show` no longer does that as of rustup 1.28.
     - name: Set up Rust
       if: inputs.rust-toolchain == 'true'
       shell: bash
       working-directory: polars_hash
-      run: rustup show
+      run: rustup toolchain install --no-self-update
 
     # maturin-action exports only the retired v1 cache variables, so as of
     # v1.51.0 container builds are 100% miss without this step's
