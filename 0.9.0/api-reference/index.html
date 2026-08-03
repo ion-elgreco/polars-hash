@@ -1,0 +1,1243 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Stable non-cryptographic and cryptographic hashing functions for Polars">
+      
+      
+      
+        <link rel="canonical" href="https://ion-elgreco.github.io/polars-hash/0.9.0/api-reference/">
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="./cryptographic/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.52">
+    
+    
+      
+        <title>API Reference - polars-hash</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.8b3b5a67.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="polars-hash" class="md-header__button md-logo" aria-label="polars-hash" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            polars-hash
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ion-elgreco/polars-hash" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    polars-hash
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="./.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="././" class="md-tabs__link">
+          
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="polars-hash" class="md-nav__button md-logo" aria-label="polars-hash" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    polars-hash
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ion-elgreco/polars-hash" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    polars-hash
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting Started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="././" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API Reference
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  API Reference
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./cryptographic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  chash — Cryptographic
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./non-cryptographic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  nchash — Non-cryptographic
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./geohash/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  geohash — Geohash
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./h3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  h3 — H3 index
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./timehash/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  timehash — Time bucket
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./uuid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  uuidhash — UUID
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./rows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rows — whole-row hashing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chash-cryptographic" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>chash</code> — cryptographic
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nchash-non-cryptographic" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>nchash</code> — non-cryptographic
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#geohash-geohash" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>geohash</code> — geohash
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#h3-h3-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>h3</code> — H3 index
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timehash-time-bucket" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>timehash</code> — time bucket
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uuidhash-uuid-v5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>uuidhash</code> — UUID v5
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rows-whole-row-hashing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rows — whole-row hashing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conventions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
+<p>This page lists everything public in polars-hash. One import registers the six
+namespaces on <code>pl.Expr</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">polars_hash</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plh</span>
+</code></pre></div>
+<p><code>plh.col</code> and <code>plh.concat_str</code> are typed wrappers around <code>pl.col</code> and <code>pl.concat_str</code>.
+They declare these namespaces. Refer to
+<a href="../getting-started/#plh-col-vs-pl-col"><code>plh.col</code> and <code>pl.col</code></a>.</p>
+<h2 id="chash-cryptographic"><code>chash</code> — cryptographic<a class="headerlink" href="#chash-cryptographic" title="Permanent link">&para;</a></h2>
+<p>Each expression accepts Utf8 or Binary. Each one gives Utf8 in hexadecimal, unless
+the table shows a different type. Full page: <a href="cryptographic/">chash</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="cryptographic/#sha2_224"><code>chash.sha2_224()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA-224 from the SHA-2 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha2_256"><code>chash.sha2_256()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA-256 from the SHA-2 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha2_384"><code>chash.sha2_384()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA-384 from the SHA-2 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha2_512"><code>chash.sha2_512()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA-512 from the SHA-2 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha3_224"><code>chash.sha3_224()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA3-224 from the SHA-3 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha3_256"><code>chash.sha3_256()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA3-256 from the SHA-3 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha3_384"><code>chash.sha3_384()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA3-384 from the SHA-3 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha3_512"><code>chash.sha3_512()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA3-512 from the SHA-3 family.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha3_shake128"><code>chash.sha3_shake128(length)</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHAKE128 extendable-output function. Gives <code>length</code> bytes.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#blake3"><code>chash.blake3()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>BLAKE3 with 256-bit output.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#hmac_sha256"><code>chash.hmac_sha256(key)</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>Keyed HMAC-SHA256.</td>
+</tr>
+<tr>
+<td><a href="cryptographic/#sha256"><code>chash.sha256()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td><strong>Deprecated.</strong> Alias of <code>sha2_256()</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="nchash-non-cryptographic"><code>nchash</code> — non-cryptographic<a class="headerlink" href="#nchash-non-cryptographic" title="Permanent link">&para;</a></h2>
+<p>Full page: <a href="non-cryptographic/">nchash</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="non-cryptographic/#wyhash"><code>nchash.wyhash()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>wyhash. The seed is always 0.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#xxhash32"><code>nchash.xxhash32(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>XXH32.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#xxhash64"><code>nchash.xxhash64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>XXH64.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#xxh3_64"><code>nchash.xxh3_64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>XXH3 with 64-bit output.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#xxh3_128"><code>nchash.xxh3_128(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128</td>
+<td>XXH3 with 128-bit output.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#murmur32"><code>nchash.murmur32(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>MurmurHash3, x86 32-bit variant.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#murmur128"><code>nchash.murmur128(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128</td>
+<td>MurmurHash3, x64 128-bit variant.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#farmhash32"><code>nchash.farmhash32()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>FarmHash <code>fingerprint32</code>.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#farmhash64"><code>nchash.farmhash64()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>FarmHash <code>fingerprint64</code>.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#cityhash32"><code>nchash.cityhash32()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>CityHash <code>CityHash32</code>.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#cityhash64"><code>nchash.cityhash64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>CityHash <code>CityHash64</code>, or <code>CityHash64WithSeed</code> when given a seed.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#cityhash128"><code>nchash.cityhash128()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128</td>
+<td>CityHash <code>CityHash128</code>.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#gxhash32"><code>nchash.gxhash32(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>GxHash with 32-bit output. Needs a CPU with AES instructions.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#gxhash64"><code>nchash.gxhash64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>GxHash with 64-bit output. Needs a CPU with AES instructions.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#gxhash128"><code>nchash.gxhash128(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128</td>
+<td>GxHash with 128-bit output. Needs a CPU with AES instructions.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#md5"><code>nchash.md5()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>MD5.</td>
+</tr>
+<tr>
+<td><a href="non-cryptographic/#sha1"><code>nchash.sha1()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>SHA-1.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="geohash-geohash"><code>geohash</code> — geohash<a class="headerlink" href="#geohash-geohash" title="Permanent link">&para;</a></h2>
+<p>Full page: <a href="geohash/">geohash</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="geohash/#from_coords"><code>geohash.from_coords(len)</code></a></td>
+<td>Struct</td>
+<td>Utf8</td>
+<td>Encodes <code>{latitude, longitude}</code> to a geohash of <code>len</code> characters. <code>len</code> is 1 to 12.</td>
+</tr>
+<tr>
+<td><a href="geohash/#to_coords"><code>geohash.to_coords()</code></a></td>
+<td>Utf8</td>
+<td>Struct</td>
+<td>Decodes a geohash to <code>{longitude, latitude}</code>.</td>
+</tr>
+<tr>
+<td><a href="geohash/#neighbors"><code>geohash.neighbors()</code></a></td>
+<td>Utf8</td>
+<td>Struct</td>
+<td>Gives the eight adjacent geohashes: <code>n</code>, <code>ne</code>, <code>e</code>, <code>se</code>, <code>s</code>, <code>sw</code>, <code>w</code>, <code>nw</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="h3-h3-index"><code>h3</code> — H3 index<a class="headerlink" href="#h3-h3-index" title="Permanent link">&para;</a></h2>
+<p>Full page: <a href="h3/">h3</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="h3/#from_coords"><code>h3.from_coords(len)</code></a></td>
+<td>Struct</td>
+<td>Utf8</td>
+<td>Encodes <code>{latitude, longitude}</code> to an H3 cell index at resolution <code>len</code>. <code>len</code> is 1 to 15.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="timehash-time-bucket"><code>timehash</code> — time bucket<a class="headerlink" href="#timehash-time-bucket" title="Permanent link">&para;</a></h2>
+<p>Full page: <a href="timehash/">timehash</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="timehash/#from_datetime"><code>timehash.from_datetime(precision, strict)</code></a></td>
+<td>Datetime, Date, epoch seconds</td>
+<td>Utf8</td>
+<td>Encodes an instant to the timehash of the window that holds it. <code>precision</code> is 1 to 32.</td>
+</tr>
+<tr>
+<td><a href="timehash/#to_datetime"><code>timehash.to_datetime()</code></a></td>
+<td>Utf8</td>
+<td>Datetime (UTC)</td>
+<td>Decodes a timehash to the midpoint of its window.</td>
+</tr>
+<tr>
+<td><a href="timehash/#neighbors"><code>timehash.neighbors()</code></a></td>
+<td>Utf8</td>
+<td>Struct</td>
+<td>Gives the preceding and succeeding hash: <code>before</code>, <code>after</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="uuidhash-uuid-v5"><code>uuidhash</code> — UUID v5<a class="headerlink" href="#uuidhash-uuid-v5" title="Permanent link">&para;</a></h2>
+<p>Full page: <a href="uuid/">uuidhash</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="uuid/#uuid5"><code>uuidhash.uuid5(namespace)</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>Makes a UUID v5 in a standard or a custom namespace.</td>
+</tr>
+<tr>
+<td><a href="uuid/#uuid5_concat"><code>uuidhash.uuid5_concat(other, default)</code></a></td>
+<td>Utf8</td>
+<td>Utf8</td>
+<td>Concatenates two columns and makes a UUID v5 in the DNS namespace.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="rows-whole-row-hashing">Rows — whole-row hashing<a class="headerlink" href="#rows-whole-row-hashing" title="Permanent link">&para;</a></h2>
+<p>This is a function on <code>plh</code>. It is not an expression in a namespace. It hashes a full
+row, and a hash of the joined columns cannot do this. Full page: <a href="rows/">rows</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Input</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="rows/#hash_rows"><code>plh.hash_rows(exprs, version)</code></a></td>
+<td>Any columns</td>
+<td>Binary</td>
+<td>Changes each row into bytes that no other row can make, for use with any hasher above.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h2>
+<p>These rules apply to all the expressions above.</p>
+<ul>
+<li><strong>Elementwise.</strong> Each expression has <code>is_elementwise=True</code>. You can use it in
+  <code>select</code>, in <code>with_columns</code>, in <code>group_by(...).agg</code>, and in streaming mode. Polars
+  can also divide the data into chunks and change the order of operations.</li>
+<li><strong>Null values.</strong> A null input gives a null output. The expression does not hash a
+  substitute value. <a href="rows/#hash_rows"><code>hash_rows</code></a> is the exception. A null is
+  one of the values of a row, and therefore a row with a null also has a hash. The
+  rules for the scalar arguments are different: <code>length</code>, <code>key</code>, <code>namespace</code>,
+  <code>default</code>, <code>len</code> and <code>precision</code> must not be null, and neither may <code>seed</code> — except
+  on <a href="non-cryptographic/#cityhash64"><code>cityhash64()</code></a>, where <code>seed=None</code> is how you
+  ask for the unseeded algorithm.</li>
+<li><strong>Output name.</strong> The output column has the same name as the input column. To keep
+  both columns, use <code>.alias()</code>. <a href="rows/#hash_rows"><code>hash_rows</code></a> reads more than one
+  column, and it keeps the name of the first, as the polars <code>*_horizontal</code> expressions
+  do.</li>
+<li><strong>Object columns.</strong> Polars sends an <code>Object</code> column to a plugin as <code>Binary</code>, and it
+  keeps no mark to identify the two. Therefore a hasher reads the eight bytes of the
+  CPython pointer and not the value. These bytes change with each run. The digest is
+  not repeatable, and two equal objects give two different digests. Change an <code>Object</code>
+  column to a usual data type before you hash it. <a href="rows/#hash_rows"><code>hash_rows</code></a>
+  rejects such a column.</li>
+<li><strong>Incorrect input type.</strong> The expression raises an error when the input type is not
+  permitted. This occurs when Polars collects the data, not when you build the
+  expression. All errors from the plugin become
+  <code>polars.exceptions.ComputeError</code> in Python. The message starts with <code>the plugin
+  failed with message:</code>.</li>
+<li><strong>Stability.</strong> The same input and the same arguments always give the same output.
+  This does not change between polars-hash releases or Polars releases. The exception is
+  <a href="non-cryptographic/#gxhash64">GxHash</a>, whose values hold within one major version of
+  the algorithm. polars-hash pins that version, so only a release that says so can move
+  them.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.copy","content.code.annotate","navigation.sections","navigation.expand","navigation.indexes","search.highlight","search.share","toc.follow","navigation.tabs","navigation.tabs.sticky","navigation.top"],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ed145cee.min.js"></script>
+      
+    
+  </body>
+</html>
