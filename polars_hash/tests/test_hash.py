@@ -1930,6 +1930,51 @@ def test_hash_rows_names_the_output_after_the_first_column():
     assert df.with_columns(plh.hash_rows(pl.all())).columns == ["foo", "bar"]
 
 
+@pytest.mark.parametrize(
+    ("columns", "name"),
+    [
+        pytest.param(lambda: (pl.col("foo"), pl.col("foo")), "foo", id="column twice"),
+        pytest.param(lambda: (["foo", "foo"],), "foo", id="one name twice, in a list"),
+        pytest.param(
+            lambda: (
+                pl.col("foo").str.to_uppercase(),
+                pl.col("foo").str.to_lowercase(),
+            ),
+            "foo",
+            id="two results of one column",
+        ),
+        pytest.param(
+            lambda: (pl.col("bar"), pl.col("bar").sum()), "bar", id="column and sum"
+        ),
+        pytest.param(lambda: (pl.lit(1), pl.lit(2)), "literal", id="two literals"),
+        pytest.param(lambda: (pl.col("foo"), pl.all()), "foo", id="column, wildcard"),
+        pytest.param(lambda: (pl.all(), pl.col("foo")), "foo", id="wildcard, column"),
+    ],
+)
+def test_hash_rows_takes_columns_that_make_one_name(columns, name):
+    """The struct that carries a row needs one name for each field, but the encoder
+    does not read the names. Therefore the caller must not have to give an alias."""
+    df = pl.DataFrame({"foo": ["Xy"], "bar": [1]})
+
+    result = df.select(plh.hash_rows(*columns()))
+
+    assert result.columns == [name]
+    assert result.to_series()[0] is not None
+
+
+def test_hash_rows_reads_the_values_of_a_repeated_column_two_times():
+    """A repeated column is two fields of the row, not one. The unique name that
+    `hash_rows` gives each field must not change the bytes of the value."""
+    df = pl.DataFrame({"foo": ["Xy"]})
+
+    twice = df.select(plh.hash_rows(pl.col("foo"), pl.col("foo"))).to_series()[0]
+    once = df.select(plh.hash_rows(pl.col("foo"))).to_series()[0]
+    pair = pl.DataFrame({"a": ["Xy"], "b": ["Xy"]})
+
+    assert twice != once
+    assert twice == _encode(pair)[0]
+
+
 def test_hash_rows_rejects_an_object_column():
     """Polars sends an Object column to a plugin as Binary. A hasher then reads the
     CPython pointers. The struct that contains a row rejects such a column."""

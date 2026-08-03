@@ -385,6 +385,37 @@ col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
+def _row_fields(
+    exprs: IntoExpr | Iterable[IntoExpr],
+    more_exprs: tuple[IntoExpr, ...],
+) -> list[IntoExpr]:
+    """Gives the columns of a row one name each.
+
+    A struct needs one name for each field, but a row does not. `hash_rows(col("a"),
+    col("a"))` and two columns that make one name are both a row of two values. This
+    function adds a suffix to each column after the first. The encoder does not read
+    the names, and therefore the suffix does not change the bytes.
+
+    The first column keeps its name, because the name of the output comes from it.
+    """
+    if isinstance(exprs, (str, pl.Expr, pl.Series)) or not isinstance(exprs, Iterable):
+        columns: list[IntoExpr] = [exprs]
+    else:
+        columns = list(exprs)
+    columns += more_exprs
+
+    # `pl.col` and `pl.lit` accept the same values as the struct. A wildcard needs
+    # `name.suffix`, because `alias` gives all its columns one name.
+    named: list[IntoExpr] = columns[:1]
+    for position, column in enumerate(columns[1:], start=1):
+        if isinstance(column, str):
+            column = pl.col(column)
+        elif not isinstance(column, pl.Expr):
+            column = pl.lit(column)
+        named.append(column.name.suffix(f"__polars_hash_{position}"))
+    return named
+
+
 def hash_rows(
     exprs: IntoExpr | Iterable[IntoExpr],
     *more_exprs: IntoExpr,
@@ -424,7 +455,10 @@ def hash_rows(
     # and each `*_horizontal` expression do. A constant name such as `row` would also
     # replace a column, and it would replace one that the caller did not expect.
     return cast(
-        HExpr, _plugin("encode_rows", pl.struct(exprs, *more_exprs), version=version)
+        HExpr,
+        _plugin(
+            "encode_rows", pl.struct(_row_fields(exprs, more_exprs)), version=version
+        ),
     )
 
 
