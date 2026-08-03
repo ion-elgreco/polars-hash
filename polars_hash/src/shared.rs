@@ -1,4 +1,57 @@
+use polars::chunked_array::ops::arity::{unary_elementwise, unary_elementwise_values};
 use polars::prelude::*;
+
+/// Runs `op` on the bytes of each value of a String column or a Binary column.
+///
+/// A hash reads bytes. Therefore the two data types are different only in the method
+/// to read an element. This function keeps that match in one place. Each expression
+/// stays one line, all of them give the same error message, and `encode_rows` can send
+/// its bytes to any of them.
+///
+/// A column with nulls uses the walk that omits them. The `_values` walk reads each
+/// slot, and therefore a column of nulls cost as much as a full column. The `_values`
+/// walk is still the faster walk if there are no nulls. Both walks are here.
+pub fn hash_bytes<V, F, R>(s: &Series, op: F) -> PolarsResult<ChunkedArray<V>>
+where
+    V: PolarsDataType,
+    F: Fn(&[u8]) -> R,
+    V::Array: ArrayFromIter<R> + ArrayFromIter<Option<R>>,
+{
+    match (s.dtype(), s.null_count() == 0) {
+        (DataType::String, true) => Ok(unary_elementwise_values(s.str()?, |v: &str| {
+            op(v.as_bytes())
+        })),
+        (DataType::String, false) => Ok(unary_elementwise(s.str()?, |v: Option<&str>| {
+            v.map(|v| op(v.as_bytes()))
+        })),
+        (DataType::Binary, true) => Ok(unary_elementwise_values(s.binary()?, &op)),
+        (DataType::Binary, false) => Ok(unary_elementwise(s.binary()?, |v: Option<&[u8]>| {
+            v.map(&op)
+        })),
+        (dtype, _) => polars_bail!(
+            InvalidOperation: "expected `String` or `Binary` input, got `{}`", dtype
+        ),
+    }
+}
+
+/// The equivalent of [`hash_bytes`] for a digest in hexadecimal.
+///
+/// `op` writes to a buffer that each row uses again. It does not return a `String`.
+/// Therefore a digest needs no memory of its own.
+pub fn hash_bytes_into_string<F>(s: &Series, mut op: F) -> PolarsResult<StringChunked>
+where
+    F: FnMut(&[u8], &mut std::string::String),
+{
+    match s.dtype() {
+        DataType::String => Ok(s
+            .str()?
+            .apply_into_string_amortized(|v, out| op(v.as_bytes(), out))),
+        DataType::Binary => Ok(s.binary()?.apply_into_string_amortized(op)),
+        dtype => polars_bail!(
+            InvalidOperation: "expected `String` or `Binary` input, got `{}`", dtype
+        ),
+    }
+}
 
 /// Coerce an integer argument to Int64. `_length_expr` already casts on the Python
 /// side, so this only bites callers using `register_plugin_function` directly -- but

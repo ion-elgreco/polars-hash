@@ -55,57 +55,48 @@ class CryptographicHashingNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
 
-    def sha256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
-        warnings.warn(
-            "Call to deprecated method chash.sha256. Use chash.sha2_256() instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        return _plugin("sha2_256", self._expr)
-
     def sha2_256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-2 family."""
         return _plugin("sha2_256", self._expr)
 
     def sha2_512(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha512 from SHA-2 family."""
         return _plugin("sha2_512", self._expr)
 
     def sha2_384(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha384 from SHA-2 family."""
         return _plugin("sha2_384", self._expr)
 
     def sha2_224(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-2 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha224 from SHA-2 family."""
         return _plugin("sha2_224", self._expr)
 
     def sha3_256(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha256 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-3 family."""
         return _plugin("sha3_256", self._expr)
 
     def sha3_512(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha512 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha512 from SHA-3 family."""
         return _plugin("sha3_512", self._expr)
 
     def sha3_384(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha384 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha384 from SHA-3 family."""
         return _plugin("sha3_384", self._expr)
 
     def sha3_224(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha224 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha224 from SHA-3 family."""
         return _plugin("sha3_224", self._expr)
 
     def sha3_shake128(self, *, length: int) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with shake128 from SHA-3 family."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with shake128 from SHA-3 family."""
         return _plugin("sha3_shake128", self._expr, length=length)
 
     def blake3(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with blake3."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with blake3."""
         return _plugin("blake3", self._expr)
 
     def hmac_sha256(self, *, key: str) -> pl.Expr:
-        """Takes Utf8 as input and returns hex-encoded HMAC-SHA256 string."""
+        """Takes Utf8 or Binary as input and returns hex-encoded HMAC-SHA256 string."""
         return _plugin("hmac_sha256", self._expr, key=key)
 
 
@@ -115,55 +106,55 @@ class NonCryptographicHashingNameSpace:
         self._expr = expr
 
     def wyhash(self) -> pl.Expr:
-        """Takes Bytes or Utf8 as input and returns uint64 hash with wyhash."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with wyhash."""
         return _plugin("wyhash", self._expr)
 
     def sha1(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with sha1."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with sha1."""
         return _plugin("sha1", self._expr)
 
     def md5(self) -> pl.Expr:
-        """Takes Utf8 as input and returns utf8 hash with md5."""
+        """Takes Utf8 or Binary as input and returns utf8 hash with md5."""
         return _plugin("md5", self._expr)
 
     def murmur32(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with murmur32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with murmur32."""
         return _plugin("murmur32", self._expr, seed=seed)
 
     def murmur128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with murmur128."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with murmur128."""
         return _plugin("murmur128", self._expr, seed=seed)
 
     def xxhash32(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with xxhash32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with xxhash32."""
         return _plugin("xxhash32", self._expr, seed=seed)
 
     def xxhash64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with xxhash64."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with xxhash64."""
         return _plugin("xxhash64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with XXH3 64bit."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with XXH3 64bit."""
         return _plugin("xxh3_64", self._expr, seed=_encode_u64_seed(seed))
 
     def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with XXH3 128bit."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with XXH3 128bit."""
         return _plugin("xxh3_128", self._expr, seed=_encode_u64_seed(seed))
 
     def farmhash32(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with FarmHash fingerprint32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with FarmHash fingerprint32."""
         return _plugin("farmhash32", self._expr)
 
     def farmhash64(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with FarmHash fingerprint64."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with FarmHash fingerprint64."""
         return _plugin("farmhash64", self._expr)
 
     def cityhash32(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with CityHash32."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with CityHash32."""
         return _plugin("cityhash32", self._expr)
 
     def cityhash64(self, *, seed: int | None = None) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with CityHash64.
+        """Takes Utf8 or Binary as input and returns uint64 hash with CityHash64.
 
         Without a seed this is `CityHash64`, with one `CityHash64WithSeed` — a
         different value even for `seed=0`.
@@ -174,19 +165,19 @@ class NonCryptographicHashingNameSpace:
         return _plugin("cityhash64_with_seed", self._expr, seed=_encode_u64_seed(seed))
 
     def cityhash128(self) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with CityHash128."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with CityHash128."""
         return _plugin("cityhash128", self._expr)
 
     def gxhash32(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint32 hash with GxHash."""
+        """Takes Utf8 or Binary as input and returns uint32 hash with GxHash."""
         return _plugin("gxhash32", self._expr, seed=_encode_u64_seed(seed))
 
     def gxhash64(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint64 hash with GxHash."""
+        """Takes Utf8 or Binary as input and returns uint64 hash with GxHash."""
         return _plugin("gxhash64", self._expr, seed=_encode_u64_seed(seed))
 
     def gxhash128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 as input and returns uint128 hash with GxHash."""
+        """Takes Utf8 or Binary as input and returns uint128 hash with GxHash."""
         return _plugin("gxhash128", self._expr, seed=_encode_u64_seed(seed))
 
 
@@ -283,7 +274,7 @@ class UUIDHashNameSpace:
         self._expr = expr
 
     def uuid5(self, namespace: UUIDNamespace | str = UUIDNamespace.DNS) -> pl.Expr:
-        """Generate UUID5 from string input using specified namespace.
+        """Generate UUID5 from Utf8 or Binary input using specified namespace.
 
         Args: namespace:
         UUIDNamespace.{DNS | URL | OID | X500} or a custom UUID string.
@@ -385,4 +376,81 @@ col = cast(HashColumn, pl.col)
 concat_str = cast(HashConcatStr, pl.concat_str)
 
 
-__all__ = ["UUIDNamespace", "__version__", "col", "concat_str"]
+def _row_fields(
+    exprs: IntoExpr | Iterable[IntoExpr],
+    more_exprs: tuple[IntoExpr, ...],
+) -> list[IntoExpr]:
+    """Gives the columns of a row one name each.
+
+    A struct needs one name for each field, but a row does not. `hash_rows(col("a"),
+    col("a"))` and two columns that make one name are both a row of two values. This
+    function adds a suffix to each column after the first. The encoder does not read
+    the names, and therefore the suffix does not change the bytes.
+
+    The first column keeps its name, because the name of the output comes from it.
+    """
+    if isinstance(exprs, (str, pl.Expr, pl.Series)) or not isinstance(exprs, Iterable):
+        columns: list[IntoExpr] = [exprs]
+    else:
+        columns = list(exprs)
+    columns += more_exprs
+
+    # `pl.col` and `pl.lit` accept the same values as the struct. A wildcard needs
+    # `name.suffix`, because `alias` gives all its columns one name.
+    named: list[IntoExpr] = columns[:1]
+    for position, column in enumerate(columns[1:], start=1):
+        if isinstance(column, str):
+            column = pl.col(column)
+        elif not isinstance(column, pl.Expr):
+            column = pl.lit(column)
+        named.append(column.name.suffix(f"__polars_hash_{position}"))
+    return named
+
+
+def hash_rows(
+    exprs: IntoExpr | Iterable[IntoExpr],
+    *more_exprs: IntoExpr,
+    version: int = 1,
+) -> HExpr:
+    """Changes each row into Binary, for use with any hasher in this package.
+
+    A hash of joined columns is not sufficient. The rows ``("ab", "c")`` and
+    ``("a", "bc")`` make the same string, one null makes the full row null, and a List
+    column or a Struct column has no string form. This function gives each row bytes
+    that no other row can make. A hasher then reads those bytes::
+
+        df.select(plh.hash_rows(pl.all()).chash.sha2_256())
+
+    The encoder reads the meaning of a value, not the polars storage of it. Therefore
+    an ``Int32`` and the ``Int64`` next to it make the same hash. The encoder does not
+    read the column names. Therefore a new name for a column keeps its hash, but a new
+    order of the columns does not. A null is one of the values that the encoding
+    writes. Therefore a row with a null also has a hash. The reference gives all the
+    rules.
+
+    Args:
+        exprs: The columns to encode, in the order of the row.
+        *more_exprs: More columns, as positional arguments.
+        version: The encoding to write. Version 1 does not change. To use a later
+            version, give its number.
+
+    Returns:
+        An expression that makes Binary. There is one value for each row, and no
+        value is null.
+    """
+    # A plugin cannot expand a wildcard, but `pl.concat_str` can. `pl.all()` makes a
+    # copy of the call for each column. It does not send all the columns to one call.
+    # The struct sends a full row as one input.
+    #
+    # The output keeps the name of the first column, as `pl.struct`, `pl.concat_str`
+    # and each `*_horizontal` expression do. A constant name such as `row` would also
+    # replace a column, and it would replace one that the caller did not expect.
+    return cast(
+        HExpr,
+        _plugin(
+            "encode_rows", pl.struct(_row_fields(exprs, more_exprs)), version=version
+        ),
+    )
+
+
+__all__ = ["UUIDNamespace", "__version__", "col", "concat_str", "hash_rows"]

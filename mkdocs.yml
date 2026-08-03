@@ -49,6 +49,7 @@ nav:
       - h3 — H3 index: api-reference/h3.md
       - timehash — Time bucket: api-reference/timehash.md
       - uuidhash — UUID: api-reference/uuid.md
+      - Rows — whole-row hashing: api-reference/rows.md
 
 markdown_extensions:
   - admonition

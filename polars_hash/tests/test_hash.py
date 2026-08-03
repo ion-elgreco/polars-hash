@@ -1,10 +1,11 @@
+import hashlib
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
 import polars as pl
 import pytest
-from polars.exceptions import ComputeError
+from polars.exceptions import ComputeError, InvalidOperationError
 from polars.plugins import register_plugin_function
 from polars.testing import assert_frame_equal, assert_series_equal
 
@@ -256,9 +257,11 @@ CITYHASH_VECTORS = [
     ),
     # Hashed as its 22 UTF-8 bytes, not as 12 code points.
     (
-        "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
-        "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
-        "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}",
+        (
+            "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
+            "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
+            "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}"
+        ),
         1470863098,
         17522264240893443485,
         9690003126991708700,
@@ -417,14 +420,51 @@ GXHASH_VECTORS = [
     ),
     # Hashed as its 22 UTF-8 bytes, not as 12 code points.
     (
-        "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
-        "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
-        "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}",
+        (
+            "\N{LATIN SMALL LETTER E WITH ACUTE}l\N{LATIN SMALL LETTER E WITH GRAVE}"
+            "ve-\N{CJK UNIFIED IDEOGRAPH-65E5}\N{CJK UNIFIED IDEOGRAPH-672C}"
+            "\N{CJK UNIFIED IDEOGRAPH-8A9E}-\N{PARTY POPPER}"
+        ),
         4087074997,
         9898532851104338101,
         81447829809662801153156452411172966581,
         17129501535291329433,
     ),
+]
+
+
+_BYTE_HASHERS = [
+    ("chash", "sha2_224", {}),
+    ("chash", "sha2_256", {}),
+    ("chash", "sha2_384", {}),
+    ("chash", "sha2_512", {}),
+    ("chash", "sha3_224", {}),
+    ("chash", "sha3_256", {}),
+    ("chash", "sha3_384", {}),
+    ("chash", "sha3_512", {}),
+    ("chash", "sha3_shake128", {"length": 8}),
+    ("chash", "blake3", {}),
+    ("chash", "hmac_sha256", {"key": "secret"}),
+    ("nchash", "sha1", {}),
+    ("nchash", "md5", {}),
+    ("nchash", "wyhash", {}),
+    ("nchash", "murmur32", {}),
+    ("nchash", "murmur128", {}),
+    ("nchash", "xxhash32", {}),
+    ("nchash", "xxhash64", {}),
+    ("nchash", "xxh3_64", {}),
+    ("nchash", "xxh3_128", {}),
+    ("nchash", "farmhash32", {}),
+    ("nchash", "farmhash64", {}),
+    ("nchash", "cityhash32", {}),
+    ("nchash", "cityhash64", {}),
+    ("nchash", "cityhash64", {"seed": 7}),
+    ("nchash", "cityhash128", {}),
+    ("nchash", "gxhash32", {}),
+    ("nchash", "gxhash64", {}),
+    ("nchash", "gxhash128", {}),
+    ("nchash", "gxhash64", {"seed": 7}),
+    ("uuidhash", "uuid5", {}),
 ]
 
 
@@ -503,6 +543,72 @@ def test_gxhash_rejects_a_non_string_column(hash_fn):
 
     with pytest.raises(ComputeError, match="expected `String`"):
         df.select(getattr(plh.col("literal").nchash, hash_fn)())
+
+
+@pytest.mark.parametrize(
+    ("namespace", "method", "kwargs"),
+    _BYTE_HASHERS,
+    ids=[f"{m}{sorted(k)}" for _, m, k in _BYTE_HASHERS],
+)
+def test_binary_input_hashes_like_the_same_utf8_bytes(namespace, method, kwargs):
+    """A hash reads bytes. Therefore the data type must not change the digest."""
+    df = pl.DataFrame({"s": ["hello_world", None], "b": [b"hello_world", None]})
+
+    result = df.select(
+        s=getattr(getattr(plh.col("s"), namespace), method)(**kwargs),
+        b=getattr(getattr(plh.col("b"), namespace), method)(**kwargs),
+    )
+
+    assert_series_equal(result["s"], result["b"], check_names=False)
+
+
+def test_binary_input_takes_bytes_that_are_not_utf8():
+    """This is why Binary is necessary: these bytes have no equivalent string."""
+    df = pl.DataFrame({"b": [b"\xff\xfe\x00"]})
+
+    result = df.select(plh.col("b").chash.sha2_256())
+
+    assert result.item() == hashlib.sha256(b"\xff\xfe\x00").hexdigest()
+
+
+def test_a_hasher_names_both_dtypes_it_accepts():
+    df = pl.DataFrame({"literal": [1, 2, 3]})
+
+    with pytest.raises(ComputeError, match="expected `String` or `Binary` input"):
+        df.select(plh.col("literal").chash.sha2_256())
+
+
+@pytest.mark.parametrize(
+    "series",
+    [
+        pytest.param(pl.Series([[1, 2]], dtype=pl.Array(pl.Int64, 2)), id="Array"),
+        pytest.param(
+            pl.Series([[[1.5, 2.5]]], dtype=pl.Array(pl.Array(pl.Float64, 2), 1)),
+            id="nested_Array",
+        ),
+        pytest.param(pl.Series([1.0], dtype=pl.Float16), id="Float16"),
+        pytest.param(pl.Series([1], dtype=pl.Int128), id="Int128"),
+        pytest.param(pl.Series([1], dtype=pl.UInt128), id="UInt128"),
+        pytest.param(pl.Series(["a"], dtype=pl.Categorical), id="Categorical"),
+        pytest.param(pl.Series(["a"], dtype=pl.Enum(["a"])), id="Enum"),
+        pytest.param(pl.Series([Decimal(1)], dtype=pl.Decimal(10, 2)), id="Decimal"),
+        pytest.param(pl.Series([date(2020, 1, 1)]), id="Date"),
+        pytest.param(pl.Series([time(12, 0)]), id="Time"),
+        pytest.param(pl.Series([timedelta(seconds=1)]), id="Duration"),
+        pytest.param(
+            pl.Series([datetime(2020, 1, 1)]).dt.replace_time_zone("UTC"),
+            id="Datetime_tz",
+        ),
+        pytest.param(pl.Series([{"a": 1}]), id="Struct"),
+    ],
+)
+def test_a_rejected_dtype_raises_rather_than_aborting(series):
+    """Polars makes a panic when it reads an arrow type with no data type feature.
+    A panic at the C boundary of the plugin stops the process. It raises no error."""
+    df = pl.DataFrame({"literal": series})
+
+    with pytest.raises(ComputeError, match="expected `String`"):
+        df.select(plh.col("literal").chash.sha2_256())
 
 
 # Expected values come from the reference implementations: the `cityhash`, `gxhash` and
@@ -1559,3 +1665,498 @@ def test_uuid5_concat_rejects_a_length_mismatch(default):
         df.select(
             plh.col("id").uuidhash.uuid5_concat(pl.col("side").head(2), default=default)
         )
+
+
+# `hash_rows` writes version 1 of the encoding. These bytes are frozen: a stored
+# hash outlives the release that wrote it, so a change here needs a new version.
+_ENCODINGS = [
+    ("null", pl.Series([None], dtype=pl.Int64), "0d0100"),
+    ("false", pl.Series([False]), "0d0101"),
+    ("true", pl.Series([True]), "0d0102"),
+    ("int_1", pl.Series([1], dtype=pl.Int64), "0d01030101"),
+    ("int_minus_1", pl.Series([-1], dtype=pl.Int64), "0d01030001"),
+    ("int_300", pl.Series([300], dtype=pl.Int64), "0d010301ac02"),
+    ("float_1_5", pl.Series([1.5]), "0d01043ff8000000000000"),
+    ("string_ab", pl.Series(["ab"]), "0d0105026162"),
+    ("binary_ff", pl.Series([b"\xff"]), "0d010601ff"),
+    ("date_day_1", pl.Series([date(1970, 1, 2)]), "0d01070101"),
+    ("time_1ns", pl.Series([1], dtype=pl.Int64).cast(pl.Time), "0d01080101"),
+    (
+        "datetime_1000us",
+        pl.Series([1000], dtype=pl.Int64).cast(pl.Datetime("us")),
+        "0d010901c0843d",
+    ),
+    ("duration_1us", pl.Series([timedelta(microseconds=1)]), "0d010a01e807"),
+    (
+        "decimal_1_50",
+        pl.Series([Decimal("1.50")], dtype=pl.Decimal(10, 2)),
+        "0d010b010f01",
+    ),
+    ("list_1_2", pl.Series([[1, 2]]), "0d010c02030101030102"),
+    ("struct_a_1", pl.Series([{"a": 1}]), "0d010d01030101"),
+    # One vector for each branch of the encoder. Some of them give the same bytes as
+    # a vector above, but a Null column and an unsigned integer use their own branch.
+    ("null_dtype", pl.Series([None], dtype=pl.Null), "0d0100"),
+    ("uint_1", pl.Series([1], dtype=pl.UInt64), "0d01030101"),
+    (
+        "int128_min",
+        pl.Series([-(2**127)], dtype=pl.Int128),
+        "0d01030080808080808080808080808080808080808002",
+    ),
+    (
+        "uint128_above_i128_max",
+        pl.Series([2**127], dtype=pl.UInt128),
+        "0d01030180808080808080808080808080808080808002",
+    ),
+    (
+        "uint128_max",
+        pl.Series([2**128 - 1], dtype=pl.UInt128),
+        "0d010301ffffffffffffffffffffffffffffffffffff03",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("series", "expected"),
+    [pytest.param(s, e, id=name) for name, s, e in _ENCODINGS],
+)
+def test_hash_rows_writes_the_documented_bytes(series, expected):
+    df = pl.DataFrame({"x": series})
+
+    result = df.select(plh.hash_rows(pl.all()).alias("e"))
+
+    assert result["e"][0].hex() == expected
+
+
+def _encode(df: pl.DataFrame) -> list[bytes]:
+    return df.select(plh.hash_rows(pl.all()).alias("e"))["e"].to_list()
+
+
+def test_hash_rows_separates_columns_that_concat_str_runs_together():
+    """The rows `("ab", "c")` and `("a", "bc")` make one string, but they are two rows."""
+    df = pl.DataFrame({"a": ["ab", "a"], "b": ["c", "bc"]})
+
+    assert _encode(df)[0] != _encode(df)[1]
+
+
+def test_hash_rows_hashes_a_row_holding_a_list_and_a_struct():
+    """The example from issue #43. `concat_str` cannot do this."""
+    df = pl.DataFrame(
+        {
+            "foo": ["hello_world"],
+            "baz": [42],
+            "qux": [[1, 2, 3]],
+            "quux": [{"a": 1, "b": 2}],
+        }
+    )
+
+    result = df.select(plh.hash_rows(pl.all()).chash.sha2_256())
+
+    assert (
+        result.item()
+        == "7e9187dade49806c0ae6ec85ecfad6f2f99751be1cc650a03f6f8de0b404aec4"
+    )
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        pytest.param(
+            pl.Series([1], dtype=pl.Int8),
+            pl.Series([1], dtype=pl.Int64),
+            id="int_width",
+        ),
+        pytest.param(
+            pl.Series([1], dtype=pl.UInt64),
+            pl.Series([1], dtype=pl.Int64),
+            id="int_sign",
+        ),
+        pytest.param(
+            pl.Series([1.5], dtype=pl.Float32),
+            pl.Series([1.5], dtype=pl.Float64),
+            id="float_width",
+        ),
+        pytest.param(pl.Series([-0.0]), pl.Series([0.0]), id="negative_zero"),
+        pytest.param(
+            pl.Series([1000], dtype=pl.Int64).cast(pl.Datetime("ms")),
+            pl.Series([1_000_000_000], dtype=pl.Int64).cast(pl.Datetime("ns")),
+            id="datetime_unit",
+        ),
+        pytest.param(
+            pl.Series([datetime(2020, 1, 1)]).dt.replace_time_zone("UTC"),
+            pl.Series([datetime(2020, 1, 1)]),
+            id="datetime_time_zone",
+        ),
+        pytest.param(
+            pl.Series([timedelta(seconds=1)]).cast(pl.Duration("ms")),
+            pl.Series([timedelta(seconds=1)]).cast(pl.Duration("ns")),
+            id="duration_unit",
+        ),
+        pytest.param(
+            pl.Series([Decimal("1.50")], dtype=pl.Decimal(10, 2)),
+            pl.Series([Decimal("1.500")], dtype=pl.Decimal(10, 3)),
+            id="decimal_scale",
+        ),
+        pytest.param(
+            pl.Series(["a"], dtype=pl.Categorical), pl.Series(["a"]), id="categorical"
+        ),
+        pytest.param(
+            pl.Series(["a"], dtype=pl.Enum(["z", "a"])), pl.Series(["a"]), id="enum"
+        ),
+        pytest.param(
+            pl.Series([[1, 2]], dtype=pl.Array(pl.Int64, 2)),
+            pl.Series([[1, 2]]),
+            id="array_and_list",
+        ),
+    ],
+)
+def test_hash_rows_reads_a_value_by_what_it_means(left, right):
+    """The polars storage of a value is not part of the value."""
+    assert _encode(pl.DataFrame({"x": left})) == _encode(pl.DataFrame({"x": right}))
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        pytest.param(
+            pl.Series([None], dtype=pl.Utf8), pl.Series([""]), id="null_and_empty"
+        ),
+        pytest.param(
+            pl.Series([None], dtype=pl.Int64),
+            pl.Series([0], dtype=pl.Int64),
+            id="null_and_zero",
+        ),
+        pytest.param(pl.Series([1], dtype=pl.Int64), pl.Series([1.0]), id="int_float"),
+        pytest.param(
+            pl.Series([date(2020, 1, 1)]),
+            pl.Series([datetime(2020, 1, 1)]),
+            id="date_datetime",
+        ),
+        pytest.param(
+            pl.Series([None], dtype=pl.Struct({"a": pl.Int64})),
+            pl.Series([{"a": None}], dtype=pl.Struct({"a": pl.Int64})),
+            id="null_struct_and_struct_of_nulls",
+        ),
+        pytest.param(
+            pl.Series([None], dtype=pl.List(pl.Int64)),
+            pl.Series([[]], dtype=pl.List(pl.Int64)),
+            id="null_list_and_empty_list",
+        ),
+    ],
+)
+def test_hash_rows_keeps_values_apart(left, right):
+    assert _encode(pl.DataFrame({"x": left})) != _encode(pl.DataFrame({"x": right}))
+
+
+def test_hash_rows_ignores_column_names():
+    assert _encode(pl.DataFrame({"a": [1]})) == _encode(pl.DataFrame({"zzz": [1]}))
+
+
+def test_hash_rows_reads_the_columns_in_order():
+    assert _encode(pl.DataFrame({"a": [1], "b": [2]})) != _encode(
+        pl.DataFrame({"a": [2], "b": [1]})
+    )
+
+
+def test_hash_rows_gives_a_row_with_a_null_a_hash_of_its_own():
+    """`concat_str` gives null for the full row. A null is a value."""
+    df = pl.DataFrame({"a": ["x", None, "x"], "b": ["y", "y", None]})
+
+    result = df.select(plh.hash_rows(pl.all()).chash.sha2_256().alias("h"))["h"]
+
+    assert result.null_count() == 0
+    assert result[1] != result[2]
+
+
+def test_hash_rows_is_blind_to_chunking_and_slicing():
+    """The offsets of a sliced list column do not start at zero."""
+    df = pl.DataFrame({"x": [[1, 2], [3], [4, 5, 6]], "y": ["a", "b", "c"]})
+    chunked = pl.concat([df[:1], df[1:]], rechunk=False)
+
+    assert _encode(chunked) == _encode(df)
+    assert _encode(df[1:]) == _encode(df)[1:]
+    assert _encode(df.filter(pl.col("y") != "b")) == [_encode(df)[0], _encode(df)[2]]
+
+
+def test_hash_rows_takes_named_columns_and_an_expression():
+    df = pl.DataFrame({"a": [1], "b": ["x"], "c": [True]})
+
+    assert (
+        _encode(df) == df.select(plh.hash_rows("a", "b", "c").alias("e"))["e"].to_list()
+    )
+
+
+def test_hash_rows_rejects_an_encoding_it_cannot_write():
+    df = pl.DataFrame({"a": [1]})
+
+    with pytest.raises(ComputeError, match="unknown row encoding version 2"):
+        df.select(plh.hash_rows(pl.all(), version=2))
+
+
+@pytest.mark.parametrize(
+    ("namespace", "method"),
+    [("chash", "sha2_256"), ("nchash", "xxh3_64"), ("uuidhash", "uuid5")],
+)
+def test_hash_rows_feeds_any_hasher(namespace, method):
+    df = pl.DataFrame({"a": [1, 1, 2], "b": [[1], [1], [2]]})
+
+    result = df.select(
+        getattr(getattr(plh.hash_rows(pl.all()), namespace), method)().alias("h")
+    )["h"]
+
+    assert result[0] == result[1]
+    assert result[0] != result[2]
+
+
+def test_hash_rows_stays_lazy():
+    frame = pl.LazyFrame({"a": [1]}).select(plh.hash_rows(pl.all()).nchash.xxh3_64())
+
+    assert isinstance(frame, pl.LazyFrame)
+    assert frame.collect()["a"].dtype == pl.UInt64
+
+
+def test_hash_rows_keeps_struct_shapes_apart():
+    """A struct writes its field count, as a list writes its element count. Without
+    the count, two rows with different shapes make the same bytes."""
+    wide = pl.DataFrame({"a": [{"x": 1, "y": 2}]})
+    split = pl.DataFrame({"a": [{"x": 1}], "b": [2]})
+
+    assert _encode(wide) != _encode(split)
+
+
+def test_hash_rows_does_not_read_the_field_names_of_a_struct():
+    """The encoder writes the fields of a struct in their order, as it writes the
+    columns of a row. Polars compares a struct by name. Therefore polars can read two
+    values as equal that make two hashes, and the reference gives this rule."""
+    fields = pl.Struct({"a": pl.Int64, "b": pl.Int64})
+    other = pl.Struct({"b": pl.Int64, "a": pl.Int64})
+    first = pl.DataFrame({"s": pl.Series([{"a": 2, "b": 1}], dtype=fields)})
+    second = pl.DataFrame({"s": pl.Series([{"b": 1, "a": 2}], dtype=other)})
+
+    assert first["s"].equals(second["s"])
+    assert _encode(first) != _encode(second)
+
+
+def test_hash_rows_does_not_read_the_type_inside_an_empty_list():
+    """An empty list is the count 0 and no elements. The type of the elements has no
+    part in it, and therefore two empty lists of two types make one hash."""
+    empty_ints = pl.DataFrame({"l": pl.Series([[]], dtype=pl.List(pl.Int64))})
+    empty_text = pl.DataFrame({"l": pl.Series([[]], dtype=pl.List(pl.String))})
+
+    assert _encode(empty_ints) == _encode(empty_text)
+
+
+def test_hash_rows_names_the_output_after_the_first_column():
+    """`pl.struct`, `pl.concat_str` and each `*_horizontal` expression do the same.
+    Therefore `with_columns` replaces that column, and `select` keeps its name."""
+    df = pl.DataFrame({"foo": ["a"], "bar": [1]})
+
+    assert df.select(plh.hash_rows(pl.all())).columns == ["foo"]
+    assert df.select(plh.hash_rows(pl.all()).alias("h")).columns == ["h"]
+    assert df.with_columns(plh.hash_rows(pl.all())).columns == ["foo", "bar"]
+
+
+@pytest.mark.parametrize(
+    ("columns", "name"),
+    [
+        pytest.param(lambda: (pl.col("foo"), pl.col("foo")), "foo", id="column twice"),
+        pytest.param(lambda: (["foo", "foo"],), "foo", id="one name twice, in a list"),
+        pytest.param(
+            lambda: (
+                pl.col("foo").str.to_uppercase(),
+                pl.col("foo").str.to_lowercase(),
+            ),
+            "foo",
+            id="two results of one column",
+        ),
+        pytest.param(
+            lambda: (pl.col("bar"), pl.col("bar").sum()), "bar", id="column and sum"
+        ),
+        pytest.param(lambda: (pl.lit(1), pl.lit(2)), "literal", id="two literals"),
+        pytest.param(lambda: (pl.col("foo"), pl.all()), "foo", id="column, wildcard"),
+        pytest.param(lambda: (pl.all(), pl.col("foo")), "foo", id="wildcard, column"),
+    ],
+)
+def test_hash_rows_takes_columns_that_make_one_name(columns, name):
+    """The struct that carries a row needs one name for each field, but the encoder
+    does not read the names. Therefore the caller must not have to give an alias."""
+    df = pl.DataFrame({"foo": ["Xy"], "bar": [1]})
+
+    result = df.select(plh.hash_rows(*columns()))
+
+    assert result.columns == [name]
+    assert result.to_series()[0] is not None
+
+
+def test_hash_rows_reads_the_values_of_a_repeated_column_two_times():
+    """A repeated column is two fields of the row, not one. The unique name that
+    `hash_rows` gives each field must not change the bytes of the value."""
+    df = pl.DataFrame({"foo": ["Xy"]})
+
+    twice = df.select(plh.hash_rows(pl.col("foo"), pl.col("foo"))).to_series()[0]
+    once = df.select(plh.hash_rows(pl.col("foo"))).to_series()[0]
+    pair = pl.DataFrame({"a": ["Xy"], "b": ["Xy"]})
+
+    assert twice != once
+    assert twice == _encode(pair)[0]
+
+
+def test_hash_rows_rejects_an_object_column():
+    """Polars sends an Object column to a plugin as Binary. A hasher then reads the
+    CPython pointers. The struct that contains a row rejects such a column."""
+
+    class Opaque:
+        pass
+
+    df = pl.DataFrame({"x": pl.Series([Opaque()], dtype=pl.Object), "y": [1]})
+
+    with pytest.raises(InvalidOperationError, match="nested objects are not"):
+        df.select(plh.hash_rows(pl.all()))
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda df: df.select(plh.col("x").chash.sha2_256()), id="hasher"),
+        pytest.param(lambda df: df.select(plh.hash_rows(pl.all())), id="hash_rows"),
+    ],
+)
+def test_a_zero_width_array_raises_rather_than_aborting(call):
+    """`FixedSizeListArray::try_from_ffi` makes an assertion if the child is empty.
+    This is upstream code. A user can make such a column with `list.to_array(0)`.
+    Therefore this test makes sure that the error stays catchable."""
+    df = pl.DataFrame({"x": pl.Series([[], []], dtype=pl.Array(pl.Int64, 0))})
+
+    with pytest.raises(ComputeError, match="the plugin panicked"):
+        call(df)
+
+
+@pytest.mark.parametrize(
+    "column",
+    [
+        pytest.param(
+            lambda zero_width: pl.Series(
+                [{"a": []}, {"a": []}], dtype=pl.Struct({"a": zero_width})
+            ),
+            id="in a struct",
+        ),
+        pytest.param(
+            lambda zero_width: pl.Series([[[]], [[]]], dtype=pl.List(zero_width)),
+            id="in a list",
+        ),
+    ],
+)
+def test_a_nested_zero_width_array_also_raises_rather_than_aborting(column):
+    """The same upstream assertion applies at each depth, and `Column::prepare` reads
+    a nested column with the same code. Therefore the error must stay catchable."""
+    df = pl.DataFrame({"x": column(pl.Array(pl.Int64, 0))})
+
+    with pytest.raises(ComputeError, match="the plugin panicked"):
+        df.select(plh.hash_rows(pl.all()))
+
+
+@pytest.mark.parametrize("scale", range(37))
+def test_hash_rows_strips_every_decimal_scale_the_same_way(scale):
+    """Each width must give the result of a removal of one digit at each step. The
+    unscaled value of 15 at scale s is 15 and then s zeros."""
+    df = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, scale))})
+    fifteen = pl.DataFrame({"d": pl.Series([Decimal(15)], dtype=pl.Decimal(38, 0))})
+
+    assert _encode(df) == _encode(fifteen)
+
+
+@pytest.mark.parametrize("scale", [0, 1, 18, 37])
+def test_hash_rows_reads_a_decimal_zero_as_one_value(scale):
+    df = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, scale))})
+    zero = pl.DataFrame({"d": pl.Series([Decimal(0)], dtype=pl.Decimal(38, 0))})
+
+    assert _encode(df) == _encode(zero)
+
+
+def test_hash_rows_keeps_the_widest_integers_apart():
+    """A `u128` above `i128::MAX` and `i128::MIN` have one magnitude and two signs."""
+    biggest = pl.DataFrame({"x": pl.Series([2**127], dtype=pl.UInt128)})
+    smallest = pl.DataFrame({"x": pl.Series([-(2**127)], dtype=pl.Int128)})
+
+    assert _encode(biggest) != _encode(smallest)
+
+
+def test_every_byte_hasher_says_so_in_its_docstring():
+    """`help()` and an IDE show these strings. No other test reads them, and the old
+    Utf8-only rule can stay in them."""
+    classes = {
+        "chash": plh.CryptographicHashingNameSpace,
+        "nchash": plh.NonCryptographicHashingNameSpace,
+        "uuidhash": plh.UUIDHashNameSpace,
+    }
+
+    for namespace, method, _ in _BYTE_HASHERS:
+        doc = getattr(classes[namespace], method).__doc__ or ""
+        assert "Binary" in doc, f"{namespace}.{method} does not mention Binary"
+
+
+@pytest.mark.parametrize("dtype", [pl.Float16, pl.Float32, pl.Float64])
+def test_hash_rows_widens_every_float_to_f64(dtype):
+    df = pl.DataFrame({"x": pl.Series([1.5], dtype=dtype)})
+    f64 = pl.DataFrame({"x": pl.Series([1.5], dtype=pl.Float64)})
+
+    assert _encode(df) == _encode(f64)
+
+
+_ROWS_FOR_ONE_TASK = 16_384
+"""The same number as `ROWS_FOR_ONE_TASK` in `row_encode.rs`."""
+
+
+def _task_starts(start: int, end: int) -> list[int]:
+    """Gives the first row of each task, as `encode_range` divides the rows.
+
+    That function halves a range until a part is short enough. Therefore the parts are
+    not a multiple of `_ROWS_FOR_ONE_TASK`: 40000 rows make four tasks of 10000 rows,
+    and no task begins at row 16384.
+    """
+    if end - start <= _ROWS_FOR_ONE_TASK:
+        return [start]
+    middle = start + (end - start) // 2
+    return _task_starts(start, middle) + _task_starts(middle, end)
+
+
+def test_hash_rows_splits_the_rows_without_changing_them():
+    """Above 16384 rows the encoder gives the rows to more than one thread. Each row
+    must keep the bytes that one thread gives it, and the split points are the risk."""
+    rows = 40_000
+    df = pl.DataFrame(
+        {
+            "i": range(rows),
+            "s": [f"row {i}" for i in range(rows)],
+            # The length of the list changes with the row. A constant length gives
+            # each row the same offsets, and then no offset mistake can show.
+            "l": [list(range(i % 5)) for i in range(rows)],
+            "n": [None if i % 7 == 0 else i for i in range(rows)],
+        }
+    )
+
+    split = df.select(plh.hash_rows(pl.all()).alias("e"))["e"]
+
+    starts = _task_starts(0, rows)
+    assert len(starts) > 1, "the frame is too short to need more than one task"
+
+    at_risk = {0, rows - 1}
+    for start in starts:
+        at_risk.update(at for at in (start - 1, start, start + 1) if 0 <= at < rows)
+
+    assert len(split) == rows
+    for at in sorted(at_risk):
+        one_row = df.slice(at, 1).select(plh.hash_rows(pl.all()).alias("e"))["e"]
+        assert split[at] == one_row[0], f"row {at}"
+
+
+@pytest.mark.parametrize("rows", [16_383, 16_384, 16_385, 32_769])
+def test_hash_rows_gives_the_same_bytes_at_each_size(rows):
+    """A frame of any length has to agree with the first rows of a longer one."""
+    long = pl.DataFrame({"i": range(50_000)})
+    short = pl.DataFrame({"i": range(rows)})
+
+    assert (
+        short.select(plh.hash_rows(pl.all()).alias("e"))["e"].to_list()
+        == long.select(plh.hash_rows(pl.all()).alias("e"))["e"].to_list()[:rows]
+    )

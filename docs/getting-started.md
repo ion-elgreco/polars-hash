@@ -7,7 +7,7 @@ pip install polars-hash
 ```
 
 polars-hash supplies prebuilt wheels for Linux, macOS, and Windows, on x86, x86-64 and
-aarch64. It requires `polars >= 1.34.0` and Python 3.10 or later. `plh.__version__`
+aarch64. It requires `polars >= 1.36.1` and Python 3.10 or later. `plh.__version__`
 gives the installed version.
 
 Releases up to 0.7.0 also carried `linux-armv7` and `linux-ppc64le` wheels. Those
@@ -139,15 +139,18 @@ df.select(plh.col("literal").nchash.xxhash64(seed=42))
 
 ## Binary input
 
-Most expressions accept only Utf8 input. `nchash.wyhash()`, `nchash.md5()`, and
-`chash.blake3()` also accept a `Binary` column and hash the bytes:
+Each hash expression accepts a `Binary` column and a Utf8 column. It hashes the bytes
+of both:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
 ```
 
-The other expressions raise an error when the input is not Utf8. The namespace pages
-give the permitted input type for each expression.
+A digest reads bytes. Therefore the data type does not change it, and a Utf8 column
+gives the same digest as a `Binary` column with the same UTF-8 bytes. Bytes that are
+not correct UTF-8 have no Utf8 column, and this is why the `Binary` type is necessary.
+A different data type causes an error. The `geohash`, `h3` and `timehash` expressions
+are not digests. They accept the input types that their pages give.
 
 ## Geospatial indexes
 

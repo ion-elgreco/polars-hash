@@ -1,7 +1,9 @@
 # `nchash` — Non-cryptographic hash functions
 
 polars-hash registers these expressions on `pl.Expr` as `.nchash`. They are fast and
-their output is stable. A null input gives a null output.
+their output is constant. Each expression accepts Utf8 or Binary. A hash reads bytes,
+and therefore the data type of the input does not change the digest. A null input
+gives a null output.
 
 All the examples on this page use this data:
 
@@ -15,22 +17,22 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | Expression | Input | Output | Seed |
 |------------|-------|--------|------|
 | [`wyhash()`](#wyhash) | Utf8, Binary | UInt64 | always 0 |
-| [`xxhash32(seed)`](#xxhash32) | Utf8 | UInt32 | `u32` |
-| [`xxhash64(seed)`](#xxhash64) | Utf8 | UInt64 | `u64` |
-| [`xxh3_64(seed)`](#xxh3_64) | Utf8 | UInt64 | `u64` |
-| [`xxh3_128(seed)`](#xxh3_128) | Utf8 | UInt128 | `u64` |
-| [`murmur32(seed)`](#murmur32) | Utf8 | UInt32 | `u32` |
-| [`murmur128(seed)`](#murmur128) | Utf8 | UInt128 | `u32` |
-| [`farmhash32()`](#farmhash32) | Utf8 | UInt32 | — |
-| [`farmhash64()`](#farmhash64) | Utf8 | UInt64 | — |
-| [`cityhash32()`](#cityhash32) | Utf8 | UInt32 | — |
-| [`cityhash64(seed)`](#cityhash64) | Utf8 | UInt64 | `u64`, optional |
-| [`cityhash128()`](#cityhash128) | Utf8 | UInt128 | — |
-| [`gxhash32(seed)`](#gxhash32) | Utf8 | UInt32 | `u64` |
-| [`gxhash64(seed)`](#gxhash64) | Utf8 | UInt64 | `u64` |
-| [`gxhash128(seed)`](#gxhash128) | Utf8 | UInt128 | `u64` |
+| [`xxhash32(seed)`](#xxhash32) | Utf8, Binary | UInt32 | `u32` |
+| [`xxhash64(seed)`](#xxhash64) | Utf8, Binary | UInt64 | `u64` |
+| [`xxh3_64(seed)`](#xxh3_64) | Utf8, Binary | UInt64 | `u64` |
+| [`xxh3_128(seed)`](#xxh3_128) | Utf8, Binary | UInt128 | `u64` |
+| [`murmur32(seed)`](#murmur32) | Utf8, Binary | UInt32 | `u32` |
+| [`murmur128(seed)`](#murmur128) | Utf8, Binary | UInt128 | `u32` |
+| [`farmhash32()`](#farmhash32) | Utf8, Binary | UInt32 | — |
+| [`farmhash64()`](#farmhash64) | Utf8, Binary | UInt64 | — |
+| [`cityhash32()`](#cityhash32) | Utf8, Binary | UInt32 | — |
+| [`cityhash64(seed)`](#cityhash64) | Utf8, Binary | UInt64 | `u64`, optional |
+| [`cityhash128()`](#cityhash128) | Utf8, Binary | UInt128 | — |
+| [`gxhash32(seed)`](#gxhash32) | Utf8, Binary | UInt32 | `u64` |
+| [`gxhash64(seed)`](#gxhash64) | Utf8, Binary | UInt64 | `u64` |
+| [`gxhash128(seed)`](#gxhash128) | Utf8, Binary | UInt128 | `u64` |
 | [`md5()`](#md5) | Utf8, Binary | Utf8 | — |
-| [`sha1()`](#sha1) | Utf8 | Utf8 | — |
+| [`sha1()`](#sha1) | Utf8, Binary | Utf8 | — |
 
 ---
 
@@ -53,15 +55,15 @@ df.select(plh.col("foo").nchash.wyhash())
 └──────────────────────┘
 ```
 
-This expression also accepts a `Binary` column and hashes the bytes:
+This expression hashes the bytes of a `Binary` column. Each expression on this page
+does the same:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.wyhash())  # type: ignore
 # 5112362246832359110
 ```
 
-**Input:** Utf8 or Binary. A different type raises `ComputeError`:
-`wyhash only works on strings or binary data`.
+A dtype that is neither raises ``ComputeError: expected `String` or `Binary` input``.
 
 **Returns:** UInt64
 
@@ -483,15 +485,12 @@ df.select(plh.col("foo").nchash.md5())
 # 99b1ff8f11781541f7f89f9bd41c4a17
 ```
 
-This expression also accepts a `Binary` column:
+This expression hashes the bytes of a `Binary` column:
 
 ```python
 pl.select(pl.lit(b"my_bytes").nchash.md5())  # type: ignore
 # 4445d78d11baa258c5f4ac1b8d33b8ba
 ```
-
-**Input:** Utf8 or Binary. A different type raises `ComputeError`:
-`md5 only works on strings or binary data`.
 
 **Returns:** Utf8 with 32 characters
 
@@ -505,9 +504,5 @@ SHA-1, hex-encoded.
 df.select(plh.col("foo").nchash.sha1())
 # e4ecd6fc11898565af24977e992cea0c9c7b7025
 ```
-
-**Input:** Utf8 only. A Binary column raises `ComputeError: invalid series dtype:
-expected String, got binary`. This expression has no path for bytes, but
-[`md5()`](#md5) has one.
 
 **Returns:** Utf8 with 40 characters

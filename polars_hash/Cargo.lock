@@ -1798,6 +1798,7 @@ dependencies = [
  "polars-lazy",
  "polars-ops",
  "polars-parquet",
+ "polars-plan",
  "polars-sql",
  "polars-time",
  "polars-utils",
@@ -1893,6 +1894,7 @@ dependencies = [
  "chrono",
  "either",
  "fast-float2",
+ "half",
  "hashbrown 0.16.1",
  "itoa",
  "num-traits",
@@ -2432,7 +2434,7 @@ dependencies = [
 
 [[package]]
 name = "polars_hash"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "blake3",
  "cityhash-rs",

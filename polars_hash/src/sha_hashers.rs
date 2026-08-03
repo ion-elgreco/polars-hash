@@ -4,54 +4,54 @@ use sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
 use shake::{ExtendableOutput, Shake128, Update, XofReader};
 use std::fmt::Write;
 
-pub fn sha1_hash(value: &str, output: &mut String) {
+pub fn sha1_hash(value: &[u8], output: &mut String) {
     let hash = Sha1::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha2_256_hash(value: &str, output: &mut String) {
+pub fn sha2_256_hash(value: &[u8], output: &mut String) {
     let hash = Sha256::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha2_512_hash(value: &str, output: &mut String) {
+pub fn sha2_512_hash(value: &[u8], output: &mut String) {
     let hash = Sha512::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha2_384_hash(value: &str, output: &mut String) {
+pub fn sha2_384_hash(value: &[u8], output: &mut String) {
     let hash = Sha384::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha2_224_hash(value: &str, output: &mut String) {
+pub fn sha2_224_hash(value: &[u8], output: &mut String) {
     let hash = Sha224::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha3_256_hash(value: &str, output: &mut String) {
+pub fn sha3_256_hash(value: &[u8], output: &mut String) {
     let hash = Sha3_256::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha3_512_hash(value: &str, output: &mut String) {
+pub fn sha3_512_hash(value: &[u8], output: &mut String) {
     let hash = Sha3_512::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha3_384_hash(value: &str, output: &mut String) {
+pub fn sha3_384_hash(value: &[u8], output: &mut String) {
     let hash = Sha3_384::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha3_224_hash(value: &str, output: &mut String) {
+pub fn sha3_224_hash(value: &[u8], output: &mut String) {
     let hash = Sha3_224::digest(value);
     write!(output, "{}", hex::encode(hash)).unwrap()
 }
 
-pub fn sha3_shake128_hash(value: &str, output: &mut String, length: usize) {
+pub fn sha3_shake128_hash(value: &[u8], output: &mut String, length: usize) {
     let mut hasher = Shake128::default();
-    hasher.update(value.as_bytes());
+    hasher.update(value);
     let mut reader = hasher.finalize_xof();
     let mut result = vec![0u8; length];
     reader.read(&mut result);

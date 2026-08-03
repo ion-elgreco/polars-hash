@@ -10,7 +10,7 @@ null output.
 
 | Expression | Input | Output |
 |------------|-------|--------|
-| [`uuid5(namespace)`](#uuid5) | Utf8 | Utf8 |
+| [`uuid5(namespace)`](#uuid5) | Utf8, Binary | Utf8 |
 | [`uuid5_concat(other, default)`](#uuid5_concat) | Utf8 | Utf8 |
 
 ---

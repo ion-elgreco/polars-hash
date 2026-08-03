@@ -3,7 +3,7 @@ use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
-use crate::shared::{float_arg, integer_arg, scalar_arg};
+use crate::shared::{float_arg, hash_bytes, hash_bytes_into_string, integer_arg, scalar_arg};
 use crate::timehashers::{
     epoch_seconds, hash_column, timehash_decoder, timehash_encoder, timehash_neighbors,
     validate_precision,
@@ -12,8 +12,7 @@ use crate::xxhash_hashers::*;
 use hmac::KeyInit;
 use polars::{
     chunked_array::ops::arity::{
-        try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise, unary_elementwise,
-        unary_elementwise_values,
+        try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise,
     },
     prelude::*,
 };
@@ -55,38 +54,17 @@ struct StrictKwargs {
     strict: bool,
 }
 
-pub fn blake3_hash_str(value: &str, output: &mut string::String) {
-    let hash = blake3::hash(value.as_bytes());
-    write!(output, "{}", hash).unwrap()
+#[derive(Deserialize)]
+struct VersionKwargs {
+    version: u64,
 }
 
-pub fn blake3_hash_bytes(value: Option<&[u8]>) -> Option<string::String> {
-    value.map(|v| format!("{}", blake3::hash(v)))
+pub fn blake3_hash(value: &[u8], output: &mut string::String) {
+    write!(output, "{}", blake3::hash(value)).unwrap()
 }
 
-pub fn md5_hash_str(value: &str, output: &mut string::String) {
-    let hash = md5::compute(value);
-    write!(output, "{:x}", hash).unwrap()
-}
-
-pub fn md5_hash_bytes(value: Option<&[u8]>) -> Option<string::String> {
-    value.map(|v| format!("{:x}", md5::compute(v)))
-}
-
-fn wyhash_hash_str(value: Option<&str>) -> Option<u64> {
-    value.map(|v| real_wyhash(v.as_bytes(), 0))
-}
-
-fn wyhash_hash_bytes(value: Option<&[u8]>) -> Option<u64> {
-    value.map(|v| real_wyhash(v, 0))
-}
-
-fn farmhash_fingerprint32(value: &str) -> u32 {
-    farmhash::fingerprint32(value.as_bytes())
-}
-
-fn farmhash_fingerprint64(value: &str) -> u64 {
-    farmhash::fingerprint64(value.as_bytes())
+pub fn md5_hash(value: &[u8], output: &mut string::String) {
+    write!(output, "{:x}", md5::compute(value)).unwrap()
 }
 
 // `cityhasher::hash` picks the algorithm from its return type alone, so the turbofish
@@ -97,61 +75,57 @@ fn farmhash_fingerprint64(value: &str) -> u64 {
 // upstream NEWS for v1.1.1 reads "No changes to any of the functions, unless you had
 // been using CityHash32()", and that change was the signed-`char` fix which `cityhasher`
 // applies as `*v as i8`.
-fn cityhash_32(value: &str) -> u32 {
-    cityhasher::hash::<u32>(value.as_bytes())
+fn cityhash_32(value: &[u8]) -> u32 {
+    cityhasher::hash::<u32>(value)
 }
 
-fn cityhash_64(value: &str) -> u64 {
-    cityhasher::hash::<u64>(value.as_bytes())
+fn cityhash_64(value: &[u8]) -> u64 {
+    cityhasher::hash::<u64>(value)
 }
 
-fn cityhash_64_with_seed(value: &str, seed: u64) -> u64 {
-    cityhasher::hash_with_seed::<u64>(value.as_bytes(), seed)
+fn cityhash_64_with_seed(value: &[u8], seed: u64) -> u64 {
+    cityhasher::hash_with_seed::<u64>(value, seed)
 }
 
-fn cityhash_128(value: &str) -> u128 {
-    cityhash_rs::cityhash_110_128(value.as_bytes())
+fn cityhash_128(value: &[u8]) -> u128 {
+    cityhash_rs::cityhash_110_128(value)
 }
 
 // gxhash seeds are `i64`, the type kwargs already travel in, so these pass
 // `kwargs.seed` through where the other hashers cast it back to `u64`.
-fn gxhash_32(value: &str, seed: i64) -> u32 {
-    gxhash::gxhash32(value.as_bytes(), seed)
+fn gxhash_32(value: &[u8], seed: i64) -> u32 {
+    gxhash::gxhash32(value, seed)
 }
 
-fn gxhash_64(value: &str, seed: i64) -> u64 {
-    gxhash::gxhash64(value.as_bytes(), seed)
+fn gxhash_64(value: &[u8], seed: i64) -> u64 {
+    gxhash::gxhash64(value, seed)
 }
 
-fn gxhash_128(value: &str, seed: i64) -> u128 {
-    gxhash::gxhash128(value.as_bytes(), seed)
+fn gxhash_128(value: &[u8], seed: i64) -> u128 {
+    gxhash::gxhash128(value, seed)
 }
 
 #[polars_expr(output_type=UInt32)]
 fn farmhash32(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, farmhash_fingerprint32);
+    let out: UInt32Chunked = hash_bytes(&inputs[0], farmhash::fingerprint32)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn farmhash64(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, farmhash_fingerprint64);
+    let out: UInt64Chunked = hash_bytes(&inputs[0], farmhash::fingerprint64)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt32)]
 fn cityhash32(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, cityhash_32);
+    let out: UInt32Chunked = hash_bytes(&inputs[0], cityhash_32)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn cityhash64(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, cityhash_64);
+    let out: UInt64Chunked = hash_bytes(&inputs[0], cityhash_64)?;
     Ok(out.into_series())
 }
 
@@ -159,190 +133,125 @@ fn cityhash64(inputs: &[Series]) -> PolarsResult<Series> {
 /// `CityHash64WithSeed(v, 0)` is a different hash from `CityHash64(v)`.
 #[polars_expr(output_type=UInt64)]
 fn cityhash64_with_seed(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed as u64;
-    let out: ChunkedArray<UInt64Type> =
-        unary_elementwise_values(ca, |v| cityhash_64_with_seed(v, seed));
+    let out: UInt64Chunked = hash_bytes(&inputs[0], |v| cityhash_64_with_seed(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt128)]
 fn cityhash128(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, cityhash_128);
+    let out: UInt128Chunked = hash_bytes(&inputs[0], cityhash_128)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt32)]
 fn gxhash32(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, |v| gxhash_32(v, seed));
+    let out: UInt32Chunked = hash_bytes(&inputs[0], |v| gxhash_32(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn gxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, |v| gxhash_64(v, seed));
+    let out: UInt64Chunked = hash_bytes(&inputs[0], |v| gxhash_64(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt128)]
 fn gxhash128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, |v| gxhash_128(v, seed));
+    let out: UInt128Chunked = hash_bytes(&inputs[0], |v| gxhash_128(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn wyhash(inputs: &[Series]) -> PolarsResult<Series> {
-    let s = inputs.first().expect("no series received");
-
-    match s.dtype() {
-        DataType::String => {
-            let ca = s.str()?;
-            let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, wyhash_hash_str);
-            Ok(out.into_series())
-        }
-        DataType::Binary => {
-            let ca = s.binary()?;
-            let out: ChunkedArray<UInt64Type> = unary_elementwise(ca, wyhash_hash_bytes);
-            Ok(out.into_series())
-        }
-        _ => Err(PolarsError::InvalidOperation(
-            "wyhash only works on strings or binary data".into(),
-        )),
-    }
+    let out: UInt64Chunked = hash_bytes(&inputs[0], |v| real_wyhash(v, 0))?;
+    Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn blake3(inputs: &[Series]) -> PolarsResult<Series> {
-    let s = inputs.first().expect("no series received");
-
-    match s.dtype() {
-        DataType::String => {
-            let ca = s.str()?;
-            let out: StringChunked = ca.apply_into_string_amortized(blake3_hash_str);
-            Ok(out.into_series())
-        }
-        DataType::Binary => {
-            let ca = s.binary()?;
-            let out: StringChunked = unary_elementwise(ca, blake3_hash_bytes);
-            Ok(out.into_series())
-        }
-        _ => Err(PolarsError::InvalidOperation(
-            "blake3 only works on strings or binary data".into(),
-        )),
-    }
+    let out = hash_bytes_into_string(&inputs[0], blake3_hash)?;
+    Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn md5(inputs: &[Series]) -> PolarsResult<Series> {
-    let s = inputs.first().expect("no series received");
-
-    match s.dtype() {
-        DataType::String => {
-            let ca = s.str()?;
-            let out: StringChunked = ca.apply_into_string_amortized(md5_hash_str);
-            Ok(out.into_series())
-        }
-        DataType::Binary => {
-            let ca = s.binary()?;
-            let out: StringChunked = unary_elementwise(ca, md5_hash_bytes);
-            Ok(out.into_series())
-        }
-        _ => Err(PolarsError::InvalidOperation(
-            "md5 only works on strings or binary data".into(),
-        )),
-    }
+    let out = hash_bytes_into_string(&inputs[0], md5_hash)?;
+    Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha1(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha1_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha1_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_256(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha2_256_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha2_256_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_512(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha2_512_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha2_512_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_384(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha2_384_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha2_384_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha2_224(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha2_224_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha2_224_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_256(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha3_256_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha3_256_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_512(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha3_512_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha3_512_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_384(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha3_384_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha3_384_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_224(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked = ca.apply_into_string_amortized(sha3_224_hash);
+    let out = hash_bytes_into_string(&inputs[0], sha3_224_hash)?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn sha3_shake128(inputs: &[Series], kwargs: LengthKwargs) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
-    let out: StringChunked =
-        ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
-            sha3_shake128_hash(value, output, kwargs.length)
-        });
-
+    let out = hash_bytes_into_string(&inputs[0], |value, output| {
+        sha3_shake128_hash(value, output, kwargs.length)
+    })?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn hmac_sha256(inputs: &[Series], kwargs: HmacKwargs) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let keyed_mac = HmacSha256::new_from_slice(kwargs.key.as_bytes())
         .map_err(|e| PolarsError::ComputeError(format!("invalid HMAC key: {e}").into()))?;
-    let out: StringChunked =
-        ca.apply_into_string_amortized(|value: &str, output: &mut string::String| {
-            hmac_sha256_hash(value, output, &keyed_mac);
-        });
+    let out = hash_bytes_into_string(&inputs[0], |value, output| {
+        hmac_sha256_hash(value, output, &keyed_mac)
+    })?;
     Ok(out.into_series())
 }
 
@@ -484,55 +393,53 @@ fn thash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 
 #[polars_expr(output_type=UInt32)]
 fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, |v| murmurhash3_32(v, seed));
+    let out: UInt32Chunked = hash_bytes(&inputs[0], |v| murmurhash3_32(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt128)]
 fn murmur128(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, |v| murmurhash3_128(v, seed));
+    let out: UInt128Chunked = hash_bytes(&inputs[0], |v| murmurhash3_128(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt32)]
 fn xxhash32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed;
-    let out: ChunkedArray<UInt32Type> = unary_elementwise_values(ca, |v| xxhash_32(v, seed));
+    let out: UInt32Chunked = hash_bytes(&inputs[0], |v| xxhash_32(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn xxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed as u64;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, |v| xxhash_64(v, seed));
+    let out: UInt64Chunked = hash_bytes(&inputs[0], |v| xxhash_64(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt64)]
 fn xxh3_64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed as u64;
-    let out: ChunkedArray<UInt64Type> = unary_elementwise_values(ca, |v| xxhash3_64(v, seed));
+    let out: UInt64Chunked = hash_bytes(&inputs[0], |v| xxhash3_64(v, seed))?;
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=UInt128)]
 fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let seed = kwargs.seed as u64;
-    let out: ChunkedArray<UInt128Type> = unary_elementwise_values(ca, |v| xxhash3_128(v, seed));
+    let out: UInt128Chunked = hash_bytes(&inputs[0], |v| xxhash3_128(v, seed))?;
     Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Binary)]
+fn encode_rows(inputs: &[Series], kwargs: VersionKwargs) -> PolarsResult<Series> {
+    Ok(crate::row_encode::encode_rows(inputs, kwargs.version)?.into_series())
 }
 
 #[polars_expr(output_type=String)]
 fn uuid5(inputs: &[Series]) -> PolarsResult<Series> {
-    let ca = inputs[0].str()?;
     let namespace_str = inputs[1].str()?;
     let ns_value = namespace_str
         .get(0)
@@ -548,13 +455,13 @@ fn uuid5(inputs: &[Series]) -> PolarsResult<Series> {
         })?,
     };
 
-    let out: StringChunked = ca.apply_into_string_amortized(|value, output| {
+    let out = hash_bytes_into_string(&inputs[0], |value, output| {
         output.push_str(
-            &uuid::Uuid::new_v5(&namespace, value.as_bytes())
+            &uuid::Uuid::new_v5(&namespace, value)
                 .hyphenated()
                 .to_string(),
         )
-    });
+    })?;
     Ok(out.into_series())
 }
 

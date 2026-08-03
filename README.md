@@ -211,3 +211,32 @@ df = pl.DataFrame({"foo": ["hello_world"], "bar": ["today"]})
 
 result = df.select(plh.concat_str("foo", "bar").chash.sha256())
 ```
+
+## Hash a whole row
+
+`hash_rows` gives each row bytes that no other row can make, for all column types.
+Any hasher then reads those bytes.
+
+```python
+df = pl.DataFrame(
+    {"foo": ["hello_world"], "bar": [42], "baz": [[1, 2, 3]], "qux": [{"a": 1}]}
+)
+
+df.select(plh.hash_rows(pl.all()).chash.sha2_256())
+shape: (1, 1)
+┌──────────────────────────────────────────────────────────────────┐
+│ foo                                                              │
+│ ---                                                              │
+│ str                                                              │
+╞══════════════════════════════════════════════════════════════════╡
+│ 9055866af8d3c113e0a8fdb729ce8e6fa67ed5f6f51efa8235a588e88ea972f4 │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+The encoder reads the meaning of a value, not the polars storage of it. An `Int32` and
+the `Int64` next to it make the same hash. A `Datetime` in milliseconds and the same
+time in nanoseconds also make the same hash, and a `Categorical` makes the hash of its
+string. The encoder does not read the column names. Therefore a new name keeps the
+hash, but a new order does not. The
+[reference](https://ion-elgreco.github.io/polars-hash/latest/api-reference/rows/)
+gives all the rules and the byte layout of version 1, which does not change.
