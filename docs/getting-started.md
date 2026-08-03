@@ -7,7 +7,7 @@ pip install polars-hash
 ```
 
 polars-hash supplies prebuilt wheels for Linux, macOS, and Windows, on x86, x86-64 and
-aarch64. It requires `polars >= 1.34.0` and Python 3.10 or later. `plh.__version__`
+aarch64. It requires `polars >= 1.36.1` and Python 3.10 or later. `plh.__version__`
 gives the installed version.
 
 Releases up to 0.7.0 also carried `linux-armv7` and `linux-ppc64le` wheels. Those
