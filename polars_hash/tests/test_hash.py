@@ -450,19 +450,24 @@ _BYTE_HASHERS = [
     ("nchash", "wyhash", {}),
     ("nchash", "murmur32", {}),
     ("nchash", "murmur128", {}),
+    ("nchash", "murmur128", {"return_binary": True}),
     ("nchash", "xxhash32", {}),
     ("nchash", "xxhash64", {}),
     ("nchash", "xxh3_64", {}),
     ("nchash", "xxh3_128", {}),
+    ("nchash", "xxh3_128", {"return_binary": True, "byte_order": "little"}),
+    ("nchash", "xxh3_128", {"return_binary": True, "byte_order": "big"}),
     ("nchash", "farmhash32", {}),
     ("nchash", "farmhash64", {}),
     ("nchash", "cityhash32", {}),
     ("nchash", "cityhash64", {}),
     ("nchash", "cityhash64", {"seed": 7}),
     ("nchash", "cityhash128", {}),
+    ("nchash", "cityhash128", {"return_binary": True}),
     ("nchash", "gxhash32", {}),
     ("nchash", "gxhash64", {}),
     ("nchash", "gxhash128", {}),
+    ("nchash", "gxhash128", {"return_binary": True}),
     ("nchash", "gxhash64", {"seed": 7}),
     ("uuidhash", "uuid5", {}),
 ]
@@ -1096,6 +1101,153 @@ def test_the_128_bit_digests_round_trip():
     assert murmur.to_bytes(16, "little").hex() == "982cf39e1c1aa55d1b079716076c8d65"
     # xxhash.xxh128_hexdigest("hello_world")
     assert f"{xxh3:032x}" == "bed31c5eaf3dc62267fb185e21fe6f03"
+
+
+# Every hasher of 128 bits writes the same hash as an integer or as bytes. The bytes
+# are for a target of a write that has no 128-bit integer, which is the reason 0.9.0
+# added `return_binary`. Each entry carries a seed if the hasher takes one.
+_HASHERS_128 = [
+    ("murmur128", {"seed": 3}),
+    ("xxh3_128", {"seed": 3, "byte_order": "little"}),
+    ("cityhash128", {}),
+    ("gxhash128", {"seed": 3}),
+]
+_HASHERS_128_IDS = [name for name, _ in _HASHERS_128]
+_SEEDED_HASHERS_128 = [(name, kw) for name, kw in _HASHERS_128 if kw]
+_SEEDED_HASHERS_128_IDS = [name for name, _ in _SEEDED_HASHERS_128]
+
+
+@pytest.mark.parametrize(("method", "kwargs"), _HASHERS_128, ids=_HASHERS_128_IDS)
+def test_return_binary_writes_the_uint128_as_bytes(method, kwargs):
+    """One hash and two data types. The bytes are the integer, least significant first.
+
+    Both directions hold: the integer makes the bytes, and the bytes make the integer
+    again. Therefore a reader of either column can reach the other one.
+    """
+    df = pl.DataFrame({"literal": ["hello_world", "", None]})
+    hasher = getattr(plh.col("literal").nchash, method)
+
+    result = df.select(
+        integer=hasher(**kwargs),
+        binary=hasher(**kwargs, return_binary=True),
+    )
+
+    assert result.dtypes == [pl.UInt128, pl.Binary]
+    for integer, binary in result.iter_rows():
+        if integer is None:
+            assert binary is None
+            continue
+        assert len(binary) == 16
+        assert binary == integer.to_bytes(16, "little")
+        assert int.from_bytes(binary, "little") == integer
+
+
+@pytest.mark.parametrize(("method", "kwargs"), _HASHERS_128, ids=_HASHERS_128_IDS)
+def test_return_binary_settles_the_data_type_before_any_row_is_read(method, kwargs):
+    """The kwarg reaches the declaration of the output type, not only the hasher.
+
+    A plugin names its output type in a declaration, and polars reads that declaration
+    to build a schema. A kwarg that chooses the type must therefore reach it as well,
+    which `output_type_func_with_kwargs` does. Without that, `collect_schema` would
+    give the type of the other branch.
+    """
+    frame = pl.LazyFrame({"literal": ["hello_world"]})
+    hasher = getattr(plh.col("literal").nchash, method)
+
+    integer = frame.select(hasher(**kwargs)).collect_schema()
+    binary = frame.select(hasher(**kwargs, return_binary=True)).collect_schema()
+
+    assert integer["literal"] == pl.UInt128
+    assert binary["literal"] == pl.Binary
+
+
+@pytest.mark.parametrize(
+    ("method", "kwargs"), _SEEDED_HASHERS_128, ids=_SEEDED_HASHERS_128_IDS
+)
+def test_return_binary_carries_the_seed(method, kwargs):
+    """The kwargs hold a seed and a choice of type, and one must not eat the other."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+    hasher = getattr(plh.col("literal").nchash, method)
+    without_seed = {name: v for name, v in kwargs.items() if name != "seed"}
+
+    result = df.select(
+        seeded=hasher(**kwargs, return_binary=True),
+        unseeded=hasher(**without_seed, return_binary=True),
+        integer=hasher(**kwargs),
+    )
+
+    assert result["seeded"][0] != result["unseeded"][0]
+    assert result["seeded"][0] == result["integer"][0].to_bytes(16, "little")
+
+
+def test_murmur128_binary_writes_the_reference_digest():
+    """`mmh3.hash_bytes("hello_world", 0)`, which 0.7.0 wrote before the type changed.
+
+    MurmurHash3 canonicalises two little-endian halves, so the bytes of the integer
+    are the digest itself. Anyone who read Binary from 0.7.0 gets the same bytes back.
+    """
+    df = pl.DataFrame({"literal": ["hello_world"]})
+
+    result = df.select(plh.col("literal").nchash.murmur128(return_binary=True))
+
+    assert result.item() == bytes.fromhex("982cf39e1c1aa55d1b079716076c8d65")
+
+
+# xxhash.xxh128_digest("hello_world")
+_XXH3_CANONICAL = bytes.fromhex("bed31c5eaf3dc62267fb185e21fe6f03")
+
+
+def test_xxh3_128_byte_order_writes_each_order():
+    """XXH3 is the one hasher here whose own digest is not the bytes of the integer.
+
+    It canonicalises big-endian, so "big" gives the digest. "little" gives the bytes
+    of the integer, which is what this expression wrote before 0.8.0. One is the
+    reverse of the other.
+    """
+    df = pl.DataFrame({"literal": ["hello_world", None]})
+    hasher = plh.col("literal").nchash.xxh3_128
+
+    result = df.select(
+        big=hasher(return_binary=True, byte_order="big"),
+        little=hasher(return_binary=True, byte_order="little"),
+    )
+
+    assert result["big"][0] == _XXH3_CANONICAL
+    assert result["little"][0] == _XXH3_CANONICAL[::-1]
+    assert result["big"][1] is None and result["little"][1] is None
+
+
+def test_xxh3_128_byte_order_defaults_to_little_with_a_warning():
+    """The compatible order is not the correct one, so the default says so once."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+
+    with pytest.warns(UserWarning, match="little-endian"):
+        result = df.select(plh.col("literal").nchash.xxh3_128(return_binary=True))
+
+    assert result.item() == _XXH3_CANONICAL[::-1]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"return_binary": True, "byte_order": "little"},
+        {"return_binary": True, "byte_order": "big"},
+        {"return_binary": False},
+    ],
+    ids=["little", "big", "uint128"],
+)
+def test_xxh3_128_stays_quiet_when_the_order_cannot_surprise(kwargs, recwarn):
+    """A caller who names an order has read the warning, and an integer has no order."""
+    df = pl.DataFrame({"literal": ["hello_world"]})
+
+    df.select(plh.col("literal").nchash.xxh3_128(**kwargs))
+
+    assert [w for w in recwarn if issubclass(w.category, UserWarning)] == []
+
+
+def test_xxh3_128_rejects_an_order_it_does_not_know():
+    with pytest.raises(ValueError, match="must be 'little' or 'big'"):
+        plh.col("literal").nchash.xxh3_128(return_binary=True, byte_order="middle")
 
 
 def test_timehash():

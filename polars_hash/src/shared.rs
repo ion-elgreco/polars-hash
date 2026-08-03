@@ -53,6 +53,41 @@ where
     }
 }
 
+/// The equivalent of [`hash_bytes`] for a digest of a set number of bytes.
+///
+/// [`hash_bytes`] cannot make a `BinaryChunked` from an array of bytes. It collects
+/// what `ArrayFromIter` accepts, and that trait reads a slice or a `Vec`. An array
+/// therefore needs a `Vec` of its own for each row. A builder takes the array as a
+/// slice instead, and writes it straight into the one buffer of the column.
+pub fn hash_bytes_into_binary<const N: usize, F>(s: &Series, op: F) -> PolarsResult<BinaryChunked>
+where
+    F: Fn(&[u8]) -> [u8; N],
+{
+    let mut builder = BinaryChunkedBuilder::new(s.name().clone(), s.len());
+    match s.dtype() {
+        DataType::String => {
+            for value in s.str()?.iter() {
+                match value {
+                    Some(value) => builder.append_value(op(value.as_bytes())),
+                    None => builder.append_null(),
+                }
+            }
+        }
+        DataType::Binary => {
+            for value in s.binary()?.iter() {
+                match value {
+                    Some(value) => builder.append_value(op(value)),
+                    None => builder.append_null(),
+                }
+            }
+        }
+        dtype => polars_bail!(
+            InvalidOperation: "expected `String` or `Binary` input, got `{}`", dtype
+        ),
+    }
+    Ok(builder.finish())
+}
+
 /// Coerce an integer argument to Int64. `_length_expr` already casts on the Python
 /// side, so this only bites callers using `register_plugin_function` directly -- but
 /// the three encoders used to disagree about which widths they accepted.

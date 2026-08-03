@@ -3,7 +3,9 @@ use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
-use crate::shared::{float_arg, hash_bytes, hash_bytes_into_string, integer_arg, scalar_arg};
+use crate::shared::{
+    float_arg, hash_bytes, hash_bytes_into_binary, hash_bytes_into_string, integer_arg, scalar_arg,
+};
 use crate::timehashers::{
     epoch_seconds, hash_column, timehash_decoder, timehash_encoder, timehash_neighbors,
     validate_precision,
@@ -37,6 +39,55 @@ struct SeedKwargs32bit {
 #[derive(Deserialize)]
 struct SeedKwargs64bit {
     seed: i64,
+}
+
+/// A 32-bit seed and the choice of output data type, for a hasher of 128 bits.
+#[derive(Deserialize)]
+struct Seed32AndBinaryKwargs {
+    seed: u32,
+    return_binary: bool,
+}
+
+/// A 64-bit seed and the choice of output data type, for a hasher of 128 bits. The
+/// seed travels as an `i64` for the reason [`SeedKwargs64bit`] gives.
+#[derive(Deserialize)]
+struct Seed64AndBinaryKwargs {
+    seed: i64,
+    return_binary: bool,
+}
+
+/// What [`Seed64AndBinaryKwargs`] holds, and the byte order of a binary output. XXH3
+/// is the one hasher here whose own digest is not the bytes of the integer, so it is
+/// the one hasher that takes an order. The Python side reads the name of the order
+/// and sends the answer, and therefore this holds no name to reject.
+#[derive(Deserialize)]
+struct Xxh3Kwargs {
+    seed: i64,
+    return_binary: bool,
+    big_endian: bool,
+}
+
+/// The choice of output data type alone. Every 128-bit hasher sends this kwarg, and
+/// each one sends a seed of its own width, or no seed. Serde reads the field it knows
+/// and passes over the rest, so one struct serves all of them.
+#[derive(Deserialize)]
+struct BinaryKwargs {
+    return_binary: bool,
+}
+
+/// Gives the data type that a 128-bit hasher writes.
+///
+/// The output type of a plugin expression comes from a declaration, and not from the
+/// series the expression makes. A kwarg that chooses the type must therefore reach
+/// this function as well, which `output_type_func_with_kwargs` does. The name follows
+/// the first input column, which is what a plain `output_type` declaration does.
+fn hash_128_output(fields: &[Field], kwargs: BinaryKwargs) -> PolarsResult<Field> {
+    let dtype = if kwargs.return_binary {
+        DataType::Binary
+    } else {
+        DataType::UInt128
+    };
+    Ok(Field::new(fields[0].name().clone(), dtype))
 }
 
 #[derive(Deserialize)]
@@ -138,8 +189,12 @@ fn cityhash64_with_seed(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsRes
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=UInt128)]
-fn cityhash128(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=hash_128_output)]
+fn cityhash128(inputs: &[Series], kwargs: BinaryKwargs) -> PolarsResult<Series> {
+    if kwargs.return_binary {
+        let out = hash_bytes_into_binary(&inputs[0], |v| cityhash_128(v).to_le_bytes())?;
+        return Ok(out.into_series());
+    }
     let out: UInt128Chunked = hash_bytes(&inputs[0], cityhash_128)?;
     Ok(out.into_series())
 }
@@ -158,9 +213,13 @@ fn gxhash64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> 
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=UInt128)]
-fn gxhash128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=hash_128_output)]
+fn gxhash128(inputs: &[Series], kwargs: Seed64AndBinaryKwargs) -> PolarsResult<Series> {
     let seed = kwargs.seed;
+    if kwargs.return_binary {
+        let out = hash_bytes_into_binary(&inputs[0], |v| gxhash_128(v, seed).to_le_bytes())?;
+        return Ok(out.into_series());
+    }
     let out: UInt128Chunked = hash_bytes(&inputs[0], |v| gxhash_128(v, seed))?;
     Ok(out.into_series())
 }
@@ -398,9 +457,13 @@ fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> 
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=UInt128)]
-fn murmur128(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=hash_128_output)]
+fn murmur128(inputs: &[Series], kwargs: Seed32AndBinaryKwargs) -> PolarsResult<Series> {
     let seed = kwargs.seed;
+    if kwargs.return_binary {
+        let out = hash_bytes_into_binary(&inputs[0], |v| murmurhash3_128(v, seed).to_le_bytes())?;
+        return Ok(out.into_series());
+    }
     let out: UInt128Chunked = hash_bytes(&inputs[0], |v| murmurhash3_128(v, seed))?;
     Ok(out.into_series())
 }
@@ -426,9 +489,20 @@ fn xxh3_64(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-#[polars_expr(output_type=UInt128)]
-fn xxh3_128(inputs: &[Series], kwargs: SeedKwargs64bit) -> PolarsResult<Series> {
+/// Big-endian bytes are the digest that `XXH128_canonicalFromHash` writes. Little-endian
+/// bytes are the bytes of the integer, which is what this expression wrote before the
+/// output became `UInt128`, and therefore what a reader from that time expects.
+#[polars_expr(output_type_func_with_kwargs=hash_128_output)]
+fn xxh3_128(inputs: &[Series], kwargs: Xxh3Kwargs) -> PolarsResult<Series> {
     let seed = kwargs.seed as u64;
+    if kwargs.return_binary {
+        let out = if kwargs.big_endian {
+            hash_bytes_into_binary(&inputs[0], |v| xxhash3_128(v, seed).to_be_bytes())?
+        } else {
+            hash_bytes_into_binary(&inputs[0], |v| xxhash3_128(v, seed).to_le_bytes())?
+        };
+        return Ok(out.into_series());
+    }
     let out: UInt128Chunked = hash_bytes(&inputs[0], |v| xxhash3_128(v, seed))?;
     Ok(out.into_series())
 }

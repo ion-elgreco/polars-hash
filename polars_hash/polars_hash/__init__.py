@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -121,9 +121,15 @@ class NonCryptographicHashingNameSpace:
         """Takes Utf8 or Binary as input and returns uint32 hash with murmur32."""
         return _plugin("murmur32", self._expr, seed=seed)
 
-    def murmur128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 or Binary as input and returns uint128 hash with murmur128."""
-        return _plugin("murmur128", self._expr, seed=seed)
+    def murmur128(self, *, seed: int = 0, return_binary: bool = False) -> pl.Expr:
+        """Takes Utf8 or Binary as input and returns uint128 hash with murmur128.
+
+        Set `return_binary` to get the hash as 16 Binary bytes, least significant
+        byte first. Use it where the target of a write has no 128-bit integer. The
+        bytes and the integer hold the same hash. Those bytes are also the digest
+        MurmurHash3 writes, which is what `mmh3.hash_bytes` gives.
+        """
+        return _plugin("murmur128", self._expr, seed=seed, return_binary=return_binary)
 
     def xxhash32(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns uint32 hash with xxhash32."""
@@ -137,9 +143,40 @@ class NonCryptographicHashingNameSpace:
         """Takes Utf8 or Binary as input and returns uint64 hash with XXH3 64bit."""
         return _plugin("xxh3_64", self._expr, seed=_encode_u64_seed(seed))
 
-    def xxh3_128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 or Binary as input and returns uint128 hash with XXH3 128bit."""
-        return _plugin("xxh3_128", self._expr, seed=_encode_u64_seed(seed))
+    def xxh3_128(
+        self,
+        *,
+        seed: int = 0,
+        return_binary: bool = False,
+        byte_order: Literal["little", "big"] | None = None,
+    ) -> pl.Expr:
+        """Takes Utf8 or Binary as input and returns uint128 hash with XXH3 128bit.
+
+        Set `return_binary` to get the hash as 16 Binary bytes. Use it where the
+        target of a write has no 128-bit integer.
+
+        `byte_order` says how those bytes read. "big" is the digest XXH3 itself
+        writes, which is what `xxhash.xxh128_digest` gives. "little" is the bytes of
+        the integer, which is what this expression wrote before 0.8.0. The default is
+        "little" and it warns, because the compatible order is not the correct one.
+        """
+        if byte_order not in (None, "little", "big"):
+            msg = f"`byte_order` must be 'little' or 'big', got {byte_order!r}"
+            raise ValueError(msg)
+        if return_binary and byte_order is None:
+            warnings.warn(
+                "xxh3_128 binary defaults to little-endian for compatibility with older polars-hash versions. "
+                "XXH3 canonicalises big-endian. Set byte_order to silence this.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return _plugin(
+            "xxh3_128",
+            self._expr,
+            seed=_encode_u64_seed(seed),
+            return_binary=return_binary,
+            big_endian=byte_order == "big",
+        )
 
     def farmhash32(self) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns uint32 hash with FarmHash fingerprint32."""
@@ -164,9 +201,14 @@ class NonCryptographicHashingNameSpace:
 
         return _plugin("cityhash64_with_seed", self._expr, seed=_encode_u64_seed(seed))
 
-    def cityhash128(self) -> pl.Expr:
-        """Takes Utf8 or Binary as input and returns uint128 hash with CityHash128."""
-        return _plugin("cityhash128", self._expr)
+    def cityhash128(self, *, return_binary: bool = False) -> pl.Expr:
+        """Takes Utf8 or Binary as input and returns uint128 hash with CityHash128.
+
+        Set `return_binary` to get the hash as 16 Binary bytes, least significant
+        byte first. Use it where the target of a write has no 128-bit integer. The
+        bytes and the integer hold the same hash.
+        """
+        return _plugin("cityhash128", self._expr, return_binary=return_binary)
 
     def gxhash32(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns uint32 hash with GxHash."""
@@ -176,9 +218,19 @@ class NonCryptographicHashingNameSpace:
         """Takes Utf8 or Binary as input and returns uint64 hash with GxHash."""
         return _plugin("gxhash64", self._expr, seed=_encode_u64_seed(seed))
 
-    def gxhash128(self, *, seed: int = 0) -> pl.Expr:
-        """Takes Utf8 or Binary as input and returns uint128 hash with GxHash."""
-        return _plugin("gxhash128", self._expr, seed=_encode_u64_seed(seed))
+    def gxhash128(self, *, seed: int = 0, return_binary: bool = False) -> pl.Expr:
+        """Takes Utf8 or Binary as input and returns uint128 hash with GxHash.
+
+        Set `return_binary` to get the hash as 16 Binary bytes, least significant
+        byte first. Use it where the target of a write has no 128-bit integer. The
+        bytes and the integer hold the same hash.
+        """
+        return _plugin(
+            "gxhash128",
+            self._expr,
+            seed=_encode_u64_seed(seed),
+            return_binary=return_binary,
+        )
 
 
 def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
