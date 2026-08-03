@@ -2005,6 +2005,30 @@ def test_a_zero_width_array_raises_rather_than_aborting(call):
         call(df)
 
 
+@pytest.mark.parametrize(
+    "column",
+    [
+        pytest.param(
+            lambda zero_width: pl.Series(
+                [{"a": []}, {"a": []}], dtype=pl.Struct({"a": zero_width})
+            ),
+            id="in a struct",
+        ),
+        pytest.param(
+            lambda zero_width: pl.Series([[[]], [[]]], dtype=pl.List(zero_width)),
+            id="in a list",
+        ),
+    ],
+)
+def test_a_nested_zero_width_array_also_raises_rather_than_aborting(column):
+    """The same upstream assertion applies at each depth, and `Column::prepare` reads
+    a nested column with the same code. Therefore the error must stay catchable."""
+    df = pl.DataFrame({"x": column(pl.Array(pl.Int64, 0))})
+
+    with pytest.raises(ComputeError, match="the plugin panicked"):
+        df.select(plh.hash_rows(pl.all()))
+
+
 @pytest.mark.parametrize("scale", range(37))
 def test_hash_rows_strips_every_decimal_scale_the_same_way(scale):
     """Each width must give the result of a removal of one digit at each step. The
@@ -2053,6 +2077,23 @@ def test_hash_rows_widens_every_float_to_f64(dtype):
     assert _encode(df) == _encode(f64)
 
 
+_ROWS_FOR_ONE_TASK = 16_384
+"""The same number as `ROWS_FOR_ONE_TASK` in `row_encode.rs`."""
+
+
+def _task_starts(start: int, end: int) -> list[int]:
+    """Gives the first row of each task, as `encode_range` divides the rows.
+
+    That function halves a range until a part is short enough. Therefore the parts are
+    not a multiple of `_ROWS_FOR_ONE_TASK`: 40000 rows make four tasks of 10000 rows,
+    and no task begins at row 16384.
+    """
+    if end - start <= _ROWS_FOR_ONE_TASK:
+        return [start]
+    middle = start + (end - start) // 2
+    return _task_starts(start, middle) + _task_starts(middle, end)
+
+
 def test_hash_rows_splits_the_rows_without_changing_them():
     """Above 16384 rows the encoder gives the rows to more than one thread. Each row
     must keep the bytes that one thread gives it, and the split points are the risk."""
@@ -2061,14 +2102,24 @@ def test_hash_rows_splits_the_rows_without_changing_them():
         {
             "i": range(rows),
             "s": [f"row {i}" for i in range(rows)],
-            "l": [[1, 2]] * rows,
+            # The length of the list changes with the row. A constant length gives
+            # each row the same offsets, and then no offset mistake can show.
+            "l": [list(range(i % 5)) for i in range(rows)],
+            "n": [None if i % 7 == 0 else i for i in range(rows)],
         }
     )
 
     split = df.select(plh.hash_rows(pl.all()).alias("e"))["e"]
 
+    starts = _task_starts(0, rows)
+    assert len(starts) > 1, "the frame is too short to need more than one task"
+
+    at_risk = {0, rows - 1}
+    for start in starts:
+        at_risk.update(at for at in (start - 1, start, start + 1) if 0 <= at < rows)
+
     assert len(split) == rows
-    for at in (0, 16_383, 16_384, 16_385, 20_000, rows - 1):
+    for at in sorted(at_risk):
         one_row = df.slice(at, 1).select(plh.hash_rows(pl.all()).alias("e"))["e"]
         assert split[at] == one_row[0], f"row {at}"
 
