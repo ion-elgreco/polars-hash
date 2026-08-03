@@ -55,15 +55,6 @@ class CryptographicHashingNameSpace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
 
-    def sha256(self) -> pl.Expr:
-        """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-2 family."""
-        warnings.warn(
-            "Call to deprecated method chash.sha256. Use chash.sha2_256() instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        return _plugin("sha2_256", self._expr)
-
     def sha2_256(self) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns utf8 hash with sha256 from SHA-2 family."""
         return _plugin("sha2_256", self._expr)
