@@ -196,15 +196,31 @@ the storage:
 | A null `List` is not an empty `List` | a null `Struct` is also not a struct of nulls |
 | Each class has its own tag | `1` and `1.0` are different, and a `Date` and the `Datetime` at midnight are also different |
 | The encoder reads the column order | `(1, 2)` and `(2, 1)` are different |
+| A `Struct` is not its fields | the field count makes one `Struct` of two `Int` fields different from two `Int` columns |
 
 ### What the encoder does not read
 
 **The column names.** A new name for a column keeps all the hashes. A new order of the
-columns does not, because the order identifies the values.
+columns does not, because the order identifies the values. A column that you give two
+times is two values of the row.
+
+**The field names of a `Struct`.** The encoder writes the fields in their order, as it
+writes the columns of a row. Therefore a new name for a field keeps the hash, and a new
+order of the fields does not.
+
+Polars compares two `Struct` values by name, and the encoder reads the order. Therefore
+the two do not always agree:
+
+```python
+first = pl.Series([{"a": 2, "b": 1}], dtype=pl.Struct({"a": pl.Int64, "b": pl.Int64}))
+second = pl.Series([{"b": 1, "a": 2}], dtype=pl.Struct({"b": pl.Int64, "a": pl.Int64}))
+
+first.equals(second)  # True: each name has the same value
+# The hashes are different, because the values are in a different order.
+```
+
+**The data type of an empty `List`.** An empty `List(Int64)` and an empty
+`List(String)` both give the count 0 and no elements.
 
 **The chunks and the slices.** One chunk, ten chunks, or a slice of a larger frame all
 give the same bytes for the same rows.
-
-**Nothing more.** The field counts make two columns of `(Int, Int)` different from one
-`Struct` with two `Int` fields. Therefore a change to the schema also changes the hash,
-even if the values stay the same.

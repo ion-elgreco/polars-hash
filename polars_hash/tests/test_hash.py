@@ -1920,6 +1920,28 @@ def test_hash_rows_keeps_struct_shapes_apart():
     assert _encode(wide) != _encode(split)
 
 
+def test_hash_rows_does_not_read_the_field_names_of_a_struct():
+    """The encoder writes the fields of a struct in their order, as it writes the
+    columns of a row. Polars compares a struct by name. Therefore polars can read two
+    values as equal that make two hashes, and the reference gives this rule."""
+    fields = pl.Struct({"a": pl.Int64, "b": pl.Int64})
+    other = pl.Struct({"b": pl.Int64, "a": pl.Int64})
+    first = pl.DataFrame({"s": pl.Series([{"a": 2, "b": 1}], dtype=fields)})
+    second = pl.DataFrame({"s": pl.Series([{"b": 1, "a": 2}], dtype=other)})
+
+    assert first["s"].equals(second["s"])
+    assert _encode(first) != _encode(second)
+
+
+def test_hash_rows_does_not_read_the_type_inside_an_empty_list():
+    """An empty list is the count 0 and no elements. The type of the elements has no
+    part in it, and therefore two empty lists of two types make one hash."""
+    empty_ints = pl.DataFrame({"l": pl.Series([[]], dtype=pl.List(pl.Int64))})
+    empty_text = pl.DataFrame({"l": pl.Series([[]], dtype=pl.List(pl.String))})
+
+    assert _encode(empty_ints) == _encode(empty_text)
+
+
 def test_hash_rows_names_the_output_after_the_first_column():
     """`pl.struct`, `pl.concat_str` and each `*_horizontal` expression do the same.
     Therefore `with_columns` replaces that column, and `select` keeps its name."""
