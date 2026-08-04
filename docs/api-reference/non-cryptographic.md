@@ -20,19 +20,24 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | [`xxhash32(seed)`](#xxhash32) | Utf8, Binary | UInt32 | `u32` |
 | [`xxhash64(seed)`](#xxhash64) | Utf8, Binary | UInt64 | `u64` |
 | [`xxh3_64(seed)`](#xxh3_64) | Utf8, Binary | UInt64 | `u64` |
-| [`xxh3_128(seed)`](#xxh3_128) | Utf8, Binary | UInt128 | `u64` |
+| [`xxh3_128(seed)`](#xxh3_128) | Utf8, Binary | UInt128 or Binary | `u64` |
 | [`murmur32(seed)`](#murmur32) | Utf8, Binary | UInt32 | `u32` |
-| [`murmur128(seed)`](#murmur128) | Utf8, Binary | UInt128 | `u32` |
+| [`murmur128(seed)`](#murmur128) | Utf8, Binary | UInt128 or Binary | `u32` |
 | [`farmhash32()`](#farmhash32) | Utf8, Binary | UInt32 | — |
 | [`farmhash64()`](#farmhash64) | Utf8, Binary | UInt64 | — |
 | [`cityhash32()`](#cityhash32) | Utf8, Binary | UInt32 | — |
 | [`cityhash64(seed)`](#cityhash64) | Utf8, Binary | UInt64 | `u64`, optional |
-| [`cityhash128()`](#cityhash128) | Utf8, Binary | UInt128 | — |
+| [`cityhash128()`](#cityhash128) | Utf8, Binary | UInt128 or Binary | — |
 | [`gxhash32(seed)`](#gxhash32) | Utf8, Binary | UInt32 | `u64` |
 | [`gxhash64(seed)`](#gxhash64) | Utf8, Binary | UInt64 | `u64` |
-| [`gxhash128(seed)`](#gxhash128) | Utf8, Binary | UInt128 | `u64` |
+| [`gxhash128(seed)`](#gxhash128) | Utf8, Binary | UInt128 or Binary | `u64` |
 | [`md5()`](#md5) | Utf8, Binary | Utf8 | — |
 | [`sha1()`](#sha1) | Utf8, Binary | Utf8 | — |
+
+Each expression with a `UInt128` output also takes `return_binary=True`. That keyword
+writes the same hash as 16 `Binary` bytes, least significant byte first, for a write
+target that has no 128-bit integer. [`xxh3_128()`](#xxh3_128) can also write the other
+order; its section says when to ask for that.
 
 ---
 
@@ -157,6 +162,19 @@ f"{253649469245435599925940275794906345219:032x}"
 # bed31c5eaf3dc62267fb185e21fe6f03
 ```
 
+`return_binary=True` writes the hash as 16 `Binary` bytes, and `byte_order` picks
+their order. `"big"` is the digest XXH3 itself writes, the same bytes as
+`xxhash.xxh128_digest()`. `"little"` is the integer least significant byte first,
+which is what releases up to 0.7.0 wrote:
+
+```python
+df.select(plh.col("foo").nchash.xxh3_128(return_binary=True, byte_order="big").bin.encode("hex"))
+# bed31c5eaf3dc62267fb185e21fe6f03
+
+df.select(plh.col("foo").nchash.xxh3_128(return_binary=True, byte_order="little").bin.encode("hex"))
+# 036ffe215e18fb6722c63daf5e1cd3be
+```
+
 !!! warning "0.8.0 changed this output from `Binary` to `UInt128`"
     Up to 0.7.0 this expression returned 16 bytes. The bytes held the value in the
     reverse of the canonical order, so `.bin.encode("hex")` gave
@@ -165,16 +183,18 @@ f"{253649469245435599925940275794906345219:032x}"
     `f"{value:032x}"` replaces `.bin.encode("hex")`. To read data hashed by an older
     release, reverse the old bytes: `int.from_bytes(old, "little")`.
 
-    A `UInt128` column also cannot reach pandas or NumPy, which the old `Binary` one
-    could. [`cityhash128()`](#cityhash128) describes that limitation.
+    From 0.9.1, `return_binary=True` with `byte_order="little"` writes the 0.7.0
+    bytes again, byte for byte.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u64`. |
+| `return_binary` | `bool` | `False` | Keyword-only. Write the hash as 16 `Binary` bytes. |
+| `byte_order` | `str` | `"little"` | Keyword-only. `"little"` or `"big"`. Read with `return_binary=True`. The default order is the compatible one, not the canonical one, so leaving it unnamed warns once. Name an order to accept it silently. |
 
-**Returns:** UInt128
+**Returns:** UInt128, or Binary with `return_binary=True`
 
 ---
 
@@ -219,10 +239,11 @@ df.select(plh.col("foo").nchash.murmur128(seed=42))
 
 The value matches `mmh3.hash128(..., signed=False)`. MurmurHash3 writes its digest as
 two little-endian halves, so the canonical bytes come back the other way round from
-[`xxh3_128()`](#xxh3_128):
+[`xxh3_128()`](#xxh3_128), and `return_binary=True` writes them directly. The bytes
+are the same ones `mmh3.hash_bytes()` gives:
 
 ```python
-(134986332493155497415370161450594282648).to_bytes(16, "little").hex()
+df.select(plh.col("foo").nchash.murmur128(return_binary=True).bin.encode("hex"))
 # 982cf39e1c1aa55d1b079716076c8d65
 ```
 
@@ -231,16 +252,16 @@ two little-endian halves, so the canonical bytes come back the other way round f
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u32`. The 128-bit variant also uses a 32-bit seed. |
+| `return_binary` | `bool` | `False` | Keyword-only. Write the hash as the 16 digest bytes. |
 
-**Returns:** UInt128
+**Returns:** UInt128, or Binary with `return_binary=True`
 
 !!! warning "0.8.0 changed this output from `Binary` to `UInt128`"
     Up to 0.7.0 this expression returned the 16 digest bytes, so `.bin.encode("hex")`
     gave the string above. The bytes were the canonical ones; only the container
     changed. `int.from_bytes(old, "little")` converts a stored value.
 
-    A `UInt128` column also cannot reach pandas or NumPy, which the old `Binary` one
-    could. [`cityhash128()`](#cityhash128) describes that limitation.
+    From 0.9.1, `return_binary=True` returns the same bytes as 0.7.0, byte for byte.
 
 ---
 
@@ -348,7 +369,13 @@ df.select(plh.col("foo").nchash.cityhash128())
 # 133423608296839006301901834072762183026
 ```
 
-**Returns:** UInt128
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `return_binary` | `bool` | `False` | Keyword-only. Write the hash as 16 `Binary` bytes, least significant byte first. |
+
+**Returns:** UInt128, or Binary with `return_binary=True`
 
 !!! note "How the two 64-bit halves are packed"
     C++ returns `CityHash128` as a pair. This expression packs it the way
@@ -360,8 +387,10 @@ df.select(plh.col("foo").nchash.cityhash128())
 !!! warning "`UInt128` does not leave Polars yet"
     Polars encodes `UInt128` as a private Arrow type, so `to_arrow()` and
     `to_pandas()` raise `ArrowInvalid` and `to_numpy()` fails on this column.
-    `write_parquet`, `write_ipc`, joins, `group_by` and sorting all work. Cast to
-    `pl.Binary` or split the halves if the column has to reach pandas or NumPy.
+    `write_parquet`, `write_ipc`, joins, `group_by` and sorting all work. Set
+    `return_binary=True` if the column has to leave Polars: `Binary` travels
+    everywhere. A cast to `pl.Binary` is not the same thing — it writes the decimal
+    digits of the integer, not its 16 bytes.
 
 ---
 
@@ -461,8 +490,9 @@ df.select(plh.col("foo").nchash.gxhash128(seed=42))
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `seed` | `int` | `0` | Keyword-only. The value must be in the range of a `u64`. |
+| `return_binary` | `bool` | `False` | Keyword-only. Write the hash as 16 `Binary` bytes, least significant byte first. |
 
-**Returns:** UInt128
+**Returns:** UInt128, or Binary with `return_binary=True`
 
 !!! note "The three widths are one hash, cut short"
     GxHash builds a single 128-bit state and each width reads the low part of it, so
