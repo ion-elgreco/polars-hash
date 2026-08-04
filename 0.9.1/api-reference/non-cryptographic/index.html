@@ -1181,7 +1181,7 @@ gives a null output.</p>
 <tr>
 <td><a href="#xxh3_128"><code>xxh3_128(seed)</code></a></td>
 <td>Utf8, Binary</td>
-<td>UInt128</td>
+<td>UInt128 or Binary</td>
 <td><code>u64</code></td>
 </tr>
 <tr>
@@ -1193,7 +1193,7 @@ gives a null output.</p>
 <tr>
 <td><a href="#murmur128"><code>murmur128(seed)</code></a></td>
 <td>Utf8, Binary</td>
-<td>UInt128</td>
+<td>UInt128 or Binary</td>
 <td><code>u32</code></td>
 </tr>
 <tr>
@@ -1223,7 +1223,7 @@ gives a null output.</p>
 <tr>
 <td><a href="#cityhash128"><code>cityhash128()</code></a></td>
 <td>Utf8, Binary</td>
-<td>UInt128</td>
+<td>UInt128 or Binary</td>
 <td>—</td>
 </tr>
 <tr>
@@ -1241,7 +1241,7 @@ gives a null output.</p>
 <tr>
 <td><a href="#gxhash128"><code>gxhash128(seed)</code></a></td>
 <td>Utf8, Binary</td>
-<td>UInt128</td>
+<td>UInt128 or Binary</td>
 <td><code>u64</code></td>
 </tr>
 <tr>
@@ -1258,6 +1258,10 @@ gives a null output.</p>
 </tr>
 </tbody>
 </table>
+<p>Each expression with a <code>UInt128</code> output also takes <code>return_binary=True</code>. That keyword
+writes the same hash as 16 <code>Binary</code> bytes, least significant byte first, for a write
+target that has no 128-bit integer. <a href="#xxh3_128"><code>xxh3_128()</code></a> can also write the other
+order; its section says when to ask for that.</p>
 <hr />
 <h2 id="wyhash"><code>wyhash()</code><a class="headerlink" href="#wyhash" title="Permanent link">&para;</a></h2>
 <p>wyhash with 64-bit output. This expression is very fast. You cannot set the seed; it is
@@ -1382,6 +1386,16 @@ gives the canonical XXH128 digest, the same string as <code>xxh128_hexdigest()</
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="mi">253649469245435599925940275794906345219</span><span class="si">:</span><span class="s2">032x</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># bed31c5eaf3dc62267fb185e21fe6f03</span>
 </code></pre></div>
+<p><code>return_binary=True</code> writes the hash as 16 <code>Binary</code> bytes, and <code>byte_order</code> picks
+their order. <code>"big"</code> is the digest XXH3 itself writes, the same bytes as
+<code>xxhash.xxh128_digest()</code>. <code>"little"</code> is the integer least significant byte first,
+which is what releases up to 0.7.0 wrote:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_128</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">byte_order</span><span class="o">=</span><span class="s2">&quot;big&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;hex&quot;</span><span class="p">))</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># bed31c5eaf3dc62267fb185e21fe6f03</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_128</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">byte_order</span><span class="o">=</span><span class="s2">&quot;little&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;hex&quot;</span><span class="p">))</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># 036ffe215e18fb6722c63daf5e1cd3be</span>
+</code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">0.8.0 changed this output from <code>Binary</code> to <code>UInt128</code></p>
 <p>Up to 0.7.0 this expression returned 16 bytes. The bytes held the value in the
@@ -1390,8 +1404,8 @@ reverse of the canonical order, so <code>.bin.encode("hex")</code> gave
 <code>bed31c5eaf3dc62267fb185e21fe6f03</code>. The integer now agrees with the reference, and
 <code>f"{value:032x}"</code> replaces <code>.bin.encode("hex")</code>. To read data hashed by an older
 release, reverse the old bytes: <code>int.from_bytes(old, "little")</code>.</p>
-<p>A <code>UInt128</code> column also cannot reach pandas or NumPy, which the old <code>Binary</code> one
-could. <a href="#cityhash128"><code>cityhash128()</code></a> describes that limitation.</p>
+<p>From 0.9.1, <code>return_binary=True</code> with <code>byte_order="little"</code> writes the 0.7.0
+bytes again, byte for byte.</p>
 </div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1410,18 +1424,30 @@ could. <a href="#cityhash128"><code>cityhash128()</code></a> describes that limi
 <td><code>0</code></td>
 <td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
 </tr>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as 16 <code>Binary</code> bytes.</td>
+</tr>
+<tr>
+<td><code>byte_order</code></td>
+<td><code>str</code></td>
+<td><code>"little"</code></td>
+<td>Keyword-only. <code>"little"</code> or <code>"big"</code>. Read with <code>return_binary=True</code>. The default order is the compatible one, not the canonical one, so leaving it unnamed warns once. Name an order to accept it silently.</td>
+</tr>
 </tbody>
 </table>
-<p><strong>Returns:</strong> UInt128</p>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
 <hr />
 <h2 id="murmur32"><code>murmur32(seed)</code><a class="headerlink" href="#murmur32" title="Permanent link">&para;</a></h2>
 <p>MurmurHash3, x86 32-bit variant. Many systems have an implementation of this
 algorithm, for example Spark, Kafka, and bloom filter libraries.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur32</span><span class="p">())</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># 3531928679</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># 259561949</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur32</span><span class="p">())</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># 3531928679</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># 259561949</span>
 </code></pre></div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1449,17 +1475,18 @@ a null value in the output.</p>
 <hr />
 <h2 id="murmur128"><code>murmur128(seed)</code><a class="headerlink" href="#murmur128" title="Permanent link">&para;</a></h2>
 <p>MurmurHash3, x64 128-bit variant.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">())</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># 134986332493155497415370161450594282648</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># 128378975539535818103252123378652633995</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">())</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># 134986332493155497415370161450594282648</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># 128378975539535818103252123378652633995</span>
 </code></pre></div>
 <p>The value matches <code>mmh3.hash128(..., signed=False)</code>. MurmurHash3 writes its digest as
 two little-endian halves, so the canonical bytes come back the other way round from
-<a href="#xxh3_128"><code>xxh3_128()</code></a>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">(</span><span class="mi">134986332493155497415370161450594282648</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="s2">&quot;little&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># 982cf39e1c1aa55d1b079716076c8d65</span>
+<a href="#xxh3_128"><code>xxh3_128()</code></a>, and <code>return_binary=True</code> writes them directly. The bytes
+are the same ones <code>mmh3.hash_bytes()</code> gives:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;hex&quot;</span><span class="p">))</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># 982cf39e1c1aa55d1b079716076c8d65</span>
 </code></pre></div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1478,31 +1505,36 @@ two little-endian halves, so the canonical bytes come back the other way round f
 <td><code>0</code></td>
 <td>Keyword-only. The value must be in the range of a <code>u32</code>. The 128-bit variant also uses a 32-bit seed.</td>
 </tr>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as the 16 digest bytes.</td>
+</tr>
 </tbody>
 </table>
-<p><strong>Returns:</strong> UInt128</p>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
 <div class="admonition warning">
 <p class="admonition-title">0.8.0 changed this output from <code>Binary</code> to <code>UInt128</code></p>
 <p>Up to 0.7.0 this expression returned the 16 digest bytes, so <code>.bin.encode("hex")</code>
 gave the string above. The bytes were the canonical ones; only the container
 changed. <code>int.from_bytes(old, "little")</code> converts a stored value.</p>
-<p>A <code>UInt128</code> column also cannot reach pandas or NumPy, which the old <code>Binary</code> one
-could. <a href="#cityhash128"><code>cityhash128()</code></a> describes that limitation.</p>
+<p>From 0.9.1, <code>return_binary=True</code> returns the same bytes as 0.7.0, byte for byte.</p>
 </div>
 <hr />
 <h2 id="farmhash32"><code>farmhash32()</code><a class="headerlink" href="#farmhash32" title="Permanent link">&para;</a></h2>
 <p>Google FarmHash <code>fingerprint32</code>. The fingerprint functions give the same value on all
 platforms. BigQuery uses them for its <code>FARM_FINGERPRINT</code> function. This expression has
 no seed.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;hello world&quot;</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">farmhash32</span><span class="p">())</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># 430397466</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;hello world&quot;</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">farmhash32</span><span class="p">())</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># 430397466</span>
 </code></pre></div>
 <p><strong>Returns:</strong> UInt32</p>
 <hr />
 <h2 id="farmhash64"><code>farmhash64()</code><a class="headerlink" href="#farmhash64" title="Permanent link">&para;</a></h2>
 <p>Google FarmHash <code>fingerprint64</code>, the 64-bit fingerprint. This expression has no seed.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;hello world&quot;</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">farmhash64</span><span class="p">())</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># 6381520714923946011</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;hello world&quot;</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">farmhash64</span><span class="p">())</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1"># 6381520714923946011</span>
 </code></pre></div>
 <p><strong>Returns:</strong> UInt64</p>
 <div class="admonition note">
@@ -1523,8 +1555,8 @@ published. <code>CityHash64</code> changed during the v1.0 series and <code>City
 after v1.0.3, so a system built on an earlier release gives a different value for
 the same input. Check which release the other system uses before you compare.</p>
 </div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;hello_world&quot;</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash32</span><span class="p">())</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1"># 1719156559</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;hello_world&quot;</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash32</span><span class="p">())</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="c1"># 1719156559</span>
 </code></pre></div>
 <p><strong>Returns:</strong> UInt32</p>
 <div class="admonition note">
@@ -1544,11 +1576,11 @@ CityHash agrees on ASCII input and disagrees on everything else.</p>
 <hr />
 <h2 id="cityhash64"><code>cityhash64(seed)</code><a class="headerlink" href="#cityhash64" title="Permanent link">&para;</a></h2>
 <p>Google CityHash <code>CityHash64</code>, from CityHash v1.1.1.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash64</span><span class="p">())</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="c1"># 15605398435621216523</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1"># 10175920941468920074</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash64</span><span class="p">())</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># 15605398435621216523</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># 10175920941468920074</span>
 </code></pre></div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1581,10 +1613,29 @@ seed, <code>0</code> included. This is why the seed defaults to <code>None</code
 <p>Google CityHash <code>CityHash128</code>, from CityHash v1.1.1. The output is a <code>UInt128</code>, so the
 whole hash is one integer and needs no decoding. <code>CityHash128WithSeed</code> is not wrapped,
 so this expression has no seed.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash128</span><span class="p">())</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># 133423608296839006301901834072762183026</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash128</span><span class="p">())</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># 133423608296839006301901834072762183026</span>
 </code></pre></div>
-<p><strong>Returns:</strong> UInt128</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as 16 <code>Binary</code> bytes, least significant byte first.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
 <div class="admonition note">
 <p class="admonition-title">How the two 64-bit halves are packed</p>
 <p>C++ returns <code>CityHash128</code> as a pair. This expression packs it the way
@@ -1597,8 +1648,10 @@ the values compare equal.</p>
 <p class="admonition-title"><code>UInt128</code> does not leave Polars yet</p>
 <p>Polars encodes <code>UInt128</code> as a private Arrow type, so <code>to_arrow()</code> and
 <code>to_pandas()</code> raise <code>ArrowInvalid</code> and <code>to_numpy()</code> fails on this column.
-<code>write_parquet</code>, <code>write_ipc</code>, joins, <code>group_by</code> and sorting all work. Cast to
-<code>pl.Binary</code> or split the halves if the column has to reach pandas or NumPy.</p>
+<code>write_parquet</code>, <code>write_ipc</code>, joins, <code>group_by</code> and sorting all work. Set
+<code>return_binary=True</code> if the column has to leave Polars: <code>Binary</code> travels
+everywhere. A cast to <code>pl.Binary</code> is not the same thing — it writes the decimal
+digits of the integer, not its 16 bytes.</p>
 </div>
 <hr />
 <h2 id="gxhash32"><code>gxhash32(seed)</code><a class="headerlink" href="#gxhash32" title="Permanent link">&para;</a></h2>
@@ -1606,11 +1659,11 @@ the values compare equal.</p>
 the CPU runs as a single instruction, so it is the fastest expression in the namespace
 for input above about a hundred bytes. Below that,
 <a href="#xxh3_64"><code>xxh3_64()</code></a> is the one to beat.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash32</span><span class="p">())</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># 2751540945</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="c1"># 3382299372</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash32</span><span class="p">())</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="c1"># 2751540945</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="c1"># 3382299372</span>
 </code></pre></div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1656,11 +1709,11 @@ for consistency, so a seed at or above <code>2**63</code> is the upstream seed m
 <hr />
 <h2 id="gxhash64"><code>gxhash64(seed)</code><a class="headerlink" href="#gxhash64" title="Permanent link">&para;</a></h2>
 <p>GxHash with 64-bit output.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash64</span><span class="p">())</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="c1"># 2180020304351407825</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="c1"># 15254170022685821676</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash64</span><span class="p">())</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="c1"># 2180020304351407825</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="c1"># 15254170022685821676</span>
 </code></pre></div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1698,11 +1751,11 @@ input and seed.</p>
 <h2 id="gxhash128"><code>gxhash128(seed)</code><a class="headerlink" href="#gxhash128" title="Permanent link">&para;</a></h2>
 <p>GxHash with 128-bit output. Like <a href="#cityhash128"><code>cityhash128()</code></a> the output is a
 <code>UInt128</code>, so the whole hash is one integer.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash128</span><span class="p">())</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="c1"># 56218077491375249900279963678916292305</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="c1"># 11136336363892181958542060125951740652</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash128</span><span class="p">())</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1"># 56218077491375249900279963678916292305</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># 11136336363892181958542060125951740652</span>
 </code></pre></div>
 <p><strong>Parameters:</strong></p>
 <table>
@@ -1721,9 +1774,15 @@ input and seed.</p>
 <td><code>0</code></td>
 <td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
 </tr>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as 16 <code>Binary</code> bytes, least significant byte first.</td>
+</tr>
 </tbody>
 </table>
-<p><strong>Returns:</strong> UInt128</p>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
 <div class="admonition note">
 <p class="admonition-title">The three widths are one hash, cut short</p>
 <p>GxHash builds a single 128-bit state and each width reads the low part of it, so
@@ -1739,19 +1798,19 @@ column cannot reach pandas or NumPy without a cast.</p>
 <hr />
 <h2 id="md5"><code>md5()</code><a class="headerlink" href="#md5" title="Permanent link">&para;</a></h2>
 <p>MD5, hex-encoded.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">md5</span><span class="p">())</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1"># 99b1ff8f11781541f7f89f9bd41c4a17</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">md5</span><span class="p">())</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="c1"># 99b1ff8f11781541f7f89f9bd41c4a17</span>
 </code></pre></div>
 <p>This expression hashes the bytes of a <code>Binary</code> column:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;my_bytes&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">md5</span><span class="p">())</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="c1"># 4445d78d11baa258c5f4ac1b8d33b8ba</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;my_bytes&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">md5</span><span class="p">())</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="c1"># 4445d78d11baa258c5f4ac1b8d33b8ba</span>
 </code></pre></div>
 <p><strong>Returns:</strong> Utf8 with 32 characters</p>
 <hr />
 <h2 id="sha1"><code>sha1()</code><a class="headerlink" href="#sha1" title="Permanent link">&para;</a></h2>
 <p>SHA-1, hex-encoded.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">sha1</span><span class="p">())</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="c1"># e4ecd6fc11898565af24977e992cea0c9c7b7025</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">sha1</span><span class="p">())</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="c1"># e4ecd6fc11898565af24977e992cea0c9c7b7025</span>
 </code></pre></div>
 <p><strong>Returns:</strong> Utf8 with 40 characters</p>
 
