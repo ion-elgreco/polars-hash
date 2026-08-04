@@ -41,17 +41,17 @@ Full page: [nchash](non-cryptographic.md).
 | [`nchash.xxhash32(seed)`](non-cryptographic.md#xxhash32) | Utf8, Binary | UInt32 | XXH32. |
 | [`nchash.xxhash64(seed)`](non-cryptographic.md#xxhash64) | Utf8, Binary | UInt64 | XXH64. |
 | [`nchash.xxh3_64(seed)`](non-cryptographic.md#xxh3_64) | Utf8, Binary | UInt64 | XXH3 with 64-bit output. |
-| [`nchash.xxh3_128(seed)`](non-cryptographic.md#xxh3_128) | Utf8, Binary | UInt128 | XXH3 with 128-bit output. |
+| [`nchash.xxh3_128(seed)`](non-cryptographic.md#xxh3_128) | Utf8, Binary | UInt128 or Binary | XXH3 with 128-bit output. |
 | [`nchash.murmur32(seed)`](non-cryptographic.md#murmur32) | Utf8, Binary | UInt32 | MurmurHash3, x86 32-bit variant. |
-| [`nchash.murmur128(seed)`](non-cryptographic.md#murmur128) | Utf8, Binary | UInt128 | MurmurHash3, x64 128-bit variant. |
+| [`nchash.murmur128(seed)`](non-cryptographic.md#murmur128) | Utf8, Binary | UInt128 or Binary | MurmurHash3, x64 128-bit variant. |
 | [`nchash.farmhash32()`](non-cryptographic.md#farmhash32) | Utf8, Binary | UInt32 | FarmHash `fingerprint32`. |
 | [`nchash.farmhash64()`](non-cryptographic.md#farmhash64) | Utf8, Binary | UInt64 | FarmHash `fingerprint64`. |
 | [`nchash.cityhash32()`](non-cryptographic.md#cityhash32) | Utf8, Binary | UInt32 | CityHash `CityHash32`. |
 | [`nchash.cityhash64(seed)`](non-cryptographic.md#cityhash64) | Utf8, Binary | UInt64 | CityHash `CityHash64`, or `CityHash64WithSeed` when given a seed. |
-| [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8, Binary | UInt128 | CityHash `CityHash128`. |
+| [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8, Binary | UInt128 or Binary | CityHash `CityHash128`. |
 | [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8, Binary | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
 | [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8, Binary | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
-| [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 | GxHash with 128-bit output. Needs a CPU with AES instructions. |
+| [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 or Binary | GxHash with 128-bit output. Needs a CPU with AES instructions. |
 | [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
 | [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8, Binary | Utf8 | SHA-1. |
 
