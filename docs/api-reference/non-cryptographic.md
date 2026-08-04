@@ -183,7 +183,7 @@ df.select(plh.col("foo").nchash.xxh3_128(return_binary=True, byte_order="little"
     `f"{value:032x}"` replaces `.bin.encode("hex")`. To read data hashed by an older
     release, reverse the old bytes: `int.from_bytes(old, "little")`.
 
-    From 0.9.0, `return_binary=True` with `byte_order="little"` writes the 0.7.0
+    From 0.9.1, `return_binary=True` with `byte_order="little"` writes the 0.7.0
     bytes again, byte for byte.
 
 **Parameters:**
@@ -261,7 +261,7 @@ df.select(plh.col("foo").nchash.murmur128(return_binary=True).bin.encode("hex"))
     gave the string above. The bytes were the canonical ones; only the container
     changed. `int.from_bytes(old, "little")` converts a stored value.
 
-    From 0.9.0, `return_binary=True` returns the same bytes as 0.7.0, byte for byte.
+    From 0.9.1, `return_binary=True` returns the same bytes as 0.7.0, byte for byte.
 
 ---
 
