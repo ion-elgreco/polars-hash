@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 # plugin stops the process. Therefore use `dtype-full` and not a list. A list must
 # grow with polars, and one absent feature stops the interpreter of the user.
 # `dtype-full` does not include `object`, which polars always sends as Binary.
-polars = { version = "0.54.4", features = ["dtype-full", "timezones"] }
+polars = { version = "0.55.2", features = ["dtype-full", "timezones"] }
 pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
 pyo3-polars = { version = "0.27", features = ["derive", "dtype-full"] }
 serde = { version = "1", features = ["derive"] }
