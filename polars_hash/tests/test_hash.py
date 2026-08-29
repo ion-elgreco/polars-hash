@@ -469,6 +469,9 @@ _BYTE_HASHERS = [
     ("nchash", "gxhash128", {}),
     ("nchash", "gxhash128", {"return_binary": True}),
     ("nchash", "gxhash64", {"seed": 7}),
+    ("nchash", "crc32c", {}),
+    ("nchash", "crc32c", {"return_binary": True, "byte_order": "little"}),
+    ("nchash", "crc32c", {"return_binary": True, "byte_order": "big"}),
     ("uuidhash", "uuid5", {}),
 ]
 
@@ -540,6 +543,36 @@ def test_gxhash_seed_changes_the_hash():
 
     assert result["default"].item() == result["zero"].item()
     assert result["other"].item() != result["zero"].item()
+
+
+def test_crc32c_matches_the_standard_check_value():
+    """0xE3069283 is the CRC-32C check value for the ASCII string "123456789"."""
+    df = pl.DataFrame({"literal": ["123456789"]})
+
+    result = df.select(plh.col("literal").nchash.crc32c())
+
+    assert result.item() == 0xE3069283
+
+
+def test_crc32c_byte_order_writes_each_order():
+    df = pl.DataFrame({"literal": ["123456789", None]})
+    hasher = plh.col("literal").nchash.crc32c
+
+    result = df.select(
+        big=hasher(return_binary=True, byte_order="big"),
+        little=hasher(return_binary=True, byte_order="little"),
+    )
+
+    assert result["big"][0] == (0xE3069283).to_bytes(4, "big")
+    assert result["little"][0] == (0xE3069283).to_bytes(4, "little")
+    assert result["big"][1] is None and result["little"][1] is None
+
+
+def test_crc32c_rejects_a_bad_byte_order():
+    df = pl.DataFrame({"literal": ["123456789"]})
+
+    with pytest.raises(ValueError, match="byte_order"):
+        df.select(plh.col("literal").nchash.crc32c(byte_order="middle"))  # type: ignore
 
 
 @pytest.mark.parametrize("hash_fn", ["gxhash32", "gxhash64", "gxhash128"])

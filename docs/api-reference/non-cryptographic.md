@@ -31,6 +31,7 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | [`gxhash32(seed)`](#gxhash32) | Utf8, Binary | UInt32 | `u64` |
 | [`gxhash64(seed)`](#gxhash64) | Utf8, Binary | UInt64 | `u64` |
 | [`gxhash128(seed)`](#gxhash128) | Utf8, Binary | UInt128 or Binary | `u64` |
+| [`crc32c()`](#crc32c) | Utf8, Binary | UInt32 or Binary | — |
 | [`md5()`](#md5) | Utf8, Binary | Utf8 | — |
 | [`sha1()`](#sha1) | Utf8, Binary | Utf8 | — |
 
@@ -503,6 +504,40 @@ df.select(plh.col("foo").nchash.gxhash128(seed=42))
 !!! warning "`UInt128` does not leave Polars yet"
     The same limitation [`cityhash128()`](#cityhash128) describes applies here: the
     column cannot reach pandas or NumPy without a cast.
+
+---
+
+## `crc32c()` { #crc32c }
+
+CRC-32C (Castagnoli), the variant iSCSI, SCTP, and libcsp use. This is a checksum, not
+a general-purpose hash: it is fast to compute and detects common transmission and
+storage errors, but is not resistant to deliberate collisions.
+
+```python
+df.select(plh.col("foo").nchash.crc32c())
+# 1680342080
+```
+
+`return_binary=True` writes the checksum as 4 `Binary` bytes, and `byte_order` picks
+their order. `"little"` (the default) is the integer's own bytes. `"big"` is network
+byte order, the order a checksum field on the wire is usually written in:
+
+```python
+df.select(plh.col("foo").nchash.crc32c(return_binary=True, byte_order="big").bin.encode("hex"))
+# 6427fc40
+
+df.select(plh.col("foo").nchash.crc32c(return_binary=True, byte_order="little").bin.encode("hex"))
+# 40fc2764
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `return_binary` | `bool` | `False` | Keyword-only. Write the checksum as 4 `Binary` bytes. |
+| `byte_order` | `str` | `"little"` | Keyword-only. `"little"` or `"big"`. Read with `return_binary=True`. |
+
+**Returns:** UInt32, or Binary with `return_binary=True`
 
 ---
 
