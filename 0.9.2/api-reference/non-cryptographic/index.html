@@ -1,0 +1,1951 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Stable non-cryptographic and cryptographic hashing functions for Polars">
+      
+      
+      
+        <link rel="canonical" href="https://ion-elgreco.github.io/polars-hash/0.9.2/api-reference/non-cryptographic/">
+      
+      
+        <link rel="prev" href="../cryptographic/">
+      
+      
+        <link rel="next" href="../geohash/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.57">
+    
+    
+      
+        <title>nchash — Non-cryptographic hash functions - polars-hash</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.5da3a30f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.812a03bb.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#nchash-non-cryptographic-hash-functions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="polars-hash" class="md-header__button md-logo" aria-label="polars-hash" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            polars-hash
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              nchash — Non-cryptographic hash functions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ion-elgreco/polars-hash" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    polars-hash
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="polars-hash" class="md-nav__button md-logo" aria-label="polars-hash" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    polars-hash
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ion-elgreco/polars-hash" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    polars-hash
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting Started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API Reference
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  API Reference
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cryptographic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  chash — Cryptographic
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  nchash — Non-cryptographic
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  nchash — Non-cryptographic
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#wyhash" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>wyhash()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxhash32(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxhash64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxh3_64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxh3_64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxh3_128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxh3_128(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#murmur32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>murmur32(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#murmur128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>murmur128(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#farmhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>farmhash32()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#farmhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>farmhash64()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cityhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>cityhash32()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cityhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>cityhash64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cityhash128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>cityhash128()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gxhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>gxhash32(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gxhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>gxhash64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gxhash128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>gxhash128(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#crc32c" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>crc32c()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#md5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>md5()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sha1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>sha1()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../geohash/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  geohash — Geohash
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../h3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  h3 — H3 index
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timehash/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  timehash — Time bucket
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../uuid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  uuidhash — UUID
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rows — whole-row hashing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#wyhash" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>wyhash()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxhash32(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxhash64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxh3_64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxh3_64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xxh3_128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>xxh3_128(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#murmur32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>murmur32(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#murmur128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>murmur128(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#farmhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>farmhash32()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#farmhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>farmhash64()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cityhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>cityhash32()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cityhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>cityhash64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cityhash128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>cityhash128()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gxhash32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>gxhash32(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gxhash64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>gxhash64(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gxhash128" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>gxhash128(seed)</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#crc32c" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>crc32c()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#md5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>md5()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sha1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>sha1()</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="nchash-non-cryptographic-hash-functions"><code>nchash</code> — Non-cryptographic hash functions<a class="headerlink" href="#nchash-non-cryptographic-hash-functions" title="Permanent link">&para;</a></h1>
+<p>polars-hash registers these expressions on <code>pl.Expr</code> as <code>.nchash</code>. They are fast and
+their output is constant. Each expression accepts Utf8 or Binary. A hash reads bytes,
+and therefore the data type of the input does not change the digest. A null input
+gives a null output.</p>
+<p>All the examples on this page use this data:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">polars_hash</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plh</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">"foo"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"hello_world"</span><span class="p">]})</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Input</th>
+<th>Output</th>
+<th>Seed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#wyhash"><code>wyhash()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>always 0</td>
+</tr>
+<tr>
+<td><a href="#xxhash32"><code>xxhash32(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td><code>u32</code></td>
+</tr>
+<tr>
+<td><a href="#xxhash64"><code>xxhash64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td><code>u64</code></td>
+</tr>
+<tr>
+<td><a href="#xxh3_64"><code>xxh3_64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td><code>u64</code></td>
+</tr>
+<tr>
+<td><a href="#xxh3_128"><code>xxh3_128(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128 or Binary</td>
+<td><code>u64</code></td>
+</tr>
+<tr>
+<td><a href="#murmur32"><code>murmur32(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td><code>u32</code></td>
+</tr>
+<tr>
+<td><a href="#murmur128"><code>murmur128(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128 or Binary</td>
+<td><code>u32</code></td>
+</tr>
+<tr>
+<td><a href="#farmhash32"><code>farmhash32()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#farmhash64"><code>farmhash64()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#cityhash32"><code>cityhash32()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#cityhash64"><code>cityhash64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td><code>u64</code>, optional</td>
+</tr>
+<tr>
+<td><a href="#cityhash128"><code>cityhash128()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128 or Binary</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#gxhash32"><code>gxhash32(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32</td>
+<td><code>u64</code></td>
+</tr>
+<tr>
+<td><a href="#gxhash64"><code>gxhash64(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt64</td>
+<td><code>u64</code></td>
+</tr>
+<tr>
+<td><a href="#gxhash128"><code>gxhash128(seed)</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt128 or Binary</td>
+<td><code>u64</code></td>
+</tr>
+<tr>
+<td><a href="#crc32c"><code>crc32c()</code></a></td>
+<td>Utf8, Binary</td>
+<td>UInt32 or Binary</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#md5"><code>md5()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#sha1"><code>sha1()</code></a></td>
+<td>Utf8, Binary</td>
+<td>Utf8</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Each expression with a <code>UInt128</code> output also takes <code>return_binary=True</code>. That keyword
+writes the same hash as 16 <code>Binary</code> bytes, least significant byte first, for a write
+target that has no 128-bit integer. <a href="#xxh3_128"><code>xxh3_128()</code></a> can also write the other
+order; its section says when to ask for that.</p>
+<hr />
+<h2 id="wyhash"><code>wyhash()</code><a class="headerlink" href="#wyhash" title="Permanent link">&para;</a></h2>
+<p>wyhash with 64-bit output. This expression is very fast. You cannot set the seed; it is
+always <code>0</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">wyhash</span><span class="p">())</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>┌──────────────────────┐
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>│ foo                  │
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>│ ---                  │
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│ u64                  │
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>╞══════════════════════╡
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│ 16737367591072095403 │
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>└──────────────────────┘
+</code></pre></div>
+<p>This expression hashes the bytes of a <code>Binary</code> column. Each expression on this page
+does the same:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="sa">b</span><span class="s2">"my_bytes"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">wyhash</span><span class="p">())</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># 5112362246832359110</span>
+</code></pre></div>
+<p>A dtype that is neither raises <code>ComputeError: expected `String` or `Binary` input</code>.</p>
+<p><strong>Returns:</strong> UInt64</p>
+<hr />
+<h2 id="xxhash32"><code>xxhash32(seed)</code><a class="headerlink" href="#xxhash32" title="Permanent link">&para;</a></h2>
+<p>XXH32, the original 32-bit xxHash.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxhash32</span><span class="p">())</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># 1605956417</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxhash32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># 1544934469</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u32</code>, that is <code>0</code> to <code>4294967295</code>. A value outside this range or a value of <code>None</code> raises <code>expected u32</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt32</p>
+<hr />
+<h2 id="xxhash64"><code>xxhash64(seed)</code><a class="headerlink" href="#xxhash64" title="Permanent link">&para;</a></h2>
+<p>XXH64, the 64-bit xxHash. <a href="#xxh3_64"><code>xxh3_64()</code></a> is faster. Use <code>xxhash64()</code> when you
+must get the same values as a different system.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxhash64</span><span class="p">())</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># 5654987600477331689</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1"># 17477110538672341566</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt64</p>
+<hr />
+<h2 id="xxh3_64"><code>xxh3_64(seed)</code><a class="headerlink" href="#xxh3_64" title="Permanent link">&para;</a></h2>
+<p>XXH3 with 64-bit output. For usual string lengths, this is the fastest expression in
+the namespace.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_64</span><span class="p">())</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1"># 7060460777671424209</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># 827481053383045869</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt64</p>
+<hr />
+<h2 id="xxh3_128"><code>xxh3_128(seed)</code><a class="headerlink" href="#xxh3_128" title="Permanent link">&para;</a></h2>
+<p>XXH3 with 128-bit output.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_128</span><span class="p">())</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># 253649469245435599925940275794906345219</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># 314735830047873782861649874643137875266</span>
+</code></pre></div>
+<p>The value matches <code>xxhash.xxh128_intdigest()</code>, and formatting it as 32 hex digits
+gives the canonical XXH128 digest, the same string as <code>xxh128_hexdigest()</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="mi">253649469245435599925940275794906345219</span><span class="si">:</span><span class="s2">032x</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># bed31c5eaf3dc62267fb185e21fe6f03</span>
+</code></pre></div>
+<p><code>return_binary=True</code> writes the hash as 16 <code>Binary</code> bytes, and <code>byte_order</code> picks
+their order. <code>"big"</code> is the digest XXH3 itself writes, the same bytes as
+<code>xxhash.xxh128_digest()</code>. <code>"little"</code> is the integer least significant byte first,
+which is what releases up to 0.7.0 wrote:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_128</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">byte_order</span><span class="o">=</span><span class="s2">"big"</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">))</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># bed31c5eaf3dc62267fb185e21fe6f03</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">xxh3_128</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">byte_order</span><span class="o">=</span><span class="s2">"little"</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">))</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># 036ffe215e18fb6722c63daf5e1cd3be</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">0.8.0 changed this output from <code>Binary</code> to <code>UInt128</code></p>
+<p>Up to 0.7.0 this expression returned 16 bytes. The bytes held the value in the
+reverse of the canonical order, so <code>.bin.encode("hex")</code> gave
+<code>036ffe215e18fb6722c63daf5e1cd3be</code> where the reference gives
+<code>bed31c5eaf3dc62267fb185e21fe6f03</code>. The integer now agrees with the reference, and
+<code>f"{value:032x}"</code> replaces <code>.bin.encode("hex")</code>. To read data hashed by an older
+release, reverse the old bytes: <code>int.from_bytes(old, "little")</code>.</p>
+<p>From 0.9.1, <code>return_binary=True</code> with <code>byte_order="little"</code> writes the 0.7.0
+bytes again, byte for byte.</p>
+</div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as 16 <code>Binary</code> bytes.</td>
+</tr>
+<tr>
+<td><code>byte_order</code></td>
+<td><code>str</code></td>
+<td><code>"little"</code></td>
+<td>Keyword-only. <code>"little"</code> or <code>"big"</code>. Read with <code>return_binary=True</code>. The default order is the compatible one, not the canonical one, so leaving it unnamed warns once. Name an order to accept it silently.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
+<hr />
+<h2 id="murmur32"><code>murmur32(seed)</code><a class="headerlink" href="#murmur32" title="Permanent link">&para;</a></h2>
+<p>MurmurHash3, x86 32-bit variant. Many systems have an implementation of this
+algorithm, for example Spark, Kafka, and bloom filter libraries.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur32</span><span class="p">())</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># 3531928679</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># 259561949</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u32</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt32</p>
+<p>With the default seed, an empty string gives <code>0</code>. With a different seed, an empty
+string gives a value that is not <code>0</code>. This is the correct MurmurHash3 result. It is not
+a null value in the output.</p>
+<hr />
+<h2 id="murmur128"><code>murmur128(seed)</code><a class="headerlink" href="#murmur128" title="Permanent link">&para;</a></h2>
+<p>MurmurHash3, x64 128-bit variant.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">())</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># 134986332493155497415370161450594282648</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># 128378975539535818103252123378652633995</span>
+</code></pre></div>
+<p>The value matches <code>mmh3.hash128(..., signed=False)</code>. MurmurHash3 writes its digest as
+two little-endian halves, so the canonical bytes come back the other way round from
+<a href="#xxh3_128"><code>xxh3_128()</code></a>, and <code>return_binary=True</code> writes them directly. The bytes
+are the same ones <code>mmh3.hash_bytes()</code> gives:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">murmur128</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">))</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># 982cf39e1c1aa55d1b079716076c8d65</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u32</code>. The 128-bit variant also uses a 32-bit seed.</td>
+</tr>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as the 16 digest bytes.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
+<div class="admonition warning">
+<p class="admonition-title">0.8.0 changed this output from <code>Binary</code> to <code>UInt128</code></p>
+<p>Up to 0.7.0 this expression returned the 16 digest bytes, so <code>.bin.encode("hex")</code>
+gave the string above. The bytes were the canonical ones; only the container
+changed. <code>int.from_bytes(old, "little")</code> converts a stored value.</p>
+<p>From 0.9.1, <code>return_binary=True</code> returns the same bytes as 0.7.0, byte for byte.</p>
+</div>
+<hr />
+<h2 id="farmhash32"><code>farmhash32()</code><a class="headerlink" href="#farmhash32" title="Permanent link">&para;</a></h2>
+<p>Google FarmHash <code>fingerprint32</code>. The fingerprint functions give the same value on all
+platforms. BigQuery uses them for its <code>FARM_FINGERPRINT</code> function. This expression has
+no seed.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">"foo"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"hello world"</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">farmhash32</span><span class="p">())</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># 430397466</span>
+</code></pre></div>
+<p><strong>Returns:</strong> UInt32</p>
+<hr />
+<h2 id="farmhash64"><code>farmhash64()</code><a class="headerlink" href="#farmhash64" title="Permanent link">&para;</a></h2>
+<p>Google FarmHash <code>fingerprint64</code>, the 64-bit fingerprint. This expression has no seed.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">"foo"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"hello world"</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">farmhash64</span><span class="p">())</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1"># 6381520714923946011</span>
+</code></pre></div>
+<p><strong>Returns:</strong> UInt64</p>
+<div class="admonition note">
+<p class="admonition-title">Signed and unsigned values</p>
+<p>The <code>FARM_FINGERPRINT</code> function in BigQuery gives the same 64 bits as a signed
+<code>INT64</code>. To compare the two results, use <code>.cast(pl.Int64)</code> on the polars-hash
+output.</p>
+</div>
+<hr />
+<h2 id="cityhash32"><code>cityhash32()</code><a class="headerlink" href="#cityhash32" title="Permanent link">&para;</a></h2>
+<p>Google CityHash <code>CityHash32</code>, from CityHash v1.1.1. FarmHash replaced CityHash, so use
+<a href="#farmhash32"><code>farmhash32()</code></a> for new work. Use <code>cityhash32()</code> when you must get the
+same values as a different system. This expression has no seed; <code>CityHash32</code> takes none.</p>
+<div class="admonition warning">
+<p class="admonition-title">Older CityHash releases give other values</p>
+<p>Every CityHash expression here gives the values of v1.1.1, the last release Google
+published. <code>CityHash64</code> changed during the v1.0 series and <code>CityHash128</code> changed
+after v1.0.3, so a system built on an earlier release gives a different value for
+the same input. Check which release the other system uses before you compare.</p>
+</div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">"foo"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"hello_world"</span><span class="p">]})</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash32</span><span class="p">())</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="c1"># 1719156559</span>
+</code></pre></div>
+<p><strong>Returns:</strong> UInt32</p>
+<div class="admonition note">
+<p class="admonition-title">CityHash and FarmHash agree on short input</p>
+<p>FarmHash reuses CityHash for short input, so <code>cityhash32()</code> and
+<a href="#farmhash32"><code>farmhash32()</code></a> give the same value for input up to 12 bytes — the
+example above is 11 — as do <a href="#cityhash64"><code>cityhash64()</code></a> and
+<a href="#farmhash64"><code>farmhash64()</code></a> up to 32 bytes. They part above those lengths. The
+equal values are not a bug.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">The input is hashed as UTF-8</p>
+<p>These expressions take Utf8 and hash the UTF-8 encoding of it, so <code>"élève"</code> hashes
+as 7 bytes, not 5 characters. A system that feeds UTF-16 or Latin-1 bytes to
+CityHash agrees on ASCII input and disagrees on everything else.</p>
+</div>
+<hr />
+<h2 id="cityhash64"><code>cityhash64(seed)</code><a class="headerlink" href="#cityhash64" title="Permanent link">&para;</a></h2>
+<p>Google CityHash <code>CityHash64</code>, from CityHash v1.1.1.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash64</span><span class="p">())</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># 15605398435621216523</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># 10175920941468920074</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int \| None</code></td>
+<td><code>None</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt64</p>
+<div class="admonition warning">
+<p class="admonition-title">A seed of 0 is not the same as no seed</p>
+<p>Without a seed this expression is <code>CityHash64</code>; with one it is
+<code>CityHash64WithSeed</code>, a separate function that gives a different value for every
+seed, <code>0</code> included. This is why the seed defaults to <code>None</code>.</p>
+</div>
+<hr />
+<h2 id="cityhash128"><code>cityhash128()</code><a class="headerlink" href="#cityhash128" title="Permanent link">&para;</a></h2>
+<p>Google CityHash <code>CityHash128</code>, from CityHash v1.1.1. The output is a <code>UInt128</code>, so the
+whole hash is one integer and needs no decoding. <code>CityHash128WithSeed</code> is not wrapped,
+so this expression has no seed.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">cityhash128</span><span class="p">())</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># 133423608296839006301901834072762183026</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as 16 <code>Binary</code> bytes, least significant byte first.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
+<div class="admonition note">
+<p class="admonition-title">How the two 64-bit halves are packed</p>
+<p>C++ returns <code>CityHash128</code> as a pair. This expression packs it the way
+<code>python-cityhash</code> does — <code>Uint128Low64(h) &lt;&lt; 64 | Uint128High64(h)</code>, so the C++
+<em>low</em> word is the <em>high</em> half of the integer. A system that composes the halves
+the other way round, or that stores the raw 16 bytes, needs a word swap before
+the values compare equal.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title"><code>UInt128</code> does not leave Polars yet</p>
+<p>Polars encodes <code>UInt128</code> as a private Arrow type, so <code>to_arrow()</code> and
+<code>to_pandas()</code> raise <code>ArrowInvalid</code> and <code>to_numpy()</code> fails on this column.
+<code>write_parquet</code>, <code>write_ipc</code>, joins, <code>group_by</code> and sorting all work. Set
+<code>return_binary=True</code> if the column has to leave Polars: <code>Binary</code> travels
+everywhere. A cast to <code>pl.Binary</code> is not the same thing — it writes the decimal
+digits of the integer, not its 16 bytes.</p>
+</div>
+<hr />
+<h2 id="gxhash32"><code>gxhash32(seed)</code><a class="headerlink" href="#gxhash32" title="Permanent link">&para;</a></h2>
+<p>GxHash with 32-bit output. GxHash reaches its speed through the AES block cipher, which
+the CPU runs as a single instruction, so it is the fastest expression in the namespace
+for input above about a hundred bytes. Below that,
+<a href="#xxh3_64"><code>xxh3_64()</code></a> is the one to beat.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash32</span><span class="p">())</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="c1"># 2751540945</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash32</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="c1"># 3382299372</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt32</p>
+<div class="admonition warning">
+<p class="admonition-title">GxHash needs a CPU with AES instructions</p>
+<p>The algorithm has no software fallback. The published wheels cover x86, x86-64 and
+aarch64, and every one of them is built with the instructions enabled, so a CPU
+without them stops the process the moment a GxHash expression runs. On x86 the
+instructions arrived with Westmere in 2010 and every processor since has them. On
+ARM they are an optional extension: Apple silicon and server parts have them, and
+some small boards, such as the Raspberry Pi 4, do not.</p>
+<p>The instructions are enabled for the whole build rather than for GxHash alone, so on
+x86 <code>ahash</code>, which the <a href="../h3/"><code>h3</code></a> namespace pulls in, switches to its AES-NI
+implementation as well and the <code>h3</code> expressions come to need them too. On aarch64
+<code>ahash</code> keeps its portable path, so there GxHash is the only namespace affected.</p>
+<p>There are no <code>linux-armv7</code> or <code>linux-ppc64le</code> wheels from 0.8.0 on, because GxHash
+cannot be built for either.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">The seed is unsigned here and signed upstream</p>
+<p>GxHash takes an <code>i64</code> seed. This namespace presents every 64-bit seed as a <code>u64</code>
+for consistency, so a seed at or above <code>2**63</code> is the upstream seed minus <code>2**64</code>:
+<code>seed=2**64 - 1</code> here is <code>-1</code> there. Both reach the same 64 bits.</p>
+</div>
+<hr />
+<h2 id="gxhash64"><code>gxhash64(seed)</code><a class="headerlink" href="#gxhash64" title="Permanent link">&para;</a></h2>
+<p>GxHash with 64-bit output.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash64</span><span class="p">())</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="c1"># 2180020304351407825</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash64</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="c1"># 15254170022685821676</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt64</p>
+<div class="admonition warning">
+<p class="admonition-title">The values are stable for GxHash 3 only</p>
+<p>GxHash holds its output stable across platforms, but only within a major version.
+polars-hash pins GxHash 3 exactly, so the values here do not change without a
+release that says so. A system on GxHash 2 gives different values for the same
+input and seed.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Seed 0 is the default, not a separate mode</p>
+<p>Every GxHash expression is seeded, and the default seed is <code>0</code>. Unlike
+<a href="#cityhash64"><code>cityhash64()</code></a>, there is no unseeded form to differ from.</p>
+</div>
+<hr />
+<h2 id="gxhash128"><code>gxhash128(seed)</code><a class="headerlink" href="#gxhash128" title="Permanent link">&para;</a></h2>
+<p>GxHash with 128-bit output. Like <a href="#cityhash128"><code>cityhash128()</code></a> the output is a
+<code>UInt128</code>, so the whole hash is one integer.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash128</span><span class="p">())</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1"># 56218077491375249900279963678916292305</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">gxhash128</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">))</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># 11136336363892181958542060125951740652</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Keyword-only. The value must be in the range of a <code>u64</code>.</td>
+</tr>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the hash as 16 <code>Binary</code> bytes, least significant byte first.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt128, or Binary with <code>return_binary=True</code></p>
+<div class="admonition note">
+<p class="admonition-title">The three widths are one hash, cut short</p>
+<p>GxHash builds a single 128-bit state and each width reads the low part of it, so
+<code>gxhash32()</code> is the low 32 bits of <code>gxhash64()</code>, which is the low 64 bits of
+<code>gxhash128()</code>. Ask for the width you need; the narrow ones cost no less than the
+wide one.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title"><code>UInt128</code> does not leave Polars yet</p>
+<p>The same limitation <a href="#cityhash128"><code>cityhash128()</code></a> describes applies here: the
+column cannot reach pandas or NumPy without a cast.</p>
+</div>
+<hr />
+<h2 id="crc32c"><code>crc32c()</code><a class="headerlink" href="#crc32c" title="Permanent link">&para;</a></h2>
+<p>CRC-32C (Castagnoli), the variant iSCSI, SCTP, and libcsp use. This is a checksum, not
+a general-purpose hash: it is fast to compute and detects common transmission and
+storage errors, but is not resistant to deliberate collisions.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">crc32c</span><span class="p">())</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="c1"># 1680342080</span>
+</code></pre></div>
+<p><code>return_binary=True</code> writes the checksum as 4 <code>Binary</code> bytes, and <code>byte_order</code> picks
+their order. <code>"little"</code> (the default) is the integer's own bytes. <code>"big"</code> is network
+byte order, the order a checksum field on the wire is usually written in:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">crc32c</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">byte_order</span><span class="o">=</span><span class="s2">"big"</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">))</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="c1"># 6427fc40</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">crc32c</span><span class="p">(</span><span class="n">return_binary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">byte_order</span><span class="o">=</span><span class="s2">"little"</span><span class="p">)</span><span class="o">.</span><span class="n">bin</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">))</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="c1"># 40fc2764</span>
+</code></pre></div>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>return_binary</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Keyword-only. Write the checksum as 4 <code>Binary</code> bytes.</td>
+</tr>
+<tr>
+<td><code>byte_order</code></td>
+<td><code>str</code></td>
+<td><code>"little"</code></td>
+<td>Keyword-only. <code>"little"</code> or <code>"big"</code>. Read with <code>return_binary=True</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> UInt32, or Binary with <code>return_binary=True</code></p>
+<hr />
+<h2 id="md5"><code>md5()</code><a class="headerlink" href="#md5" title="Permanent link">&para;</a></h2>
+<p>MD5, hex-encoded.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">md5</span><span class="p">())</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="c1"># 99b1ff8f11781541f7f89f9bd41c4a17</span>
+</code></pre></div>
+<p>This expression hashes the bytes of a <code>Binary</code> column:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="sa">b</span><span class="s2">"my_bytes"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">md5</span><span class="p">())</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="c1"># 4445d78d11baa258c5f4ac1b8d33b8ba</span>
+</code></pre></div>
+<p><strong>Returns:</strong> Utf8 with 32 characters</p>
+<hr />
+<h2 id="sha1"><code>sha1()</code><a class="headerlink" href="#sha1" title="Permanent link">&para;</a></h2>
+<p>SHA-1, hex-encoded.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">plh</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">"foo"</span><span class="p">)</span><span class="o">.</span><span class="n">nchash</span><span class="o">.</span><span class="n">sha1</span><span class="p">())</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="c1"># e4ecd6fc11898565af24977e992cea0c9c7b7025</span>
+</code></pre></div>
+<p><strong>Returns:</strong> Utf8 with 40 characters</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.code.copy","content.code.annotate","navigation.sections","navigation.expand","navigation.indexes","search.highlight","search.share","toc.follow","navigation.tabs","navigation.tabs.sticky","navigation.top"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.49251538.min.js"></script>
+      
+    
+  </body>
+</html>
