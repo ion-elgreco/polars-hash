@@ -210,6 +210,30 @@ class NonCryptographicHashingNameSpace:
         """
         return _plugin("cityhash128", self._expr, return_binary=return_binary)
 
+    def crc32c(
+        self,
+        *,
+        return_binary: bool = False,
+        byte_order: Literal["little", "big"] = "little",
+    ) -> pl.Expr:
+        """Takes Utf8 or Binary as input and returns uint32 hash with CRC-32C (Castagnoli).
+
+        This is the variant iSCSI/SCTP and libcsp use.
+
+        Set `return_binary` to get the checksum as 4 Binary bytes. `byte_order` picks
+        their order: "little" (the default) is the integer's own bytes, "big" is
+        network byte order.
+        """
+        if byte_order not in ("little", "big"):
+            msg = f"`byte_order` must be 'little' or 'big', got {byte_order!r}"
+            raise ValueError(msg)
+        return _plugin(
+            "crc32c",
+            self._expr,
+            return_binary=return_binary,
+            big_endian=byte_order == "big",
+        )
+
     def gxhash32(self, *, seed: int = 0) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns uint32 hash with GxHash."""
         return _plugin("gxhash32", self._expr, seed=_encode_u64_seed(seed))

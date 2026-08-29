@@ -11,6 +11,7 @@ use crate::timehashers::{
     validate_precision,
 };
 use crate::xxhash_hashers::*;
+use crc32c::crc32c as crc32c_checksum;
 use hmac::KeyInit;
 use polars::{
     chunked_array::ops::arity::{
@@ -75,6 +76,23 @@ struct BinaryKwargs {
     return_binary: bool,
 }
 
+/// A 32-bit hasher's choice of output data type and, for binary output, byte order.
+#[derive(Deserialize)]
+struct Crc32Kwargs {
+    return_binary: bool,
+    big_endian: bool,
+}
+
+/// Gives the data type that a 32-bit hasher writes, mirroring [`hash_128_output`].
+fn hash_32_output(fields: &[Field], kwargs: Crc32Kwargs) -> PolarsResult<Field> {
+    let dtype = if kwargs.return_binary {
+        DataType::Binary
+    } else {
+        DataType::UInt32
+    };
+    Ok(Field::new(fields[0].name().clone(), dtype))
+}
+
 /// Gives the data type that a 128-bit hasher writes.
 ///
 /// The output type of a plugin expression comes from a declaration, and not from the
@@ -128,6 +146,11 @@ pub fn md5_hash(value: &[u8], output: &mut string::String) {
 // applies as `*v as i8`.
 fn cityhash_32(value: &[u8]) -> u32 {
     cityhasher::hash::<u32>(value)
+}
+
+/// CRC-32C (Castagnoli), the variant iSCSI/SCTP and libcsp use.
+fn crc32c_hash(value: &[u8]) -> u32 {
+    crc32c_checksum(value)
 }
 
 fn cityhash_64(value: &[u8]) -> u64 {
@@ -196,6 +219,20 @@ fn cityhash128(inputs: &[Series], kwargs: BinaryKwargs) -> PolarsResult<Series> 
         return Ok(out.into_series());
     }
     let out: UInt128Chunked = hash_bytes(&inputs[0], cityhash_128)?;
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type_func_with_kwargs=hash_32_output)]
+fn crc32c(inputs: &[Series], kwargs: Crc32Kwargs) -> PolarsResult<Series> {
+    if kwargs.return_binary {
+        let out = if kwargs.big_endian {
+            hash_bytes_into_binary(&inputs[0], |v| crc32c_hash(v).to_be_bytes())?
+        } else {
+            hash_bytes_into_binary(&inputs[0], |v| crc32c_hash(v).to_le_bytes())?
+        };
+        return Ok(out.into_series());
+    }
+    let out: UInt32Chunked = hash_bytes(&inputs[0], crc32c_hash)?;
     Ok(out.into_series())
 }
 

@@ -34,6 +34,7 @@ uuid = { version = "1.24.0", features = ["v5"] }
 farmhash = { version = "1.1.5" }
 cityhasher = { version = "=0.1.0", default-features = false }
 cityhash-rs = { version = "=1.0.1" }
+crc32c = { version = "0.6.8" }
 hmac = { version = "0.13.0" }
 timeharsh = { version = "=1.0.0" }
 gxhash = { version = "=3.5.0", default-features = false }
