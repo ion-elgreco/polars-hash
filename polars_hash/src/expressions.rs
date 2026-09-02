@@ -1,6 +1,7 @@
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
+use crate::iceberg_bytes::encode_iceberg_bytes;
 use crate::murmurhash_hashers::*;
 use crate::sha_hashers::*;
 use crate::shared::{
@@ -15,7 +16,7 @@ use crc32c::crc32c as crc32c_checksum;
 use hmac::KeyInit;
 use polars::{
     chunked_array::ops::arity::{
-        try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise,
+        try_binary_elementwise, try_ternary_elementwise, try_unary_elementwise, unary_elementwise,
     },
     prelude::*,
 };
@@ -491,6 +492,37 @@ fn thash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
     let seed = kwargs.seed;
     let out: UInt32Chunked = hash_bytes(&inputs[0], |v| murmurhash3_32(v, seed))?;
+    Ok(out.into_series())
+}
+
+/// murmur32 with a fixed seed of 0, reinterpreted as `i32`: the one hash every
+/// Iceberg spec transform in this file is built from.
+fn iceberg_hash_value(v: &[u8]) -> i32 {
+    murmurhash3_32(v, 0) as i32
+}
+
+#[polars_expr(output_type=Int32)]
+fn iceberg_hash(inputs: &[Series]) -> PolarsResult<Series> {
+    let bytes = encode_iceberg_bytes(&inputs[0])?;
+    let out: Int32Chunked = unary_elementwise(&bytes, |v: Option<&[u8]>| v.map(iceberg_hash_value));
+    Ok(out.into_series())
+}
+
+#[derive(Deserialize)]
+struct IcebergBucketKwargs {
+    n: u32,
+}
+
+#[polars_expr(output_type=Int32)]
+fn iceberg_bucket(inputs: &[Series], kwargs: IcebergBucketKwargs) -> PolarsResult<Series> {
+    if kwargs.n == 0 {
+        polars_bail!(InvalidOperation: "`n` must be a positive integer, got 0");
+    }
+    let n = kwargs.n as i32;
+    let bytes = encode_iceberg_bytes(&inputs[0])?;
+    let out: Int32Chunked = unary_elementwise(&bytes, |v: Option<&[u8]>| {
+        v.map(|v| (iceberg_hash_value(v) & i32::MAX) % n)
+    });
     Ok(out.into_series())
 }
 
