@@ -968,6 +968,211 @@ def test_xxhash64():
     assert_frame_equal(result, expected)
 
 
+# Ground truth for the string/int/bool/bigint cases below is ducklake's own
+# `test/sql/partitioning/bucket_partitioning.test`, cross-checked against a live
+# DuckDB + ducklake session. The int/float edge cases were verified the same way,
+# separately. `iceberg_hash` returns the same bit pattern as DuckLake/ClickHouse's
+# murmur3_32, but as `Int32` rather than `UInt32`, to match `icebergHash`/
+# `icebergBucket` in ClickHouse and DuckLake's own signed return type.
+def test_iceberg_hash_strings():
+    df = pl.DataFrame({"literal": ["alice", "bob", "charlie", "dave", "eve"]})
+    result = df.select(plh.col("literal").nchash.iceberg_hash())
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "literal",
+                [1280413405, -1470399502, -481950697, 1081635533, -1940671110],
+                dtype=pl.Int32,
+            ),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_bucket_strings():
+    df = pl.DataFrame({"literal": ["alice", "bob", "charlie", "dave", "eve"]})
+    result = df.select(plh.col("literal").nchash.iceberg_bucket(n=4))
+
+    expected = pl.DataFrame([pl.Series("literal", [1, 2, 3, 1, 2], dtype=pl.Int32)])
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_hash_and_bucket_int():
+    df = pl.DataFrame({"literal": [1, 2, 3, 100, 200]})
+    result = df.select(
+        plh.col("literal").nchash.iceberg_hash().alias("hash"),
+        plh.col("literal").nchash.iceberg_bucket(n=3).alias("bucket"),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "hash",
+                [1392991556, -971005196, -1556392013, -970256272, 845973527],
+                dtype=pl.Int32,
+            ),
+            pl.Series("bucket", [2, 0, 0, 1, 2], dtype=pl.Int32),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_hash_and_bucket_bool():
+    df = pl.DataFrame({"literal": [True, False]})
+    result = df.select(
+        plh.col("literal").nchash.iceberg_hash().alias("hash"),
+        plh.col("literal").nchash.iceberg_bucket(n=2).alias("bucket"),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("hash", [1392991556, 1669671676], dtype=pl.Int32),
+            pl.Series("bucket", [0, 0], dtype=pl.Int32),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_hash_and_bucket_bigint():
+    df = pl.DataFrame(
+        {"literal": [1000000000000, 2000000000000, 3000000000000]},
+        schema={"literal": pl.Int64},
+    )
+    result = df.select(
+        plh.col("literal").nchash.iceberg_hash().alias("hash"),
+        plh.col("literal").nchash.iceberg_bucket(n=4).alias("bucket"),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("hash", [-1510912948, 1032677538, 1800547373], dtype=pl.Int32),
+            pl.Series("bucket", [0, 2, 1], dtype=pl.Int32),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_hash_and_bucket_int_edge_cases():
+    df = pl.DataFrame(
+        {"literal": [0, 1, -1, 42, 1234567890, -9999, 2147483647, -2147483648]},
+        schema={"literal": pl.Int64},
+    )
+    result = df.select(
+        plh.col("literal").nchash.iceberg_hash().alias("hash"),
+        plh.col("literal").nchash.iceberg_bucket(n=32).alias("bucket"),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "hash",
+                [
+                    1669671676,
+                    1392991556,
+                    1651860712,
+                    1871679806,
+                    2080695519,
+                    1804121000,
+                    1819228606,
+                    -2073034792,
+                ],
+                dtype=pl.Int32,
+            ),
+            pl.Series("bucket", [28, 4, 8, 30, 31, 8, 30, 24], dtype=pl.Int32),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_hash_and_bucket_float_edge_cases():
+    df = pl.DataFrame(
+        {"literal": [1.0, -1.0, 0.0, -0.0, 3.14159]},
+        schema={"literal": pl.Float64},
+    )
+    result = df.select(
+        plh.col("literal").nchash.iceberg_hash().alias("hash"),
+        plh.col("literal").nchash.iceberg_bucket(n=32).alias("bucket"),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series(
+                "hash",
+                [-142385009, -494280847, 1669671676, 1669671676, -666507751],
+                dtype=pl.Int32,
+            ),
+            pl.Series("bucket", [15, 17, 28, 28, 25], dtype=pl.Int32),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_iceberg_hash_treats_negative_zero_like_positive_zero():
+    """The one edge case a naive bit-pattern encoder gets wrong: -0.0 and 0.0 must
+    hash identically, which only holds if the sign bit is normalised away first."""
+    df = pl.DataFrame({"literal": [0.0, -0.0]}, schema={"literal": pl.Float64})
+    result = df.select(plh.col("literal").nchash.iceberg_hash())
+
+    assert result["literal"][0] == result["literal"][1]
+
+
+def test_iceberg_hash_and_bucket_null():
+    df = pl.DataFrame({"literal": [1, None, 3]}, schema={"literal": pl.Int64})
+    result = df.select(
+        plh.col("literal").nchash.iceberg_hash().alias("hash"),
+        plh.col("literal").nchash.iceberg_bucket(n=4).alias("bucket"),
+    )
+
+    expected = pl.DataFrame(
+        [
+            pl.Series("hash", [1392991556, None, -1556392013], dtype=pl.Int32),
+            pl.Series("bucket", [0, None, 3], dtype=pl.Int32),
+        ]
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize("n", [0, -1, -32])
+def test_iceberg_bucket_rejects_non_positive_n(n):
+    df = pl.DataFrame({"literal": [1, 2, 3]})
+
+    with pytest.raises(ValueError, match="n must be a positive integer"):
+        df.select(plh.col("literal").nchash.iceberg_bucket(n=n))
+
+
+def test_iceberg_hash_of_string_and_binary_agree():
+    """The Iceberg spec encodes a string as its raw UTF-8 bytes, so hashing the
+    string or its already-encoded bytes must agree."""
+    df = pl.DataFrame({"literal": ["alice", None]})
+    result = df.select(plh.col("literal").nchash.iceberg_hash())
+
+    df_bin = pl.DataFrame({"literal": [b"alice", None]})
+    result_bin = df_bin.select(plh.col("literal").nchash.iceberg_hash())
+
+    assert_frame_equal(result, result_bin)
+
+
+def test_iceberg_hash_rejects_unsupported_dtype():
+    df = pl.DataFrame({"literal": [date(2020, 1, 1)]})
+
+    with pytest.raises(
+        ComputeError,
+        match="expected Boolean, Int8/16/32/64, Float32/64, String or Binary input",
+    ):
+        df.select(plh.col("literal").nchash.iceberg_hash())
+
+
+def test_iceberg_bucket_rejects_unsupported_dtype():
+    df = pl.DataFrame({"literal": [date(2020, 1, 1)]})
+
+    with pytest.raises(
+        ComputeError,
+        match="expected Boolean, Int8/16/32/64, Float32/64, String or Binary input",
+    ):
+        df.select(plh.col("literal").nchash.iceberg_bucket(n=4))
+
+
 def test_big():
     df = (
         pl.DataFrame({"a": ["asdfasdf" * 1_000_000]})

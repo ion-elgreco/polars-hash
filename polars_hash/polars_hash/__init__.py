@@ -178,6 +178,24 @@ class NonCryptographicHashingNameSpace:
             big_endian=byte_order == "big",
         )
 
+    def iceberg_hash(self) -> pl.Expr:
+        """Takes Boolean, Int8/16/32/64, Float32/64, Utf8 or Binary as input and
+        returns the int32 hash Apache Iceberg's `bucket(N)` partition transform is
+        built from.
+        """
+        return _plugin("iceberg_hash", self._expr)
+
+    def iceberg_bucket(self, n: int) -> pl.Expr:
+        """Takes Boolean, Int8/16/32/64, Float32/64, Utf8 or Binary as input and
+        returns the Apache Iceberg `bucket(N)` partition value, an int32 in `[0, n)`.
+
+        `n` must be positive.
+        """
+        if n <= 0:
+            msg = f"n must be a positive integer, got {n}"
+            raise ValueError(msg)
+        return _plugin("iceberg_bucket", self._expr, n=n)
+
     def farmhash32(self) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns uint32 hash with FarmHash fingerprint32."""
         return _plugin("farmhash32", self._expr)

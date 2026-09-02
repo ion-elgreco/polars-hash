@@ -2,6 +2,7 @@ mod expressions;
 mod geohashers;
 mod h3;
 mod hmac_hashers;
+mod iceberg_bytes;
 mod murmurhash_hashers;
 mod row_encode;
 mod sha_hashers;
