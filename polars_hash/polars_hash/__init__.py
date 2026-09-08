@@ -265,21 +265,12 @@ class BytesNameSpace:
     def to_le(self) -> pl.Expr:
         """Takes Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or Binary
         as input and returns its own bytes as Binary, little-endian.
-
-        Each type keeps its own width -- `Int32` becomes 4 bytes, `Float64` becomes
-        8. `Boolean` and the 8-bit integer types are a single byte, so they read the
-        same under `to_le()` and `to_be()`. `Utf8` and `Binary` have no endianness of
-        their own and pass through unchanged. Cast first if you need a different
-        width, e.g. `.cast(pl.Int64)` before this to widen a smaller integer.
-
-        Piping the result into a hasher such as `nchash.murmur32()` composes a
-        byte-precise hash of the value rather than of its string representation.
         """
         return _plugin("bytes_to_le", self._expr)
 
     def to_be(self) -> pl.Expr:
-        """The big-endian equivalent of `to_le()`. See its docstring for the width
-        and passthrough rules, which are the same either way.
+        """Takes Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or Binary
+        as input and returns its own bytes as Binary, big-endian.
         """
         return _plugin("bytes_to_be", self._expr)
 
