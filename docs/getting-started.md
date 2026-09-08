@@ -46,14 +46,15 @@ output a different name with `alias()`:
 df.with_columns(plh.col("foo").chash.sha2_256().alias("foo_sha256"))
 ```
 
-## The six namespaces
+## The seven namespaces
 
-The `import polars_hash` statement registers all six namespaces on `pl.Expr`:
+The `import polars_hash` statement registers all seven namespaces on `pl.Expr`:
 
 | Namespace | Contents | Reference |
 |-----------|----------|-----------|
 | `chash` | Cryptographic hash functions: SHA-2, SHA-3, SHAKE128, BLAKE3, HMAC | [chash](api-reference/cryptographic.md) |
 | `nchash` | Non-cryptographic hash functions: wyhash, xxHash, Murmur, FarmHash, CityHash, MD5, SHA-1 | [nchash](api-reference/non-cryptographic.md) |
+| `bytes` | Native-width byte encoding of a value, little- or big-endian | [bytes](api-reference/bytes.md) |
 | `geohash` | Geohash encode, decode, and neighbors | [geohash](api-reference/geohash.md) |
 | `h3` | H3 hexagonal cell index | [h3](api-reference/h3.md) |
 | `timehash` | Time-bucket encode, decode, and neighbors | [timehash](api-reference/timehash.md) |

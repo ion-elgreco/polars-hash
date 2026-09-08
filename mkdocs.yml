@@ -45,6 +45,7 @@ nav:
       - Overview: api-reference/index.md
       - chash — Cryptographic: api-reference/cryptographic.md
       - nchash — Non-cryptographic: api-reference/non-cryptographic.md
+      - bytes — Byte encoding: api-reference/bytes.md
       - geohash — Geohash: api-reference/geohash.md
       - h3 — H3 index: api-reference/h3.md
       - timehash — Time bucket: api-reference/timehash.md

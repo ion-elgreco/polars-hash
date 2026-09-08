@@ -178,24 +178,6 @@ class NonCryptographicHashingNameSpace:
             big_endian=byte_order == "big",
         )
 
-    def iceberg_hash(self) -> pl.Expr:
-        """Takes Boolean, Int8/16/32/64, Float32/64, Utf8 or Binary as input and
-        returns the int32 hash Apache Iceberg's `bucket(N)` partition transform is
-        built from.
-        """
-        return _plugin("iceberg_hash", self._expr)
-
-    def iceberg_bucket(self, n: int) -> pl.Expr:
-        """Takes Boolean, Int8/16/32/64, Float32/64, Utf8 or Binary as input and
-        returns the Apache Iceberg `bucket(N)` partition value, an int32 in `[0, n)`.
-
-        `n` must be positive.
-        """
-        if n <= 0:
-            msg = f"n must be a positive integer, got {n}"
-            raise ValueError(msg)
-        return _plugin("iceberg_bucket", self._expr, n=n)
-
     def farmhash32(self) -> pl.Expr:
         """Takes Utf8 or Binary as input and returns uint32 hash with FarmHash fingerprint32."""
         return _plugin("farmhash32", self._expr)
@@ -273,6 +255,33 @@ class NonCryptographicHashingNameSpace:
             seed=_encode_u64_seed(seed),
             return_binary=return_binary,
         )
+
+
+@pl.api.register_expr_namespace("bytes")
+class BytesNameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+
+    def to_le(self) -> pl.Expr:
+        """Takes Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or Binary
+        as input and returns its own bytes as Binary, little-endian.
+
+        Each type keeps its own width -- `Int32` becomes 4 bytes, `Float64` becomes
+        8. `Boolean` and the 8-bit integer types are a single byte, so they read the
+        same under `to_le()` and `to_be()`. `Utf8` and `Binary` have no endianness of
+        their own and pass through unchanged. Cast first if you need a different
+        width, e.g. `.cast(pl.Int64)` before this to widen a smaller integer.
+
+        Piping the result into a hasher such as `nchash.murmur32()` composes a
+        byte-precise hash of the value rather than of its string representation.
+        """
+        return _plugin("bytes_to_le", self._expr)
+
+    def to_be(self) -> pl.Expr:
+        """The big-endian equivalent of `to_le()`. See its docstring for the width
+        and passthrough rules, which are the same either way.
+        """
+        return _plugin("bytes_to_be", self._expr)
 
 
 def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
@@ -402,6 +411,10 @@ class HExpr(pl.Expr):
     @property
     def nchash(self) -> NonCryptographicHashingNameSpace:
         return NonCryptographicHashingNameSpace(self)
+
+    @property
+    def bytes(self) -> BytesNameSpace:
+        return BytesNameSpace(self)
 
     @property
     def geohash(self) -> GeoHashingNameSpace:

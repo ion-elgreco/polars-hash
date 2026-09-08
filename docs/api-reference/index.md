@@ -1,6 +1,6 @@
 # API Reference
 
-This page lists everything public in polars-hash. One import registers the six
+This page lists everything public in polars-hash. One import registers the seven
 namespaces on `pl.Expr`:
 
 ```python
@@ -54,6 +54,17 @@ Full page: [nchash](non-cryptographic.md).
 | [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 or Binary | GxHash with 128-bit output. Needs a CPU with AES instructions. |
 | [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
 | [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8, Binary | Utf8 | SHA-1. |
+
+## `bytes` — byte encoding
+
+Each expression accepts Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or
+Binary, and gives Binary at the input type's own width. Full page:
+[bytes](bytes.md).
+
+| Expression | Input | Output | Description |
+|------------|-------|--------|-------------|
+| [`bytes.to_le()`](bytes.md#to_le) | Boolean, Int/UInt8/16/32/64, Float32/64, Utf8, Binary | Binary | Native-width bytes, little-endian. |
+| [`bytes.to_be()`](bytes.md#to_be) | Boolean, Int/UInt8/16/32/64, Float32/64, Utf8, Binary | Binary | Native-width bytes, big-endian. |
 
 ## `geohash` — geohash
 
