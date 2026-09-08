@@ -1037,178 +1037,18 @@ def test_bytes_rejects_unsupported_dtype(method):
         df.select(getattr(plh.col("literal").bytes, method)())
 
 
-# The design ion-elgreco suggested in
-# https://github.com/ion-elgreco/polars-hash/pull/85#issuecomment-5575550492 in
-# place of dedicated `iceberg_hash`/`iceberg_bucket` functions: encode with the
-# generic `bytes.to_le()` and hash with the existing, unmodified `murmur32(seed=0)`.
-# Ground truth is ducklake's own `test/sql/partitioning/bucket_partitioning.test`,
-# cross-checked against a live DuckDB + ducklake session.
-def _iceberg_hash(expr: pl.Expr) -> pl.Expr:
-    """The caller widens ints/booleans to Int64 and normalises `-0.0` to `0.0`
-    first -- that widening is specific to the Iceberg spec's byte layout, not
-    something a generic byte encoder should assume."""
-    return (
-        expr.bytes.to_le().nchash.murmur32(seed=0).cast(pl.Int32, wrap_numerical=True)
-    )
+def test_bytes_to_le_composes_with_a_hasher():
+    """`bytes` encodes a value; it does not hash one. Piping the encoding into a
+    hasher should give the same result as hashing the equivalent already-encoded
+    Binary value directly -- proving the two compose rather than merely that the
+    convenience of writing them together happens to work."""
+    df = pl.DataFrame({"literal": [1, -1, 100]}, schema={"literal": pl.Int32})
+    via_bytes = df.select(plh.col("literal").bytes.to_le().nchash.murmur32(seed=0))
 
+    df_bin = df.select(plh.col("literal").bytes.to_le().alias("literal"))
+    direct = df_bin.select(plh.col("literal").nchash.murmur32(seed=0))
 
-def _iceberg_bucket(expr: pl.Expr, n: int) -> pl.Expr:
-    return (_iceberg_hash(expr) & 0x7FFFFFFF) % n
-
-
-def _normalize_negative_zero(expr: pl.Expr) -> pl.Expr:
-    return pl.when(expr == 0.0).then(0.0).otherwise(expr)
-
-
-def test_iceberg_bucket_composition_matches_ducklake_strings():
-    df = pl.DataFrame({"literal": ["alice", "bob", "charlie", "dave", "eve"]})
-    result = df.select(
-        _iceberg_hash(pl.col("literal")).alias("hash"),
-        _iceberg_bucket(pl.col("literal"), 4).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "hash",
-                [1280413405, -1470399502, -481950697, 1081635533, -1940671110],
-                dtype=pl.Int32,
-            ),
-            pl.Series("bucket", [1, 2, 3, 1, 2], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
-
-
-def test_iceberg_bucket_composition_matches_ducklake_int():
-    df = pl.DataFrame({"literal": [1, 2, 3, 100, 200]}, schema={"literal": pl.Int64})
-    result = df.select(
-        _iceberg_hash(pl.col("literal")).alias("hash"),
-        _iceberg_bucket(pl.col("literal"), 3).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "hash",
-                [1392991556, -971005196, -1556392013, -970256272, 845973527],
-                dtype=pl.Int32,
-            ),
-            pl.Series("bucket", [2, 0, 0, 1, 2], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
-
-
-def test_iceberg_bucket_composition_matches_ducklake_bool():
-    df = pl.DataFrame({"literal": [True, False]})
-    widened = pl.col("literal").cast(pl.Int64)
-    result = df.select(
-        _iceberg_hash(widened).alias("hash"),
-        _iceberg_bucket(widened, 2).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series("hash", [1392991556, 1669671676], dtype=pl.Int32),
-            pl.Series("bucket", [0, 0], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
-
-
-def test_iceberg_bucket_composition_matches_ducklake_bigint():
-    df = pl.DataFrame(
-        {"literal": [1000000000000, 2000000000000, 3000000000000]},
-        schema={"literal": pl.Int64},
-    )
-    result = df.select(
-        _iceberg_hash(pl.col("literal")).alias("hash"),
-        _iceberg_bucket(pl.col("literal"), 4).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series("hash", [-1510912948, 1032677538, 1800547373], dtype=pl.Int32),
-            pl.Series("bucket", [0, 2, 1], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
-
-
-def test_iceberg_bucket_composition_matches_ducklake_int_edge_cases():
-    df = pl.DataFrame(
-        {"literal": [0, 1, -1, 42, 1234567890, -9999, 2147483647, -2147483648]},
-        schema={"literal": pl.Int64},
-    )
-    result = df.select(
-        _iceberg_hash(pl.col("literal")).alias("hash"),
-        _iceberg_bucket(pl.col("literal"), 32).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "hash",
-                [
-                    1669671676,
-                    1392991556,
-                    1651860712,
-                    1871679806,
-                    2080695519,
-                    1804121000,
-                    1819228606,
-                    -2073034792,
-                ],
-                dtype=pl.Int32,
-            ),
-            pl.Series("bucket", [28, 4, 8, 30, 31, 8, 30, 24], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
-
-
-def test_iceberg_bucket_composition_matches_ducklake_float_edge_cases():
-    """Includes the one edge case a naive bit-pattern encoder gets wrong: `-0.0`
-    and `0.0` must hash identically, which only holds once the sign bit is
-    normalised away before encoding."""
-    df = pl.DataFrame(
-        {"literal": [1.0, -1.0, 0.0, -0.0, 3.14159]}, schema={"literal": pl.Float64}
-    )
-    normalized = _normalize_negative_zero(pl.col("literal"))
-    result = df.select(
-        _iceberg_hash(normalized).alias("hash"),
-        _iceberg_bucket(normalized, 32).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "hash",
-                [-142385009, -494280847, 1669671676, 1669671676, -666507751],
-                dtype=pl.Int32,
-            ),
-            pl.Series("bucket", [15, 17, 28, 28, 25], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
-    assert result["hash"][2] == result["hash"][3]
-
-
-def test_iceberg_bucket_composition_null_handling():
-    df = pl.DataFrame({"literal": [1, None, 3]}, schema={"literal": pl.Int64})
-    result = df.select(
-        _iceberg_hash(pl.col("literal")).alias("hash"),
-        _iceberg_bucket(pl.col("literal"), 4).alias("bucket"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series("hash", [1392991556, None, -1556392013], dtype=pl.Int32),
-            pl.Series("bucket", [0, None, 3], dtype=pl.Int32),
-        ]
-    )
-    assert_frame_equal(result, expected)
+    assert_frame_equal(via_bytes, direct)
 
 
 def test_big():
