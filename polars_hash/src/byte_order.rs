@@ -3,11 +3,10 @@ use polars::prelude::*;
 /// Encode a column into its native-width bytes, little-endian if `big_endian` is
 /// `false` and big-endian otherwise.
 ///
-/// A `String` or `Binary` value has no endianness of its own -- it passes through
+/// A `String` or `Binary` value has no endianness of its own, it passes through
 /// unchanged either way. Every other supported type keeps its own width: `Int8`
 /// becomes 1 byte, `Int32` becomes 4, `Float64` becomes 8, and so on. A caller who
-/// wants a different width (Iceberg's `bucket(N)` transform, for one, wants every
-/// integer widened to `Int64` first) casts before calling this, the same way any
+/// wants a different width casts before calling this, the same way any
 /// other numeric cast in Polars works.
 pub fn encode_bytes(s: &Series, big_endian: bool) -> PolarsResult<BinaryChunked> {
     match s.dtype() {
@@ -60,9 +59,9 @@ where
     builder.finish()
 }
 
-/// Bridges [`binary_from_chunked`] to the pair of inherent `to_le_bytes`/
-/// `to_be_bytes` methods every integer and float primitive has -- there is no
-/// standard trait for them, so [`impl_endian_bytes`] writes the one this file needs.
+/// Bridges [`binary_from_chunked`] to the native `to_le_bytes` and
+/// `to_be_bytes` methods every integer and float primitive have.
+///  They don't have any standard trait, so [`impl_endian_bytes`] writes the needed one.
 trait EndianBytes<const N: usize> {
     fn to_le(self) -> [u8; N];
     fn to_be(self) -> [u8; N];
