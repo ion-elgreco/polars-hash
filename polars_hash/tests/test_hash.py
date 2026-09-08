@@ -1,4 +1,5 @@
 import hashlib
+import struct
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -966,6 +967,88 @@ def test_xxhash64():
     )
 
     assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("dtype", "fmt", "value"),
+    [
+        (pl.Boolean, "?", True),
+        (pl.Int8, "b", -1),
+        (pl.UInt8, "B", 255),
+        (pl.Int16, "h", -1234),
+        (pl.UInt16, "H", 1234),
+        (pl.Int32, "i", -123456),
+        (pl.UInt32, "I", 123456),
+        (pl.Int64, "q", -123456789012),
+        (pl.UInt64, "Q", 123456789012),
+        (pl.Float32, "f", 3.5),
+        (pl.Float64, "d", 3.14159),
+    ],
+)
+def test_bytes_to_le_and_to_be_match_struct(dtype, fmt, value):
+    """Every numeric width and both directions, checked against `struct` -- the
+    reference for what "native-width bytes, a given endianness" means."""
+    df = pl.DataFrame({"literal": [value]}, schema={"literal": dtype})
+    result = df.select(
+        plh.col("literal").bytes.to_le().alias("le"),
+        plh.col("literal").bytes.to_be().alias("be"),
+    )
+
+    assert result["le"][0] == struct.pack("<" + fmt, value)
+    assert result["be"][0] == struct.pack(">" + fmt, value)
+
+
+def test_bytes_to_le_and_to_be_string_and_binary_pass_through_unchanged():
+    df = pl.DataFrame({"literal": ["alice", None]})
+    result = df.select(
+        plh.col("literal").bytes.to_le().alias("le"),
+        plh.col("literal").bytes.to_be().alias("be"),
+    )
+
+    expected = pl.Series("literal", [b"alice", None], dtype=pl.Binary)
+    assert_series_equal(result["le"], expected, check_names=False)
+    assert_series_equal(result["be"], expected, check_names=False)
+
+    df_bin = pl.DataFrame({"literal": [b"alice", None]})
+    result_bin = df_bin.select(plh.col("literal").bytes.to_le())
+    assert_series_equal(result_bin["literal"], expected, check_names=False)
+
+
+def test_bytes_to_le_null():
+    df = pl.DataFrame({"literal": [1, None, 3]}, schema={"literal": pl.Int32})
+    result = df.select(plh.col("literal").bytes.to_le())
+
+    expected = pl.Series(
+        "literal",
+        [struct.pack("<i", 1), None, struct.pack("<i", 3)],
+        dtype=pl.Binary,
+    )
+    assert_series_equal(result["literal"], expected)
+
+
+@pytest.mark.parametrize("method", ["to_le", "to_be"])
+def test_bytes_rejects_unsupported_dtype(method):
+    df = pl.DataFrame({"literal": [date(2020, 1, 1)]})
+
+    with pytest.raises(
+        ComputeError,
+        match="expected a numeric, Boolean, String or Binary input",
+    ):
+        df.select(getattr(plh.col("literal").bytes, method)())
+
+
+def test_bytes_to_le_composes_with_a_hasher():
+    """`bytes` encodes a value; it does not hash one. Piping the encoding into a
+    hasher should give the same result as hashing the equivalent already-encoded
+    Binary value directly -- proving the two compose rather than merely that the
+    convenience of writing them together happens to work."""
+    df = pl.DataFrame({"literal": [1, -1, 100]}, schema={"literal": pl.Int32})
+    via_bytes = df.select(plh.col("literal").bytes.to_le().nchash.murmur32(seed=0))
+
+    df_bin = df.select(plh.col("literal").bytes.to_le().alias("literal"))
+    direct = df_bin.select(plh.col("literal").nchash.murmur32(seed=0))
+
+    assert_frame_equal(via_bytes, direct)
 
 
 def test_big():

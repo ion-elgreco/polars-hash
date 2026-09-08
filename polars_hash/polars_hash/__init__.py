@@ -257,6 +257,24 @@ class NonCryptographicHashingNameSpace:
         )
 
 
+@pl.api.register_expr_namespace("bytes")
+class BytesNameSpace:
+    def __init__(self, expr: pl.Expr):
+        self._expr = expr
+
+    def to_le(self) -> pl.Expr:
+        """Takes Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or Binary
+        as input and returns its own bytes as Binary, little-endian.
+        """
+        return _plugin("bytes_to_le", self._expr)
+
+    def to_be(self) -> pl.Expr:
+        """Takes Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or Binary
+        as input and returns its own bytes as Binary, big-endian.
+        """
+        return _plugin("bytes_to_be", self._expr)
+
+
 def _length_expr(length: int | str | pl.Expr) -> pl.Expr:
     if isinstance(length, str):
         expr = pl.col(length)
@@ -384,6 +402,10 @@ class HExpr(pl.Expr):
     @property
     def nchash(self) -> NonCryptographicHashingNameSpace:
         return NonCryptographicHashingNameSpace(self)
+
+    @property
+    def bytes(self) -> BytesNameSpace:
+        return BytesNameSpace(self)
 
     @property
     def geohash(self) -> GeoHashingNameSpace:

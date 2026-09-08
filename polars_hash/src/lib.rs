@@ -1,3 +1,4 @@
+mod byte_order;
 mod expressions;
 mod geohashers;
 mod h3;

@@ -2443,7 +2443,7 @@ dependencies = [
 
 [[package]]
 name = "polars_hash"
-version = "0.9.1"
+version = "0.9.2"
 dependencies = [
  "blake3",
  "cityhash-rs",

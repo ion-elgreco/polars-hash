@@ -1,3 +1,4 @@
+use crate::byte_order::encode_bytes;
 use crate::geohashers::{geohash_decoder, geohash_encoder, geohash_neighbors};
 use crate::h3::h3_encoder;
 use crate::hmac_hashers::*;
@@ -491,6 +492,18 @@ fn thash_neighbors(inputs: &[Series]) -> PolarsResult<Series> {
 fn murmur32(inputs: &[Series], kwargs: SeedKwargs32bit) -> PolarsResult<Series> {
     let seed = kwargs.seed;
     let out: UInt32Chunked = hash_bytes(&inputs[0], |v| murmurhash3_32(v, seed))?;
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Binary)]
+fn bytes_to_le(inputs: &[Series]) -> PolarsResult<Series> {
+    let out = encode_bytes(&inputs[0], false)?;
+    Ok(out.into_series())
+}
+
+#[polars_expr(output_type=Binary)]
+fn bytes_to_be(inputs: &[Series]) -> PolarsResult<Series> {
+    let out = encode_bytes(&inputs[0], true)?;
     Ok(out.into_series())
 }
 
