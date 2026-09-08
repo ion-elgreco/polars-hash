@@ -88,9 +88,3 @@ df.select(plh.col("literal").bytes.to_be())
     ```python
     pl.col("id").cast(pl.Int64).bytes.to_le().nchash.murmur32(seed=0)
     ```
-
-    This is also how to reproduce a hash defined over a specific byte layout that
-    this crate has no dedicated expression for -- Apache Iceberg's `bucket(N)`
-    partition transform, for instance, widens integers and booleans to `Int64`,
-    normalises `-0.0` to `0.0`, encodes with `to_le()`, hashes with
-    `murmur32(seed=0)`, and keeps the low 31 bits of the result.
