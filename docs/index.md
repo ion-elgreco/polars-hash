@@ -2,8 +2,8 @@
 
 **Stable non-cryptographic and cryptographic hash functions for Polars.**
 
-polars-hash is a Polars plugin written in Rust. It adds six expression namespaces:
-`chash`, `nchash`, `geohash`, `h3`, `timehash`, and `uuidhash`. These namespaces give the same
+polars-hash is a Polars plugin written in Rust. It adds seven expression namespaces:
+`chash`, `nchash`, `bytes`, `geohash`, `h3`, `timehash`, and `uuidhash`. These namespaces give the same
 output on every Polars version. The `hash()` function in Polars does not give this
 guarantee. Its output can change when you install a new Polars release.
 
@@ -38,13 +38,16 @@ df.select(plh.col("foo").chash.sha2_256())
 
 - **Stable output.** The same input and the same arguments always give the same hash.
   This is true for every polars-hash release, except that
-  [GxHash](api-reference/non-cryptographic.md#gxhash64) holds its values within one
+  [GxHash][polars_hash.NonCryptographicHashingNameSpace.gxhash64] holds its values within one
   major version of the algorithm, which polars-hash pins.
 - **Cryptographic hash functions.** SHA-2, SHA-3, SHAKE128, BLAKE3, and HMAC-SHA256 in
   [`chash`](api-reference/cryptographic.md).
 - **Non-cryptographic hash functions.** wyhash, xxHash, XXH3, MurmurHash3, FarmHash,
   CityHash, GxHash, MD5, and SHA-1 in [`nchash`](api-reference/non-cryptographic.md).
   Most of them accept a seed.
+- **Byte encoding.** The [`bytes`](api-reference/bytes.md) namespace writes a value
+  as its own bytes, least or most significant byte first, for a hash of the value and
+  not of a string form of it.
 - **Geospatial indexes.** The [`geohash`](api-reference/geohash.md) namespace encodes
   coordinates, decodes geohashes, and finds neighbor cells. The
   [`h3`](api-reference/h3.md) namespace encodes H3 cell indexes.

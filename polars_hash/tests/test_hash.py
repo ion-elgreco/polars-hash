@@ -2350,8 +2350,9 @@ def test_hash_rows_keeps_the_widest_integers_apart():
 
 
 def test_every_byte_hasher_says_so_in_its_docstring():
-    """`help()` and an IDE show these strings. No other test reads them, and the old
-    Utf8-only rule can stay in them."""
+    """`help()`, an IDE and the mkdocstrings page show these strings. A namespace
+    whose every expression reads bytes states the rule once on the class, so read the
+    class and the method together. No other test reads them."""
     classes = {
         "chash": plh.CryptographicHashingNameSpace,
         "nchash": plh.NonCryptographicHashingNameSpace,
@@ -2359,7 +2360,8 @@ def test_every_byte_hasher_says_so_in_its_docstring():
     }
 
     for namespace, method, _ in _BYTE_HASHERS:
-        doc = getattr(classes[namespace], method).__doc__ or ""
+        cls = classes[namespace]
+        doc = (cls.__doc__ or "") + (getattr(cls, method).__doc__ or "")
         assert "Binary" in doc, f"{namespace}.{method} does not mention Binary"
 
 

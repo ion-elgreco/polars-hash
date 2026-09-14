@@ -32,8 +32,10 @@ check: venv ## Verify types, lint and formatting without editing files
 	cargo fmt --check
 	cargo clippy --all-targets -- -D warnings
 
-test: install ## Run pytests
-	uv run --no-sync pytest tests/
+# `--doctest-modules` runs the examples in the docstrings, which mkdocstrings
+# renders as the API reference. A stale example then fails here and not in the docs.
+test: install ## Run pytests and the docstring examples
+	uv run --no-sync pytest --doctest-modules polars_hash tests/
 
 clean: ## Clean venv and clean cargo
 	-@rm -r .venv
@@ -43,16 +45,20 @@ clean: ## Clean venv and clean cargo
 # depends on `venv`.
 DOCS_CONFIG := ../mkdocs.yml
 
+# mkdocstrings renders the API reference from the docstrings. griffe reads the
+# package statically, so the docs build needs no compiled plugin and no venv.
+DOCS_DEPS := --with "mkdocstrings[python]"
+
 docs-build: ## Build the documentation site into ../site
-	uvx zensical build -f $(DOCS_CONFIG) --strict
+	uvx $(DOCS_DEPS) zensical build -f $(DOCS_CONFIG) --strict
 
 docs-serve: ## Serve the documentation with live reload on :8000
-	uvx zensical serve -f $(DOCS_CONFIG)
+	uvx $(DOCS_DEPS) zensical serve -f $(DOCS_CONFIG)
 
 # squidfunk's fork: zensical's versioning provider expects fixes that haven't
 # landed upstream yet. Bump when zensical updates its versioning guidance.
 MIKE_PKG := git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac
-MIKE := uvx --from "$(MIKE_PKG)" --with zensical mike
+MIKE := uvx --from "$(MIKE_PKG)" --with zensical $(DOCS_DEPS) mike
 
 # Pass PUSH= for a local dry-run that leaves gh-pages unpushed.
 PUSH ?= --push

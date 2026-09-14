@@ -12,7 +12,7 @@ gives the installed version.
 
 Releases up to 0.7.0 also carried `linux-armv7` and `linux-ppc64le` wheels. Those
 targets have no AES instructions, which the [GxHash
-expressions](api-reference/non-cryptographic.md#gxhash32) need, so 0.8.0 dropped them.
+expressions][polars_hash.NonCryptographicHashingNameSpace.gxhash32] need, so 0.8.0 dropped them.
 Pip falls back to the source distribution on any platform without a wheel, and that
 build needs a Rust toolchain and fails on those two targets.
 
@@ -72,7 +72,7 @@ pl.col("foo").chash.sha2_256()  # type: ignore
 ```
 
 `plh.concat_str` is the equivalent wrapper around `pl.concat_str`. Both wrappers return
-`plh.HExpr`. This class is a subclass of `pl.Expr` that holds the five namespace
+`plh.HExpr`. This class is a subclass of `pl.Expr` that holds the seven namespace
 properties. Use it as the type annotation when you pass these expressions between
 functions.
 
@@ -88,7 +88,7 @@ df.select(plh.concat_str("foo", "bar", separator="|").chash.sha2_256())
 ```
 
 To make a key from two columns, you can also use
-[`uuid5_concat`](api-reference/uuid.md#uuid5_concat). That expression concatenates the
+[`uuid5_concat`][polars_hash.UUIDHashNameSpace.uuid5_concat]. That expression concatenates the
 two columns and controls what a null value becomes.
 
 ## Null values
@@ -184,8 +184,8 @@ df.with_columns(
 └─────────────────────┴─────────┴─────────────────┘
 ```
 
-[`geohash.to_coords()`](api-reference/geohash.md#to_coords) decodes a geohash to
-coordinates. [`geohash.neighbors()`](api-reference/geohash.md#neighbors) gives the eight
+[`geohash.to_coords()`][polars_hash.GeoHashingNameSpace.to_coords] decodes a geohash to
+coordinates. [`geohash.neighbors()`][polars_hash.GeoHashingNameSpace.neighbors] gives the eight
 adjacent cells.
 
 ## Next steps

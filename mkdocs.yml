@@ -38,6 +38,31 @@ theme:
     - navigation.tabs.sticky
     - navigation.top
 
+# The API reference is generated from the docstrings in `polars_hash/__init__.py`.
+# `paths` is relative to this file and points at the maturin project, whose
+# `polars_hash` package griffe reads statically: no import, so the docs build needs
+# no compiled plugin.
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [polars_hash]
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            filters: ["!^_"]
+            heading_level: 2
+            members_order: source
+            separate_signature: true
+            show_root_full_path: false
+            show_root_heading: false
+            show_root_toc_entry: false
+            show_signature_annotations: true
+            show_source: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
