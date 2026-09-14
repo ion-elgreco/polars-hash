@@ -1,148 +1,78 @@
 # API Reference
 
-This page lists everything public in polars-hash. One import registers the seven
-namespaces on `pl.Expr`:
+::: polars_hash
+    options:
+      members: false
 
-```python
-import polars_hash as plh
-```
+## The namespaces
 
-`plh.col` and `plh.concat_str` are typed wrappers around `pl.col` and `pl.concat_str`.
-They declare these namespaces. Refer to
-[`plh.col` and `pl.col`](../getting-started.md#plh-col-vs-pl-col).
+One import registers all seven namespaces on `pl.Expr`. Each page below is generated
+from the docstrings of the namespace.
 
-## `chash` — cryptographic
+| Namespace | Contents |
+|-----------|----------|
+| [`chash`](cryptographic.md) | SHA-2, SHA-3, SHAKE128, BLAKE3 and HMAC-SHA256 |
+| [`nchash`](non-cryptographic.md) | wyhash, xxHash, XXH3, MurmurHash3, FarmHash, CityHash, GxHash, CRC-32C, MD5 and SHA-1 |
+| [`bytes`](bytes.md) | The bytes of a value, least or most significant byte first |
+| [`geohash`](geohash.md) | Geohash encode, decode and neighbors |
+| [`h3`](h3.md) | The H3 hexagonal cell index |
+| [`timehash`](timehash.md) | Time-bucket encode, decode and neighbors |
+| [`uuidhash`](uuid.md) | Deterministic UUID v5 |
 
-Each expression accepts Utf8 or Binary. Each one gives Utf8 in hexadecimal, unless
-the table shows a different type. Full page: [chash](cryptographic.md).
+[`hash_rows`](rows.md) is a function and not a namespace. It hashes a full row, which a
+hash of the joined columns cannot do.
 
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`chash.sha2_224()`](cryptographic.md#sha2_224) | Utf8, Binary | Utf8 | SHA-224 from the SHA-2 family. |
-| [`chash.sha2_256()`](cryptographic.md#sha2_256) | Utf8, Binary | Utf8 | SHA-256 from the SHA-2 family. |
-| [`chash.sha2_384()`](cryptographic.md#sha2_384) | Utf8, Binary | Utf8 | SHA-384 from the SHA-2 family. |
-| [`chash.sha2_512()`](cryptographic.md#sha2_512) | Utf8, Binary | Utf8 | SHA-512 from the SHA-2 family. |
-| [`chash.sha3_224()`](cryptographic.md#sha3_224) | Utf8, Binary | Utf8 | SHA3-224 from the SHA-3 family. |
-| [`chash.sha3_256()`](cryptographic.md#sha3_256) | Utf8, Binary | Utf8 | SHA3-256 from the SHA-3 family. |
-| [`chash.sha3_384()`](cryptographic.md#sha3_384) | Utf8, Binary | Utf8 | SHA3-384 from the SHA-3 family. |
-| [`chash.sha3_512()`](cryptographic.md#sha3_512) | Utf8, Binary | Utf8 | SHA3-512 from the SHA-3 family. |
-| [`chash.sha3_shake128(length)`](cryptographic.md#sha3_shake128) | Utf8, Binary | Utf8 | SHAKE128 extendable-output function. Gives `length` bytes. |
-| [`chash.blake3()`](cryptographic.md#blake3) | Utf8, Binary | Utf8 | BLAKE3 with 256-bit output. |
-| [`chash.hmac_sha256(key)`](cryptographic.md#hmac_sha256) | Utf8, Binary | Utf8 | Keyed HMAC-SHA256. |
-| [`chash.sha256()`](cryptographic.md#sha256) | Utf8, Binary | Utf8 | **Deprecated.** Alias of `sha2_256()`. |
+## Typed wrappers
 
-## `nchash` — non-cryptographic
+::: polars_hash.col
+    options:
+      heading_level: 3
+      show_root_heading: true
+      show_root_toc_entry: true
 
-Full page: [nchash](non-cryptographic.md).
+::: polars_hash.concat_str
+    options:
+      heading_level: 3
+      show_root_heading: true
+      show_root_toc_entry: true
 
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`nchash.wyhash()`](non-cryptographic.md#wyhash) | Utf8, Binary | UInt64 | wyhash. The seed is always 0. |
-| [`nchash.xxhash32(seed)`](non-cryptographic.md#xxhash32) | Utf8, Binary | UInt32 | XXH32. |
-| [`nchash.xxhash64(seed)`](non-cryptographic.md#xxhash64) | Utf8, Binary | UInt64 | XXH64. |
-| [`nchash.xxh3_64(seed)`](non-cryptographic.md#xxh3_64) | Utf8, Binary | UInt64 | XXH3 with 64-bit output. |
-| [`nchash.xxh3_128(seed)`](non-cryptographic.md#xxh3_128) | Utf8, Binary | UInt128 or Binary | XXH3 with 128-bit output. |
-| [`nchash.murmur32(seed)`](non-cryptographic.md#murmur32) | Utf8, Binary | UInt32 | MurmurHash3, x86 32-bit variant. |
-| [`nchash.murmur128(seed)`](non-cryptographic.md#murmur128) | Utf8, Binary | UInt128 or Binary | MurmurHash3, x64 128-bit variant. |
-| [`nchash.farmhash32()`](non-cryptographic.md#farmhash32) | Utf8, Binary | UInt32 | FarmHash `fingerprint32`. |
-| [`nchash.farmhash64()`](non-cryptographic.md#farmhash64) | Utf8, Binary | UInt64 | FarmHash `fingerprint64`. |
-| [`nchash.cityhash32()`](non-cryptographic.md#cityhash32) | Utf8, Binary | UInt32 | CityHash `CityHash32`. |
-| [`nchash.cityhash64(seed)`](non-cryptographic.md#cityhash64) | Utf8, Binary | UInt64 | CityHash `CityHash64`, or `CityHash64WithSeed` when given a seed. |
-| [`nchash.cityhash128()`](non-cryptographic.md#cityhash128) | Utf8, Binary | UInt128 or Binary | CityHash `CityHash128`. |
-| [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8, Binary | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
-| [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8, Binary | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
-| [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 or Binary | GxHash with 128-bit output. Needs a CPU with AES instructions. |
-| [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
-| [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8, Binary | Utf8 | SHA-1. |
-
-## `bytes` — byte encoding
-
-Each expression accepts Boolean, Int8/16/32/64, UInt8/16/32/64, Float32/64, Utf8 or
-Binary, and gives Binary at the input type's own width. Full page:
-[bytes](bytes.md).
-
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`bytes.to_le()`](bytes.md#to_le) | Boolean, Int/UInt8/16/32/64, Float32/64, Utf8, Binary | Binary | Native-width bytes, little-endian. |
-| [`bytes.to_be()`](bytes.md#to_be) | Boolean, Int/UInt8/16/32/64, Float32/64, Utf8, Binary | Binary | Native-width bytes, big-endian. |
-
-## `geohash` — geohash
-
-Full page: [geohash](geohash.md).
-
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`geohash.from_coords(len)`](geohash.md#from_coords) | Struct | Utf8 | Encodes `{latitude, longitude}` to a geohash of `len` characters. `len` is 1 to 12. |
-| [`geohash.to_coords()`](geohash.md#to_coords) | Utf8 | Struct | Decodes a geohash to `{longitude, latitude}`. |
-| [`geohash.neighbors()`](geohash.md#neighbors) | Utf8 | Struct | Gives the eight adjacent geohashes: `n`, `ne`, `e`, `se`, `s`, `sw`, `w`, `nw`. |
-
-## `h3` — H3 index
-
-Full page: [h3](h3.md).
-
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`h3.from_coords(len)`](h3.md#from_coords) | Struct | Utf8 | Encodes `{latitude, longitude}` to an H3 cell index at resolution `len`. `len` is 1 to 15. |
-
-## `timehash` — time bucket
-
-Full page: [timehash](timehash.md).
-
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`timehash.from_datetime(precision, strict)`](timehash.md#from_datetime) | Datetime, Date, epoch seconds | Utf8 | Encodes an instant to the timehash of the window that holds it. `precision` is 1 to 32. |
-| [`timehash.to_datetime()`](timehash.md#to_datetime) | Utf8 | Datetime (UTC) | Decodes a timehash to the midpoint of its window. |
-| [`timehash.neighbors()`](timehash.md#neighbors) | Utf8 | Struct | Gives the preceding and succeeding hash: `before`, `after`. |
-
-## `uuidhash` — UUID v5
-
-Full page: [uuidhash](uuid.md).
-
-| Expression | Input | Output | Description |
-|------------|-------|--------|-------------|
-| [`uuidhash.uuid5(namespace)`](uuid.md#uuid5) | Utf8, Binary | Utf8 | Makes a UUID v5 in a standard or a custom namespace. |
-| [`uuidhash.uuid5_concat(other, default)`](uuid.md#uuid5_concat) | Utf8 | Utf8 | Concatenates two columns and makes a UUID v5 in the DNS namespace. |
-
-## Rows — whole-row hashing
-
-This is a function on `plh`. It is not an expression in a namespace. It hashes a full
-row, and a hash of the joined columns cannot do this. Full page: [rows](rows.md).
-
-| Function | Input | Output | Description |
-|----------|-------|--------|-------------|
-| [`plh.hash_rows(exprs, version)`](rows.md#hash_rows) | Any columns | Binary | Changes each row into bytes that no other row can make, for use with any hasher above. |
+::: polars_hash.HExpr
+    options:
+      heading_level: 3
+      members: false
+      show_root_heading: true
+      show_root_toc_entry: true
 
 ## Conventions
 
-These rules apply to all the expressions above.
+These rules apply to every expression above.
 
 - **Elementwise.** Each expression has `is_elementwise=True`. You can use it in
   `select`, in `with_columns`, in `group_by(...).agg`, and in streaming mode. Polars
   can also divide the data into chunks and change the order of operations.
 - **Null values.** A null input gives a null output. The expression does not hash a
-  substitute value. [`hash_rows`](rows.md#hash_rows) is the exception. A null is
+  substitute value. [`hash_rows`][polars_hash.hash_rows] is the exception. A null is
   one of the values of a row, and therefore a row with a null also has a hash. The
   rules for the scalar arguments are different: `length`, `key`, `namespace`,
   `default`, `len` and `precision` must not be null, and neither may `seed` — except
-  on [`cityhash64()`](non-cryptographic.md#cityhash64), where `seed=None` is how you
-  ask for the unseeded algorithm.
+  on [`cityhash64()`][polars_hash.NonCryptographicHashingNameSpace.cityhash64], where
+  `seed=None` is how you ask for the unseeded algorithm.
 - **Output name.** The output column has the same name as the input column. To keep
-  both columns, use `.alias()`. [`hash_rows`](rows.md#hash_rows) reads more than one
-  column, and it keeps the name of the first, as the polars `*_horizontal` expressions
-  do.
+  both columns, use `.alias()`. [`hash_rows`][polars_hash.hash_rows] reads more than
+  one column, and it keeps the name of the first, as the polars `*_horizontal`
+  expressions do.
 - **Object columns.** Polars sends an `Object` column to a plugin as `Binary`, and it
   keeps no mark to identify the two. Therefore a hasher reads the eight bytes of the
   CPython pointer and not the value. These bytes change with each run. The digest is
   not repeatable, and two equal objects give two different digests. Change an `Object`
-  column to a usual data type before you hash it. [`hash_rows`](rows.md#hash_rows)
+  column to a usual data type before you hash it. [`hash_rows`][polars_hash.hash_rows]
   rejects such a column.
 - **Incorrect input type.** The expression raises an error when the input type is not
   permitted. This occurs when Polars collects the data, not when you build the
-  expression. All errors from the plugin become
-  `polars.exceptions.ComputeError` in Python. The message starts with `the plugin
-  failed with message:`.
+  expression. All errors from the plugin become `polars.exceptions.ComputeError` in
+  Python. The message starts with `the plugin failed with message:`.
 - **Stability.** The same input and the same arguments always give the same output.
-  This does not change between polars-hash releases or Polars releases. The exception is
-  [GxHash](non-cryptographic.md#gxhash64), whose values hold within one major version of
-  the algorithm. polars-hash pins that version, so only a release that says so can move
-  them.
+  This does not change between polars-hash releases or Polars releases. The exception
+  is [GxHash][polars_hash.NonCryptographicHashingNameSpace.gxhash64], whose values
+  hold within one major version of the algorithm. polars-hash pins that version, so
+  only a release that says so can move them.

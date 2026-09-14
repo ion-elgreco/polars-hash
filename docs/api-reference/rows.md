@@ -1,82 +1,21 @@
 # Rows — hash a whole row
 
-`plh.hash_rows` is an expression that hashes a row and not one value.
+!!! note "Every example on this page starts here"
+    ```python
+    import polars as pl
+    import polars_hash as plh
+    ```
 
-A hash of the joined columns is not sufficient. The rows `("ab", "c")` and
-`("a", "bc")` make the same string, and therefore the same digest. One null makes the
-full row null. A `List`, an `Array` or a `Struct` column has no string form.
-
-`hash_rows` writes each row as bytes that no other row can make. Any hasher in this
-package then reads those bytes.
-
-All the examples on this page use this data:
-
-```python
-import polars as pl
-import polars_hash as plh
-
-df = pl.DataFrame(
-    {"foo": ["hello_world"], "bar": [42], "baz": [[1, 2, 3]], "qux": [{"a": 1}]}
-)
-```
-
-| Function | Input | Output |
-|----------|-------|--------|
-| [`hash_rows(exprs, version)`](#hash_rows) | Any columns | Binary |
+::: polars_hash.hash_rows
+    options:
+      show_root_heading: true
+      show_root_toc_entry: true
 
 ---
 
-## `hash_rows(exprs, *more_exprs, version)` { #hash_rows }
+[](){#row-encoding}
 
-Changes each row into Binary, for use with any hasher in this package.
-
-```python
-df.select(plh.hash_rows(pl.all()).chash.sha2_256())
-```
-
-```text
-9055866af8d3c113e0a8fdb729ce8e6fa67ed5f6f51efa8235a588e88ea972f4
-```
-
-You can keep, compare or store the bytes:
-
-```python
-df.select(plh.hash_rows(pl.all()))
-```
-
-```text
-b'\r\x04\x05\x0bhello_world\x03\x01*\x0c\x03\x03\x01\x01\x03\x01\x02\x03\x01\x03\r\x01\x03\x01\x01'
-```
-
-You can also give the column names. The names set the order of the row:
-
-```python
-df.select(plh.hash_rows("foo", "bar").nchash.xxh3_64())
-# 9123089596710669414
-```
-
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `exprs` | `IntoExpr \| Iterable[IntoExpr]` | required | The columns of the row, in order. This argument accepts all that `pl.struct` accepts, and also selectors. |
-| `*more_exprs` | `IntoExpr` | — | More columns, as positional arguments. |
-| `version` | `int` | `1` | The [encoding](#encoding) to write. Version 1 does not change. |
-
-**Returns:** Binary. There is one value for each row, and no value is null. A row
-with nulls also has a value.
-
-The output column keeps the name of the first column, as `pl.struct`, `pl.concat_str`
-and each `*_horizontal` expression do. Therefore `with_columns` replaces that column.
-Use `.alias()` to keep it:
-
-```python
-df.with_columns(plh.hash_rows(pl.all()).nchash.xxh3_64().alias("hash"))
-```
-
----
-
-## The encoding { #encoding }
+## The encoding
 
 This is version 1. These bytes do not change. A user can keep a hash for longer than
 the release that made it. Therefore a new format takes a new version number, and
