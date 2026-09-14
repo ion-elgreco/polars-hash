@@ -53,7 +53,7 @@ The `import polars_hash` statement registers all seven namespaces on `pl.Expr`:
 | Namespace | Contents | Reference |
 |-----------|----------|-----------|
 | `chash` | Cryptographic hash functions: SHA-2, SHA-3, SHAKE128, BLAKE3, HMAC | [chash](api-reference/cryptographic.md) |
-| `nchash` | Non-cryptographic hash functions: wyhash, xxHash, Murmur, FarmHash, CityHash, MD5, SHA-1 | [nchash](api-reference/non-cryptographic.md) |
+| `nchash` | Non-cryptographic hash functions: wyhash, xxHash, XXH3, Murmur, FarmHash, CityHash, GxHash, CRC-32C, MD5, SHA-1 | [nchash](api-reference/non-cryptographic.md) |
 | `bytes` | Native-width byte encoding of a value, little- or big-endian | [bytes](api-reference/bytes.md) |
 | `geohash` | Geohash encode, decode, and neighbors | [geohash](api-reference/geohash.md) |
 | `h3` | H3 hexagonal cell index | [h3](api-reference/h3.md) |
@@ -72,7 +72,7 @@ pl.col("foo").chash.sha2_256()  # type: ignore
 ```
 
 `plh.concat_str` is the equivalent wrapper around `pl.concat_str`. Both wrappers return
-`plh.HExpr`. This class is a subclass of `pl.Expr` that holds the five namespace
+`plh.HExpr`. This class is a subclass of `pl.Expr` that holds the seven namespace
 properties. Use it as the type annotation when you pass these expressions between
 functions.
 
@@ -125,6 +125,9 @@ makes the concatenation null, and the hash is also null. To get a value instead,
 - **Speed.** `nchash.xxh3_64()` and `nchash.wyhash()` are the fastest expressions.
   `chash.blake3()` is the fastest expression in `chash`.
 - **Keyed output.** Use `chash.hmac_sha256(key=...)`.
+- **Checksums.** Use `nchash.crc32c()` to compare against a CRC-32C field that iSCSI,
+  SCTP or a storage format writes. A checksum finds accidental errors, not deliberate
+  changes.
 - **Compatibility with a different system.** Use the same algorithm and the same seed
   as that system.
 

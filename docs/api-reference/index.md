@@ -10,6 +10,8 @@ import polars_hash as plh
 `plh.col` and `plh.concat_str` are typed wrappers around `pl.col` and `pl.concat_str`.
 They declare these namespaces. Refer to
 [`plh.col` and `pl.col`](../getting-started.md#plh-col-vs-pl-col).
+[`plh.UUIDNamespace`](uuid.md#uuidnamespace) holds the standard UUID namespaces, and
+`plh.__version__` gives the installed version.
 
 ## `chash` — cryptographic
 
@@ -29,7 +31,9 @@ the table shows a different type. Full page: [chash](cryptographic.md).
 | [`chash.sha3_shake128(length)`](cryptographic.md#sha3_shake128) | Utf8, Binary | Utf8 | SHAKE128 extendable-output function. Gives `length` bytes. |
 | [`chash.blake3()`](cryptographic.md#blake3) | Utf8, Binary | Utf8 | BLAKE3 with 256-bit output. |
 | [`chash.hmac_sha256(key)`](cryptographic.md#hmac_sha256) | Utf8, Binary | Utf8 | Keyed HMAC-SHA256. |
-| [`chash.sha256()`](cryptographic.md#sha256) | Utf8, Binary | Utf8 | **Deprecated.** Alias of `sha2_256()`. |
+
+`chash.sha256()` was removed in 0.9.0. Use `sha2_256()`, which gives the same digest.
+Refer to [`sha256()`](cryptographic.md#sha256).
 
 ## `nchash` — non-cryptographic
 
@@ -52,6 +56,7 @@ Full page: [nchash](non-cryptographic.md).
 | [`nchash.gxhash32(seed)`](non-cryptographic.md#gxhash32) | Utf8, Binary | UInt32 | GxHash with 32-bit output. Needs a CPU with AES instructions. |
 | [`nchash.gxhash64(seed)`](non-cryptographic.md#gxhash64) | Utf8, Binary | UInt64 | GxHash with 64-bit output. Needs a CPU with AES instructions. |
 | [`nchash.gxhash128(seed)`](non-cryptographic.md#gxhash128) | Utf8, Binary | UInt128 or Binary | GxHash with 128-bit output. Needs a CPU with AES instructions. |
+| [`nchash.crc32c()`](non-cryptographic.md#crc32c) | Utf8, Binary | UInt32 or Binary | CRC-32C (Castagnoli) checksum. |
 | [`nchash.md5()`](non-cryptographic.md#md5) | Utf8, Binary | Utf8 | MD5. |
 | [`nchash.sha1()`](non-cryptographic.md#sha1) | Utf8, Binary | Utf8 | SHA-1. |
 

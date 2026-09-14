@@ -27,7 +27,7 @@ df = pl.DataFrame({"foo": ["hello_world"]})
 | [`sha3_shake128(length)`](#sha3_shake128) | SHAKE128 | `2 × length` characters |
 | [`blake3()`](#blake3) | BLAKE3 | 64 characters |
 | [`hmac_sha256(key)`](#hmac_sha256) | HMAC-SHA256 | 64 characters |
-| [`sha256()`](#sha256) | SHA-256, **deprecated** | 64 characters |
+| [`sha256()`](#sha256) | **Removed in 0.9.0** | — |
 
 ---
 
@@ -246,16 +246,15 @@ e0f5b5bb7264e77b340a55a694a6c9ca4edc035c394c703a0408f099563be1ca
 
 ## `sha256()` { #sha256 }
 
-**Deprecated.** This expression gives the same result as [`sha2_256()`](#sha2_256) and
-also shows a `DeprecationWarning`. The name is older than the `sha2_` and `sha3_`
-names. It does not show which family the digest comes from.
+**Removed in 0.9.0.** This expression was an older name for
+[`sha2_256()`](#sha2_256). The name did not show which family the digest comes from.
+Releases up to 0.8.0 gave the same result as `sha2_256()` and showed a
+`DeprecationWarning`. From 0.9.0, the call raises an error:
 
 ```python
 df.select(plh.col("foo").chash.sha256())
-# DeprecationWarning: Call to deprecated method chash.sha256. Use chash.sha2_256() instead.
+# AttributeError: 'CryptographicHashingNameSpace' object has no attribute 'sha256'
 ```
 
-**Returns:** Utf8
-
-Use `sha2_256()` instead. The output does not change, because the two expressions give
-the same digest.
+Use `sha2_256()` instead. The two expressions give the same digest, so a stored value
+does not change.

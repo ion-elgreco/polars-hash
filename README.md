@@ -14,7 +14,7 @@ df = pl.DataFrame({
     "foo":["hello_world"]
 })
 
-result = df.select(plh.col('foo').chash.sha256())
+result = df.select(plh.col('foo').chash.sha2_256())
 
 print(result)
 
@@ -209,7 +209,7 @@ shape: (1, 1)
 ```python
 df = pl.DataFrame({"foo": ["hello_world"], "bar": ["today"]})
 
-result = df.select(plh.concat_str("foo", "bar").chash.sha256())
+result = df.select(plh.concat_str("foo", "bar").chash.sha2_256())
 ```
 
 ## Hash a whole row
