@@ -60,7 +60,7 @@ jobs:
           args: --release --out dist ${{ matrix.platform == 'linux' && '-i python3.10' || '--find-interpreter' }}
           sccache: ${{ inputs.cache }}
       - name: Upload wheels
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-${{ matrix.platform }}-${{ matrix.target }}
           path: polars_hash/dist
@@ -81,7 +81,7 @@ jobs:
           command: sdist
           args: --out dist --manifest-path polars_hash/Cargo.toml
       - name: Upload sdist
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-sdist
           path: dist
@@ -95,7 +95,7 @@ jobs:
       contents: read
     steps:
       - name: Merge wheels
-        uses: actions/upload-artifact/merge@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact/merge@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels
           pattern: wheels-*
