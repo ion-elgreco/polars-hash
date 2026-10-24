@@ -35,6 +35,10 @@ dev = [
   "tzdata; platform_system == 'Windows'",
 ]
 
+# 0.13.4 drops the compromised emSign root CA from uv's bundled trust store.
+[tool.uv]
+required-version = ">=0.13.4"
+
 [tool.maturin]
 module-name = "polars_hash._internal"
 
